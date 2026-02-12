@@ -44,6 +44,9 @@ dist/
 .env.local
 .env.*.local
 
+# Exceptions: DO NOT IGNORE frontend lib utilities
+!frontend/lib/
+
 # Uploads
 uploads/
 temp/
