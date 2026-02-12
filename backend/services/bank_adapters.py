@@ -11,14 +11,22 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from decimal import Decimal
 
-# Try to import pandas, but make it optional for production
+# Try to import pandas, create a stub if not available
 try:
     import pandas as pd
-    HAS_PANDAS = True
 except ImportError:
-    HAS_PANDAS = False
-    # Provide stub for type hints
-    pd = None  # type: ignore
+    # Stub pandas to prevent import errors
+    class PandasStub:
+        DataFrame = dict
+        Index = list
+        def notna(self, val):
+            return val is not None and val == val
+        def isna(self, val):
+            return val is None or val != val
+        class NA:
+            pass
+        NA = None
+    pd = PandasStub()
 
 from .balance_validator import BalanceValidator
 
