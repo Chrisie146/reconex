@@ -305,7 +305,7 @@ export default function CategoryBreakdown({ sessionId, currentClient }: Category
         </div>
       )}
 
-      {selectedCategory && (
+      {selectedCategory && sessionId && (
         <CategoryTransactionsModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
