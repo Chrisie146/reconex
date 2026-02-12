@@ -9,8 +9,17 @@ import re
 from typing import List, Dict, Tuple, Optional
 from abc import ABC, abstractmethod
 from datetime import datetime
-import pandas as pd
 from decimal import Decimal
+
+# Try to import pandas, but make it optional for production
+try:
+    import pandas as pd
+    HAS_PANDAS = True
+except ImportError:
+    HAS_PANDAS = False
+    # Provide stub for type hints
+    pd = None  # type: ignore
+
 from .balance_validator import BalanceValidator
 
 

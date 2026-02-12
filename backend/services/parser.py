@@ -3,7 +3,7 @@ CSV Parser Service
 Validates, normalizes, and prepares bank statement data for processing
 """
 
-import pandas as pd
+import csv
 import io
 import sys
 import os
@@ -22,16 +22,27 @@ from .bank_adapters import get_adapter
 
 REQUIRED_COLUMNS = ["Date", "Description", "Amount"]
 
+# Helper function to check if value is "NaN" or empty
+def is_na(val) -> bool:
+    """Check if value is None or NaN-like"""
+    if val is None:
+        return True
+    if isinstance(val, float) and val != val:  # NaN check
+        return True
+    if isinstance(val, str):
+        val_lower = val.lower().strip()
+        if val_lower in ["nan", "none", "n/a", "na", "-", ""]:
+            return True
+    return False
+
 # Helper function to clean NaN-like strings
 def clean_value(val) -> str:
     """Convert value to string and remove NaN/None/empty markers"""
-    if val is None or (isinstance(val, float) and pd.isna(val)):
+    if is_na(val):
         return ""
     result = str(val).strip()
-    # Remove common NaN markers
-    if result.lower() in ["nan", "none", "n/a", "na", "-"]:
-        return ""
-    return result
+    return result if result else ""
+
 FLEXIBLE_AMOUNT_COLUMNS = ["Amount", "Debit", "Credit", "Debit/Credit"]
 
 
@@ -60,7 +71,6 @@ def _map_csv_headers_multilingual(csv_headers: List[str]) -> Dict[str, int]:
         raise ParserError(str(e))
 
 
-
 def validate_csv(file_content: bytes) -> Tuple[bool, str]:
     """
     Validate that CSV has required columns and proper structure
@@ -74,14 +84,14 @@ def validate_csv(file_content: bytes) -> Tuple[bool, str]:
     """
     try:
         # First, try to read the CSV to find where the actual headers are
-        df = _find_data_start(file_content)
+        rows_and_headers = _find_data_start(file_content)
         
-        if df is None or df.empty:
+        if rows_and_headers is None or len(rows_and_headers[1]) == 0:
             return False, "CSV file is empty or no data found"
         
         # Try multilingual header mapping first
         try:
-            headers_list = list(df.columns)
+            headers_list = rows_and_headers[0]
             _map_csv_headers_multilingual(headers_list)
             # If we get here, mapping succeeded
             return True, ""
@@ -89,8 +99,6 @@ def validate_csv(file_content: bytes) -> Tuple[bool, str]:
             # Fallback: provide helpful message
             return False, str(pe)
         
-    except pd.errors.ParserError:
-        return False, "Invalid CSV format - unable to parse file"
     except Exception as e:
         return False, f"Error reading CSV: {str(e)}"
 
@@ -101,11 +109,15 @@ def _find_data_start(file_content: bytes):
     Some bank statements have header rows/metadata before the actual column names
     
     Returns:
-        DataFrame starting from the actual data, or None if not found
+        Tuple of (headers_list, data_rows) or None if not found
     """
     try:
-        # Read all rows without assuming any header
-        df_raw = pd.read_csv(io.BytesIO(file_content), header=None, skipinitialspace=True)
+        text = file_content.decode('utf-8', errors='replace')
+        reader = csv.reader(io.StringIO(text))
+        all_rows = list(reader)
+        
+        if not all_rows:
+            return None
         
         # Look for a row that contains typical column header names
         header_keywords = {
@@ -115,8 +127,10 @@ def _find_data_start(file_content: bytes):
         }
         
         # Find header row
-        for idx, row in df_raw.iterrows():
-            row_values = [str(val).lower().strip() for val in row if pd.notna(val)]
+        for idx, row in enumerate(all_rows):
+            if not row:
+                continue
+            row_values = [str(val).lower().strip() for val in row if val and not is_na(val)]
             row_str = " ".join(row_values)
             
             # Check if this row looks like a header row
@@ -127,45 +141,53 @@ def _find_data_start(file_content: bytes):
             )
             
             if has_date and has_desc_or_amount:
-                # Found likely header row, use it
-                try:
-                    df = pd.read_csv(io.BytesIO(file_content), header=idx, skipinitialspace=True)
-                    df.columns = [col.strip() for col in df.columns]
-                    df = _clean_dataframe(df)
-                    if len(df) > 0:
-                        return df
-                except:
-                    pass
+                # Found likely header row
+                headers = [str(col).strip() for col in row]
+                data_rows = all_rows[idx + 1:]
+                if len(data_rows) > 0:
+                    return (headers, data_rows)
         
-        # Fallback: just read normally
-        df = pd.read_csv(io.BytesIO(file_content), skipinitialspace=True)
-        df.columns = [col.strip() for col in df.columns]
-        return _clean_dataframe(df)
-    except:
+        # Fallback: use first row as headers
+        if all_rows:
+            headers = [str(col).strip() for col in all_rows[0]]
+            data_rows = all_rows[1:]
+            return (headers, data_rows)
+        
+        return None
+    except Exception as e:
+        print(f"Error parsing CSV: {e}")
         return None
 
 
-def _clean_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+def _clean_rows(headers: List[str], rows: List[List[str]]) -> Tuple[List[str], List[Dict[str, str]]]:
     """Clean columns and rows for noisy CSV exports."""
-    if df is None or df.empty:
-        return df
+    if not headers or not rows:
+        return headers, rows
 
-    # Normalize column names
-    df.columns = [str(col).strip() for col in df.columns]
-
-    # Drop unnamed/empty columns
-    drop_cols = [
-        col for col in df.columns
-        if col == "" or str(col).lower().startswith("unnamed")
-    ]
-    if drop_cols:
-        df = df.drop(columns=drop_cols, errors="ignore")
-
-    # Replace empty strings with NA and drop fully empty rows
-    df = df.replace(r"^\s*$", pd.NA, regex=True)
-    df = df.dropna(how="all")
-
-    return df
+    # Normalize header names
+    clean_headers = [str(col).strip() for col in headers]
+    
+    # Remove empty column indices
+    valid_indices = [i for i, h in enumerate(clean_headers) if h and not h.lower().startswith("unnamed")]
+    if not valid_indices:
+        return clean_headers, rows
+    
+    # Filter headers and reconstruct rows
+    clean_headers = [clean_headers[i] for i in valid_indices]
+    cleaned_rows = []
+    for row in rows:
+        # Skip totally empty rows
+        if not row or all(not val or is_na(val) for val in row):
+            continue
+        # Build dict with valid columns only
+        row_dict = {}
+        for idx in valid_indices:
+            col_name = clean_headers[len(row_dict)] if len(row_dict) < len(clean_headers) else f"col_{len(row_dict)}"
+            val = row[idx] if idx < len(row) else ""
+            row_dict[col_name] = clean_value(val)
+        cleaned_rows.append(row_dict)
+    
+    return clean_headers, cleaned_rows
 
 
 def normalize_csv(file_content: bytes, statement_year: int = None, forced_bank: Optional[str] = None) -> Tuple[List[Dict[str, Any]], str, List[Dict[str, Any]], str]:
