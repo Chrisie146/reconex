@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  @apply m-0 p-0 box-border;
+}
+
+html {
+  @apply scroll-smooth;
+}
+
+body {
+  @apply antialiased;
+}
+
+.border-subtle {
+  @apply border border-neutral-200;
+}
+
+.card {
+  @apply rounded-lg border-subtle bg-white shadow-sm;
+}
+
+.btn {
+  @apply px-4 py-2 font-medium rounded-md transition-colors;
+}
+
+.btn-primary {
+  @apply btn bg-neutral-900 text-white hover:bg-neutral-800;
+}
+
+.btn-secondary {
+  @apply btn bg-neutral-100 text-neutral-900 hover:bg-neutral-200;
+}
+
+.btn-danger {
+  @apply btn bg-red-600 text-white hover:bg-red-700;
+}

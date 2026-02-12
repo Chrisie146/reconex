@@ -1,0 +1,194 @@
+[
+  {
+    "category": "Groceries",
+    "keywords": ["shoprite", "checkers", "pick n pay", "picknpay", "spar", "woolworths", "supermarket", "grocery", "grocer", "foodmarket"],
+    "exclude_keywords": [],
+    "priority": 10
+  },
+  {
+    "category": "Fuel",
+    "keywords": ["shell", "engen", "sasol", "bp", "caltex", "petrol", "diesel", "fill up", "fuel station"],
+    "exclude_keywords": [],
+    "priority": 10
+  },
+  {
+    "category": "Meals & Dining",
+    "keywords": ["restaurant", "cafe", "coffee shop", "espresso", "kfc", "mcdonald", "nandos", "steers", "takeaway", "uber eats", "ubereats", "bolt food", "food delivery"],
+    "exclude_keywords": [],
+    "priority": 9
+  },
+  {
+    "category": "Subscriptions",
+    "keywords": ["netflix", "spotify", "apple.com/bill", "apple", "google play", "play.google", "amazon prime", "primevideo", "paystack subscription", "subscription", "monthly subscription", "membership"],
+    "exclude_keywords": [],
+    "priority": 9
+  },
+  {
+    "category": "Transport",
+    "keywords": ["uber", "bolt", "taxi", "gautrain", "bus", "intercape", "transport", "taximeter", "cab"],
+    "exclude_keywords": [],
+    "priority": 8
+  },
+  {
+    "category": "Utilities",
+    "keywords": ["eskom", "electricity", "water", "mains", "municipal", "telkom", "vodacom", "mtm", "cell c", "fnb airtime", "internet", "fibre"],
+    "exclude_keywords": [],
+    "priority": 8
+  },
+  {
+    "category": "Insurance",
+    "keywords": ["insurance", "premium", "life insurance", "medical aid", "medicalaid", "short term insurance"],
+    "exclude_keywords": [],
+    "priority": 7
+  },
+  {
+    "category": "Healthcare",
+    "keywords": ["pharmacy", "dischem", "clicks", "hospital", "clinic", "doctor", "dentist", "medic", "medical"],
+    "exclude_keywords": [],
+    "priority": 7
+  },
+  {
+    "category": "Rent",
+    "keywords": ["rent", "landlord", "lease", "rental", "property management", "room rental"],
+    "exclude_keywords": [],
+    "priority": 10
+  },
+  {
+    "category": "Office & Supplies",
+    "keywords": ["office", "stationery", "staples", "printer", "ink", "paper", "office depot", "officeworks", "takealot business"],
+    "exclude_keywords": [],
+    "priority": 6
+  },
+  {
+    "category": "Professional Services",
+    "keywords": ["accounting", "bookkeeper", "attorney", "lawyer", "consultant", "consultancy", "audit", "consulting"],
+    "exclude_keywords": [],
+    "priority": 6
+  },
+  {
+    "category": "Entertainment",
+    "keywords": ["cinema", "movie", "theatre", "concert", "showmax", "ticket", "eventbrite", "stadium"],
+    "exclude_keywords": [],
+    "priority": 5
+  },
+  {
+    "category": "Online Shopping",
+    "keywords": ["takealot", "amazon", "mall", "zalando", "aliexpress", "etsy", "etsy.com", "ecommerce"],
+    "exclude_keywords": [],
+    "priority": 6
+  },
+  {
+    "category": "Subscriptions:Software",
+    "keywords": ["microsoft", "office 365", "adobe", "github", "jetbrains", "stripe subscription", "paypal *subscription*"],
+    "exclude_keywords": [],
+    "priority": 9
+  },
+  {
+    "category": "Fees & Charges",
+    "keywords": ["fee", "service charge", "bank charge", "atm fee", "monthly fee", "card fee"],
+    "exclude_keywords": [],
+    "priority": 8
+  },
+  {
+    "category": "Income",
+    "keywords": ["salary", "payroll", "payroll*", "salary payment", "salarydeposit", "deposit", "transfer from", "eft in", "payment in"],
+    "exclude_keywords": [],
+    "priority": 10
+  },
+  {
+    "category": "Travel:Airlines",
+    "keywords": ["flight", "airline", "emirates", "british airways", "qatar", "kulula", "saa", "south african airways", "airbnb"],
+    "exclude_keywords": [],
+    "priority": 6
+  },
+  {
+    "category": "Accommodation",
+    "keywords": ["hotel", "booking.com", "expedia", "guesthouse", "b&b", "airbnb"],
+    "exclude_keywords": [],
+    "priority": 6
+  },
+  {
+    "category": "Courier & Shipping",
+    "keywords": ["dhl", "aramex", "post", "post office", "parcel", "courier"],
+    "exclude_keywords": [],
+    "priority": 5
+  },
+  {
+    "category": "Advertising & Marketing",
+    "keywords": ["google ads", "facebook", "meta", "adwords", "adroll", "bingads", "linkedin ads"],
+    "exclude_keywords": [],
+    "priority": 5
+  },
+  {
+    "category": "Education",
+    "keywords": ["university", "college", "school", "tutor", "course", "udemy", "coursera"],
+    "exclude_keywords": [],
+    "priority": 4
+  },
+  {
+    "category": "Gifts & Donations",
+    "keywords": ["donation", "gift", "charity", "givealittle", "crowdfund"],
+    "exclude_keywords": [],
+    "priority": 3
+  },
+  {
+    "category": "Cash Withdrawals",
+    "keywords": ["atm", "withdrawal", "cash withdraw", "cash"],
+    "exclude_keywords": [],
+    "priority": 10
+  },
+  {
+    "category": "Parking & Tolls",
+    "keywords": ["parking", "toll", "sanral", "open road", "vignette"],
+    "exclude_keywords": [],
+    "priority": 5
+  },
+  {
+    "category": "Petrol Forecourt",
+    "keywords": ["forecourt", "petrol station", "garage", "filling station"],
+    "exclude_keywords": [],
+    "priority": 5
+  },
+  {
+    "category": "Pharmacy",
+    "keywords": ["dischem", "clicks", "pharmacy"],
+    "exclude_keywords": [],
+    "priority": 7
+  },
+  {
+    "category": "Telecoms",
+    "keywords": ["vodacom", "mtngroup", "mtn", "telkom", "cell c", "internet reseller", "isp"],
+    "exclude_keywords": [],
+    "priority": 7
+  },
+  {
+    "category": "Software & SaaS",
+    "keywords": ["slack", "zoom", "asana", "notion", "salesforce", "stripe", "paypal"],
+    "exclude_keywords": [],
+    "priority": 8
+  },
+  {
+    "category": "Office Rent & Lease",
+    "keywords": ["serviced office", "coworking", "wework", "office rent"],
+    "exclude_keywords": [],
+    "priority": 9
+  },
+  {
+    "category": "Hardware",
+    "keywords": ["laptop", "pc", "computer", "hard drive", "ssd", "keyboard", "mouse"],
+    "exclude_keywords": [],
+    "priority": 4
+  },
+  {
+    "category": "Bank Transfers",
+    "keywords": ["eft", "eft payment", "transfer to", "transfer from", "interbank transfer"],
+    "exclude_keywords": [],
+    "priority": 6
+  },
+  {
+    "category": "Other",
+    "keywords": [],
+    "exclude_keywords": [],
+    "priority": 0
+  }
+]

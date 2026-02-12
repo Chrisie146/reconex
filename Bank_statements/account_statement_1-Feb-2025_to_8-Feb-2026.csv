@@ -1,0 +1,566 @@
+Nr,Account,Posting Date,Transaction Date,Description,Original Description,Parent Category,Category,Money In,Money Out,Fee,Balance
+1,2042663820,2025-02-03,2025-02-03 16:55,Payment Received: L Mcpherson,L MCPHERSON,Other Income,Other Income,300.00,,,328.82
+2,2042663820,2025-02-05,2025-02-05 15:25,Banking App Prepaid Purchase: MTN,MTN,Communication,Cellphone,,-79.00,,249.82
+3,2042663820,2025-02-05,2025-02-05 15:25,Prepaid Mobile Purchase Fee,Prepaid Mobile Purchase Fee,Fees,Fees,,,-0.50,249.32
+4,2042663820,2025-02-06,2025-02-03 17:52,Panda Stores Queenstow East London (Card 0151),PANDA STORES QUEENSTOW EAST LONDON    ZA,Food,Groceries,,-103.95,,145.37
+5,2042663820,2025-02-06,2025-02-06 09:32,Banking App External PayShap Payment: Chris Fnb,Chris fnb,Personal & Family,Digital Payments,,-115.00,,30.37
+6,2042663820,2025-02-06,2025-02-06 09:32,External Immediate Payment Fee,|Chris fnb,Fees,Fees,,,-6.50,23.87
+7,2042663820,2025-02-11,2025-02-11 16:46,Payment Received: Rtc 05mqc2yx7m Chris,RTC 05MQC2YX7M Chris,Other Income,Other Income,200.00,,,223.87
+8,2042663820,2025-02-11,2025-02-11 16:47,Banking App Immediate Payment: Ivan Mcpherson,IVAN MCPHERSON,Personal & Family,Digital Payments,,-190.00,,33.87
+9,2042663820,2025-02-11,2025-02-11 16:47,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,32.87
+10,2042663820,2025-02-20,2025-02-20 17:58,Payment Received: L Mcpherson,L MCPHERSON,Other Income,Other Income,500.00,,,532.87
+11,2042663820,2025-02-22,2025-02-20 18:23,Superspar Queenstown (Card 0151),SuperSpar Protea       QUEENSTOWN   ECZA,Food,Groceries,,-352.85,,180.02
+12,2042663820,2025-02-22,2025-02-22 13:27,Payment Received: L Mcpherson,L MCPHERSON,Other Income,Other Income,150.00,,,330.02
+13,2042663820,2025-02-23,2025-02-23 03:20,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-1.15,,328.87
+14,2042663820,2025-02-24,2025-02-22 16:40,Recurring Card Purchase: Canva* I04435-31102915 Camden (Card 0151),CANVA* I04435-31102915 CAMDEN       DEUS,Loans & Accounts,Other Loans & Accounts,,-55.00,,273.87
+15,2042663820,2025-02-24,2025-02-24 01:19,International Processing Fee,International Processing Fee,Fees,Fees,,,-2.00,271.87
+16,2042663820,2025-02-24,2025-02-22 10:27,Romans Pizza Queenstown (Card 0151),ROMANS PIZZA QUEENSTOW QUEENSTOWN   ZAZA,Food,Takeaways,,-81.80,,190.07
+17,2042663820,2025-02-24,2025-02-22 10:15,Classic Fabrics Queenstown (Card 0151),CLASSIC FABRICS        Queenstown     ZA,Personal & Family,Sport & Hobbies,,-30.00,,160.07
+18,2042663820,2025-02-24,2025-02-24 09:05,Banking App Prepaid Purchase: Cell C,Cell C,Communication,Cellphone,,-30.00,,130.07
+19,2042663820,2025-02-24,2025-02-24 09:05,Prepaid Mobile Purchase Fee,Prepaid Mobile Purchase Fee,Fees,Fees,,,-0.50,129.57
+20,2042663820,2025-02-25,2025-02-25 10:49,Payment Received: Evie Transfer 2275036189,Evie                          TRANSFER  2275036189,Other Income,Other Income,2250.00,,,2379.57
+21,2042663820,2025-02-25,2025-02-25 14:36,Banking App Immediate Payment: Ivan Mcpherson,IVAN MCPHERSON,Personal & Family,Digital Payments,,-750.00,,1629.57
+22,2042663820,2025-02-25,2025-02-25 14:36,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,1628.57
+23,2042663820,2025-02-26,2025-02-22 13:40,Hpy*style Zone Queens Town (Card 0151),HPY*Style Zone         Queens Town    ZA,Personal & Family,Personal Care,,-100.00,,1528.57
+24,2042663820,2025-02-27,2025-02-25 11:54,Engen Queenstown (Card 0151),ENGEN SMITH & WIGGILL  Queenstown     ZA,Transport,Fuel,,-150.00,,1378.57
+25,2042663820,2025-02-27,2025-02-27 07:31,Payment Received: Rtc 05dtgl8r9m Chris,RTC 05DTGL8R9M Chris,Other Income,Other Income,6000.00,,,7378.57
+26,2042663820,2025-02-27,2025-02-27 07:32,Banking App Immediate Payment: Loren,LOREN,Personal & Family,Digital Payments,,-4500.00,,2878.57
+27,2042663820,2025-02-27,2025-02-27 07:32,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,2877.57
+28,2042663820,2025-02-27,2025-02-27 07:33,Banking App Transfer to 2042663820: Transfer,Transfer,Transfer,Transfer,,-1500.00,,1377.57
+29,2042663820,2025-02-28,2025-02-28 23:55,Interest Received,Interest Received,Interest,Interest,0.56,,,1378.13
+30,2042663820,2025-02-28,2025-02-28 23:55,Monthly Account Admin Fee,Monthly Account Admin Fee,Fees,Fees,,,-7.50,1370.63
+31,2042663820,2025-03-01,2025-03-01 09:42,Banking App Prepaid Purchase: Electricity,Electricity,Household,Electricity,,-1000.00,,370.63
+32,2042663820,2025-03-01,2025-03-01 09:42,Prepaid Electricity Purchase Fee,Prepaid Electricity Purchase Fee,Fees,Fees,,,-1.00,369.63
+33,2042663820,2025-03-01,2025-03-01 09:42,Banking App Correction: Prepaid Purchase,Banking App Correction: Prepaid Purchase,Other Income,Other Income,1000.00,,,1369.63
+34,2042663820,2025-03-01,2025-03-01 09:42,Correction: Prepaid Electricity Purchase Fee,Correction: Prepaid Electricity Purchase Fee,Fees,Fees,,,1.00,1370.63
+35,2042663820,2025-03-01,2025-03-01 10:18,Banking App Prepaid Purchase: Electricity,Electricity,Household,Electricity,,-1000.00,,370.63
+36,2042663820,2025-03-01,2025-03-01 10:18,Prepaid Electricity Purchase Fee,Prepaid Electricity Purchase Fee,Fees,Fees,,,-1.00,369.63
+37,2042663820,2025-03-01,2025-03-01 10:18,Banking App Correction: Prepaid Purchase,Banking App Correction: Prepaid Purchase,Other Income,Other Income,1000.00,,,1369.63
+38,2042663820,2025-03-01,2025-03-01 10:18,Correction: Prepaid Electricity Purchase Fee,Correction: Prepaid Electricity Purchase Fee,Fees,Fees,,,1.00,1370.63
+39,2042663820,2025-03-02,2025-03-02 07:54,Banking App Prepaid Purchase: Electricity,Electricity,Household,Electricity,,-1000.00,,370.63
+40,2042663820,2025-03-02,2025-03-02 07:54,Prepaid Electricity Purchase Fee,Prepaid Electricity Purchase Fee,Fees,Fees,,,-1.00,369.63
+41,2042663820,2025-03-02,2025-03-02 07:54,Banking App Correction: Prepaid Purchase,Banking App Correction: Prepaid Purchase,Other Income,Other Income,1000.00,,,1369.63
+42,2042663820,2025-03-02,2025-03-02 07:54,Correction: Prepaid Electricity Purchase Fee,Correction: Prepaid Electricity Purchase Fee,Fees,Fees,,,1.00,1370.63
+43,2042663820,2025-03-03,2025-03-03 09:08,Banking App Prepaid Purchase: Electricity,Electricity,Household,Electricity,,-100.00,,1270.63
+44,2042663820,2025-03-03,2025-03-03 09:08,Prepaid Electricity Purchase Fee,Prepaid Electricity Purchase Fee,Fees,Fees,,,-1.00,1269.63
+45,2042663820,2025-03-03,2025-03-03 09:08,Banking App Correction: Prepaid Purchase,Banking App Correction: Prepaid Purchase,Other Income,Other Income,100.00,,,1369.63
+46,2042663820,2025-03-03,2025-03-03 09:08,Correction: Prepaid Electricity Purchase Fee,Correction: Prepaid Electricity Purchase Fee,Fees,Fees,,,1.00,1370.63
+47,2042663820,2025-03-03,2025-03-03 11:13,Banking App Prepaid Purchase: Electricity,Electricity,Household,Electricity,,-1000.00,,370.63
+48,2042663820,2025-03-03,2025-03-03 11:13,Prepaid Electricity Purchase Fee,Prepaid Electricity Purchase Fee,Fees,Fees,,,-1.00,369.63
+49,2042663820,2025-03-03,2025-03-03 11:41,Banking App Transfer Received from 2042663820: Transfer,Transfer,Transfer,Transfer,1200.00,,,1569.63
+50,2042663820,2025-03-03,2025-03-03 11:43,Banking App External Payment: Absa Home Loan,ABSA HOME LOAN,Loans & Accounts,Loan Payments,,-1500.00,,69.63
+51,2042663820,2025-03-03,2025-03-03 11:43,External Payment Fee,External Payment Fee,Fees,Fees,,,-2.00,67.63
+52,2042663820,2025-03-03,2025-03-03 12:28,Live Better Interest Sweep,LB Interest sweep | FEB 2025,Transfer,Transfer,,-0.56,,67.07
+53,2042663820,2025-03-04,2025-03-04 08:56,Payment Received: R4500 Cwm Payment 2303772260,R4500 CWM                     PAYMENT   2303772260,Other Income,Other Income,1125.00,,,1192.07
+54,2042663820,2025-03-08,2025-03-08 13:34,Banking App Immediate Payment: Ivan Mcpherson,IVAN MCPHERSON,Personal & Family,Digital Payments,,-750.00,,442.07
+55,2042663820,2025-03-08,2025-03-08 13:34,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,441.07
+56,2042663820,2025-03-08,2025-03-08 13:34,Banking App External Payment: Absa Home Loan,ABSA HOME LOAN,Loans & Accounts,Loan Payments,,-400.00,,41.07
+57,2042663820,2025-03-08,2025-03-08 13:34,External Payment Fee,External Payment Fee,Fees,Fees,,,-2.00,39.07
+58,2042663820,2025-03-10,2025-03-10 09:58,Banking App Transfer Received from 2042663820: Transfer,Transfer,Transfer,Transfer,300.00,,,339.07
+59,2042663820,2025-03-11,2025-03-10 10:00,Online Purchase: Openai San Francisco (Card 0151),OPENAI                 SAN FRANCISCOCAUS,Entertainment,Software/Games,,-210.99,,128.08
+60,2042663820,2025-03-11,2025-03-11 03:10,International Processing Fee,International Processing Fee,Fees,Fees,,,-3.00,125.08
+61,2042663820,2025-03-12,2025-03-12 03:15,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-1.01,,124.07
+62,2042663820,2025-03-13,2025-03-13 16:31,Banking App Prepaid Purchase: Cell C,Cell C,Communication,Cellphone,,-50.00,,74.07
+63,2042663820,2025-03-13,2025-03-13 16:31,Prepaid Mobile Purchase Fee,Prepaid Mobile Purchase Fee,Fees,Fees,,,-0.50,73.57
+64,2042663820,2025-03-14,2025-03-14 09:07,Banking App Prepaid Purchase: Cell C,Cell C,Communication,Cellphone,,-40.00,,33.57
+65,2042663820,2025-03-14,2025-03-14 09:07,Prepaid Mobile Purchase Fee,Prepaid Mobile Purchase Fee,Fees,Fees,,,-0.50,33.07
+66,2042663820,2025-03-22,2025-03-22 16:40,International Online Purchase Insufficient Funds Fee: Canva* I04463-28813381 +17372853388 Us,INSF. FUNDS |          CANVA* I04463-28813381 +17372853388   US,Fees,Fees,,,-3.00,30.07
+67,2042663820,2025-03-24,2025-03-24 08:45,Payment Received: R4500 Cwm Payment 2324976848,R4500 CWM                     PAYMENT   2324976848,Other Income,Other Income,1125.00,,,1155.07
+68,2042663820,2025-03-26,2025-03-26 17:41,Payment Received: Rtc 05h2rp69dn Chris,RTC 05H2RP69DN Chris,Other Income,Other Income,6000.00,,,7155.07
+69,2042663820,2025-03-26,2025-03-26 17:42,Banking App Immediate Payment: Loren,LOREN,Personal & Family,Digital Payments,,-4500.00,,2655.07
+70,2042663820,2025-03-26,2025-03-26 17:42,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,2654.07
+71,2042663820,2025-03-26,2025-03-26 17:42,Banking App Transfer to 2042663820: Transfer,Transfer,Transfer,Transfer,,-1500.00,,1154.07
+72,2042663820,2025-03-26,2025-03-26 17:48,Banking App Immediate Payment: Ivan Mcpherson,IVAN MCPHERSON,Personal & Family,Digital Payments,,-750.00,,404.07
+73,2042663820,2025-03-26,2025-03-26 17:48,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,403.07
+74,2042663820,2025-03-28,2025-03-27 08:54,Recurring Card Purchase: Openai San Francisco (Card 0151),OPENAI                 SAN FRANCISCOCAUS,Entertainment,Software/Games,,-109.03,,294.04
+75,2042663820,2025-03-28,2025-03-28 06:25,International Processing Fee,International Processing Fee,Fees,Fees,,,-3.00,291.04
+76,2042663820,2025-03-28,2025-03-28 09:22,Banking App Transfer Received from 2042663820: Transfer,Transfer,Transfer,Transfer,800.00,,,1091.04
+77,2042663820,2025-03-28,2025-03-28 09:23,Banking App Immediate Payment: Ivan Mcpherson,IVAN MCPHERSON,Personal & Family,Digital Payments,,-1000.00,,91.04
+78,2042663820,2025-03-28,2025-03-28 09:23,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,90.04
+79,2042663820,2025-03-29,2025-03-29 00:25,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-0.97,,89.07
+80,2042663820,2025-03-31,2025-03-31 22:46,Interest Received,Interest Received,Interest,Interest,0.75,,,89.82
+81,2042663820,2025-03-31,2025-03-31 22:46,Monthly Account Admin Fee,Monthly Account Admin Fee,Fees,Fees,,,-7.50,82.32
+82,2042663820,2025-04-01,2025-03-31 23:25,Live Better Interest Sweep,LB Interest sweep | MAR 2025,Transfer,Transfer,,-0.75,,81.57
+83,2042663820,2025-04-10,2025-04-10 06:27,Payment Received: L Mcpherson,L MCPHERSON,Other Income,Other Income,300.00,,,381.57
+84,2042663820,2025-04-10,2025-04-10 08:43,Banking App Transfer Received from 2042663820: Transfer,Transfer,Transfer,Transfer,701.00,,,1082.57
+85,2042663820,2025-04-10,2025-04-10 08:43,Banking App Immediate Payment: Ivan Mcpherson,IVAN MCPHERSON,Personal & Family,Digital Payments,,-250.00,,832.57
+86,2042663820,2025-04-10,2025-04-10 08:43,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,831.57
+87,2042663820,2025-04-10,2025-04-10 14:10,Banking App External PayShap Payment: Chris Fnb,Chris fnb,Personal & Family,Digital Payments,,-496.00,,335.57
+88,2042663820,2025-04-10,2025-04-10 14:10,External Immediate Payment Fee,|Chris fnb,Fees,Fees,,,-6.00,329.57
+89,2042663820,2025-04-12,2025-04-10 06:58,Superspar Queenstown (Card 0151),SuperSpar Protea       QUEENSTOWN   ECZA,Food,Groceries,,-304.94,,24.63
+90,2042663820,2025-04-16,2025-04-16 12:39,Payment Received: Rtc 05rk4hnzhn Chris,RTC 05RK4HNZHN Chris,Other Income,Other Income,300.00,,,324.63
+91,2042663820,2025-04-16,2025-04-16 12:41,Banking App Transfer from Live Better Savings Account (2081327291),Banking App Transfer from Live Better Savings Account (2081327291),Transfer,Transfer,9.00,,,333.63
+92,2042663820,2025-04-16,2025-04-16 12:41,Banking App Immediate Payment: Loren,LOREN,Personal & Family,Digital Payments,,-300.00,,33.63
+93,2042663820,2025-04-16,2025-04-16 12:41,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,32.63
+94,2042663820,2025-04-17,2025-04-17 08:30,Payment Received: Rtc 05tjhkf3hn Chris,RTC 05TJHKF3HN Chris,Other Income,Other Income,300.00,,,332.63
+95,2042663820,2025-04-17,2025-04-17 10:07,Banking App Immediate Payment: Ivan Mcpherson,IVAN MCPHERSON,Personal & Family,Digital Payments,,-300.00,,32.63
+96,2042663820,2025-04-17,2025-04-17 10:07,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,31.63
+97,2042663820,2025-04-19,2025-04-19 17:21,Payment Received: R4500 Cwm Transfer 2379407947,R4500 CWM                     TRANSFER  2379407947,Other Income,Other Income,3375.00,,,3406.63
+98,2042663820,2025-04-20,2025-04-20 10:19,Banking App External Payment: Absa Home Loan,ABSA HOME LOAN,Loans & Accounts,Loan Payments,,-3040.00,,366.63
+99,2042663820,2025-04-20,2025-04-20 10:19,External Payment Fee,External Payment Fee,Fees,Fees,,,-2.00,364.63
+100,2042663820,2025-04-20,2025-04-20 16:38,Banking App External PayShap Payment: Chris Fnb,Chris fnb,Personal & Family,Digital Payments,,-334.44,,30.19
+101,2042663820,2025-04-20,2025-04-20 16:38,External Immediate Payment Fee,|Chris fnb,Fees,Fees,,,-6.00,24.19
+102,2042663820,2025-04-25,2025-04-25 14:14,PayShap Payment Received: Evie,Evie,Other Income,Other Income,2250.00,,,2274.19
+103,2042663820,2025-04-26,2025-04-26 15:55,Payment Received: Rtc 058wmwz6jn Chris,RTC 058WMWZ6JN Chris,Other Income,Other Income,4500.00,,,6774.19
+104,2042663820,2025-04-26,2025-04-26 15:56,Banking App Immediate Payment: Loren,LOREN,Personal & Family,Digital Payments,,-4500.00,,2274.19
+105,2042663820,2025-04-26,2025-04-26 15:56,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,2273.19
+106,2042663820,2025-04-28,2025-04-28 07:29,Payment Received: L Mcpherson,L MCPHERSON,Other Income,Other Income,200.00,,,2473.19
+107,2042663820,2025-04-30,2025-04-30 09:22,Banking App Immediate Payment: Loren,LOREN,Personal & Family,Digital Payments,,-150.00,,2323.19
+108,2042663820,2025-04-30,2025-04-30 09:22,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,2322.19
+109,2042663820,2025-04-30,2025-04-30 09:22,Banking App External Payment: Absa Home Loan,ABSA HOME LOAN,Loans & Accounts,Loan Payments,,-1500.00,,822.19
+110,2042663820,2025-04-30,2025-04-30 09:22,External Payment Fee,External Payment Fee,Fees,Fees,,,-2.00,820.19
+111,2042663820,2025-04-30,2025-04-30 23:52,Interest Received,Interest Received,Interest,Interest,1.09,,,821.28
+112,2042663820,2025-04-30,2025-04-30 23:52,Monthly Account Admin Fee,Monthly Account Admin Fee,Fees,Fees,,,-7.50,813.78
+113,2042663820,2025-05-01,2025-05-01 01:34,Live Better Interest Sweep,LB Interest sweep | APR 2025,Transfer,Transfer,,-1.09,,812.69
+114,2042663820,2025-05-03,2025-05-03 11:07,Banking App Immediate Payment: Rachel Irene Mc,RACHEL IRENE MC,Personal & Family,Digital Payments,,-500.00,,312.69
+115,2042663820,2025-05-03,2025-05-03 11:07,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,311.69
+116,2042663820,2025-05-05,2025-05-05 16:47,Banking App Immediate Payment: Rachel Irene Mc,RACHEL IRENE MC,Personal & Family,Digital Payments,,-200.00,,111.69
+117,2042663820,2025-05-05,2025-05-05 16:47,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,110.69
+118,2042663820,2025-05-11,2025-05-11 11:00,Payment Received: L Mcpherson,L MCPHERSON,Other Income,Other Income,200.00,,,310.69
+119,2042663820,2025-05-11,2025-05-11 11:18,Banking App Immediate Payment: Loren,LOREN,Personal & Family,Digital Payments,,-200.00,,110.69
+120,2042663820,2025-05-11,2025-05-11 11:18,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,109.69
+121,2042663820,2025-05-19,2025-05-19 14:37,Payment Received: R4500 Cwm Payment 2435339274,R4500 CWM                     PAYMENT   2435339274,Other Income,Other Income,2250.00,,,2359.69
+122,2042663820,2025-05-20,2025-05-20 09:34,Banking App Immediate Payment: Ivan Mcpherson,IVAN MCPHERSON,Personal & Family,Digital Payments,,-1500.00,,859.69
+123,2042663820,2025-05-20,2025-05-20 09:34,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,858.69
+124,2042663820,2025-05-21,2025-05-20 08:14,Recurring Card Purchase: Openai San Francisco (Card 0151),OPENAI                 SAN FRANCISCOCAUS,Entertainment,Software/Games,,-109.49,,749.20
+125,2042663820,2025-05-21,2025-05-21 03:15,International Processing Fee,International Processing Fee,Fees,Fees,,,-3.00,746.20
+126,2042663820,2025-05-22,2025-05-22 00:21,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-0.51,,745.69
+127,2042663820,2025-05-23,2025-05-23 07:16,Payment Received: Rtc 0562vtchnn Chris,RTC 0562VTCHNN Chris,Other Income,Other Income,6000.00,,,6745.69
+128,2042663820,2025-05-23,2025-05-23 07:18,Banking App Immediate Payment: Loren,LOREN,Personal & Family,Digital Payments,,-6000.00,,745.69
+129,2042663820,2025-05-23,2025-05-23 07:18,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,744.69
+130,2042663820,2025-05-23,2025-05-23 13:30,PayShap Payment Received: Evie,Evie,Other Income,Other Income,2250.00,,,2994.69
+131,2042663820,2025-05-23,2025-05-23 13:54,Banking App External Payment: Absa Home Loan,ABSA HOME LOAN,Loans & Accounts,Loan Payments,,-2900.00,,94.69
+132,2042663820,2025-05-23,2025-05-23 13:54,External Payment Fee,External Payment Fee,Fees,Fees,,,-2.00,92.69
+133,2042663820,2025-05-23,2025-05-23 15:57,Payment Received: L Mcpherson,L MCPHERSON,Other Income,Other Income,1700.00,,,1792.69
+134,2042663820,2025-05-23,2025-05-23 16:38,ATM Cash Withdrawal: Sparkatm Game Queenstown Queenstown Ecza,SparkATM Game Queenstown        Queenstown   ECZA,Cash,Cash Withdrawal,,-1700.00,,92.69
+135,2042663820,2025-05-23,2025-05-23 16:38,ATM Cash Withdrawal Fee,ATM Cash Withdrawal Fee,Fees,Fees,,,-20.00,72.69
+136,2042663820,2025-05-26,2025-05-26 08:28,Payment Received: Rtc 05l2grhvnn Chris,RTC 05L2GRHVNN Chris,Other Income,Other Income,1300.00,,,1372.69
+137,2042663820,2025-05-26,2025-05-26 08:29,Banking App Immediate Payment: Ivan Mcpherson,IVAN MCPHERSON,Personal & Family,Digital Payments,,-1300.00,,72.69
+138,2042663820,2025-05-26,2025-05-26 08:29,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,71.69
+139,2042663820,2025-05-26,2025-05-26 14:47,Payment Received: Chris Payment 2452028297,CHRIS                         PAYMENT   2452028297,Other Income,Other Income,3000.00,,,3071.69
+140,2042663820,2025-05-31,2025-05-31 22:59,Interest Received,Interest Received,Interest,Interest,1.63,,,3073.32
+141,2042663820,2025-05-31,2025-05-31 22:59,Monthly Account Admin Fee,Monthly Account Admin Fee,Fees,Fees,,,-7.50,3065.82
+142,2042663820,2025-06-01,2025-06-01 01:54,Live Better Interest Sweep,LB Interest Sweep Payments | MAY 2025,Transfer,Transfer,,-1.63,,3064.19
+143,2042663820,2025-06-01,2025-06-01 08:01,Banking App Prepaid Purchase: Electricity,Electricity,Household,Electricity,,-1000.00,,2064.19
+144,2042663820,2025-06-01,2025-06-01 08:01,Prepaid Electricity Purchase Fee,Prepaid Electricity Purchase Fee,Fees,Fees,,,-1.00,2063.19
+145,2042663820,2025-06-01,2025-06-01 08:44,Banking App Prepaid Purchase: Cell C,Cell C,Communication,Cellphone,,-30.00,,2033.19
+146,2042663820,2025-06-01,2025-06-01 08:44,Prepaid Mobile Purchase Fee,Prepaid Mobile Purchase Fee,Fees,Fees,,,-0.50,2032.69
+147,2042663820,2025-06-01,2025-06-01 14:18,Payment Received: L Mcpherson,L MCPHERSON,Other Income,Other Income,600.00,,,2632.69
+148,2042663820,2025-06-01,2025-06-01 16:13,Banking App External Payment: W. Winnaar,W. WINNAAR,Uncategorised,Uncategorised,,-450.00,,2182.69
+149,2042663820,2025-06-01,2025-06-01 16:13,External Payment Fee,External Payment Fee,Fees,Fees,,,-2.00,2180.69
+150,2042663820,2025-06-03,2025-06-01 14:36,Superspar Queenstown (Card 0151),SuperSpar Protea       QUEENSTOWN   ECZA,Food,Groceries,,-59.66,,2121.03
+151,2042663820,2025-06-04,2025-06-04 00:27,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-0.34,,2120.69
+152,2042663820,2025-06-06,2025-06-06 15:31,Banking App Prepaid Purchase: Cell C,Cell C,Communication,Cellphone,,-40.00,,2080.69
+153,2042663820,2025-06-06,2025-06-06 15:31,Prepaid Mobile Purchase Fee,Prepaid Mobile Purchase Fee,Fees,Fees,,,-0.50,2080.19
+154,2042663820,2025-06-07,2025-06-07 13:19,Payment Received: L Mcpherson,L MCPHERSON,Other Income,Other Income,250.00,,,2330.19
+155,2042663820,2025-06-11,2025-06-08 10:10,Astron Energies Queenstown (Card 0151),AE GRIFFITHS STREET    QUEENSTOWN     ZA,Transport,Fuel,,-100.00,,2230.19
+156,2042663820,2025-06-11,2025-06-09 17:12,Superspar Queenstown (Card 0151),SuperSpar Protea       QUEENSTOWN   ECZA,Food,Groceries,,-170.93,,2059.26
+157,2042663820,2025-06-12,2025-06-12 00:57,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-1.07,,2058.19
+158,2042663820,2025-06-13,2025-06-13 09:17,Banking App Prepaid Purchase: Cell C,Cell C,Communication,Cellphone,,-25.00,,2033.19
+159,2042663820,2025-06-13,2025-06-13 09:17,Prepaid Mobile Purchase Fee,Prepaid Mobile Purchase Fee,Fees,Fees,,,-0.50,2032.69
+160,2042663820,2025-06-16,2025-06-16 21:48,Banking App Immediate Payment: Naldo,NALDO,Personal & Family,Digital Payments,,-50.00,,1982.69
+161,2042663820,2025-06-16,2025-06-16 21:48,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,1981.69
+162,2042663820,2025-06-18,2025-06-16 12:05,Superspar Queenstown (Card 0151),SuperSpar Protea       QUEENSTOWN   ECZA,Food,Groceries,,-119.95,,1861.74
+163,2042663820,2025-06-18,2025-06-18 13:28,Banking App Immediate Payment: Rachel Irene Mc,RACHEL IRENE MC,Personal & Family,Digital Payments,,-100.00,,1761.74
+164,2042663820,2025-06-18,2025-06-18 13:28,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,1760.74
+165,2042663820,2025-06-19,2025-06-19 00:40,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-0.05,,1760.69
+166,2042663820,2025-06-19,2025-06-19 14:37,Payment Received: R4500 Cwm Payment 2494302907,R4500 CWM                     PAYMENT   2494302907,Other Income,Other Income,2250.00,,,4010.69
+167,2042663820,2025-06-20,2025-06-17 17:23,Astron Energies Queenstown (Card 0151),AE GRIFFITHS           QUEENSTOWN     ZA,Transport,Fuel,,-150.00,,3860.69
+168,2042663820,2025-06-20,2025-06-20 13:20,Banking App External PayShap Payment: Sr Foster,SR Foster,Personal & Family,Digital Payments,,-350.00,,3510.69
+169,2042663820,2025-06-20,2025-06-20 13:20,External Immediate Payment Fee,|SR Foster,Fees,Fees,,,-6.00,3504.69
+170,2042663820,2025-06-20,2025-06-20 15:42,Payment Received: L Mcpherson,L MCPHERSON,Other Income,Other Income,1850.00,,,5354.69
+171,2042663820,2025-06-20,2025-06-20 16:47,ATM Cash Withdrawal: Atm05900000b302 East London Za,ATM05900000B302        East London    ZA,Cash,Cash Withdrawal,,-2000.00,,3354.69
+172,2042663820,2025-06-20,2025-06-20 16:47,ATM Cash Withdrawal Fee,ATM Cash Withdrawal Fee,Fees,Fees,,,-20.00,3334.69
+173,2042663820,2025-06-21,2025-06-18 11:57,Astron Energies Queenstown (Card 0151),AE FRONTIER  KOMANI C  QUEENSTOWN     ZA,Food,Groceries,,-131.45,,3203.24
+174,2042663820,2025-06-22,2025-06-22 00:45,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-0.55,,3202.69
+175,2042663820,2025-06-22,2025-06-20 16:50,The Crazy Store Queens Queenstown (Card 0151),THE CRAZY STORE QUEENS QUEENSTOWN   ZAZA,Personal & Family,Other Personal & Family,,-29.99,,3172.70
+176,2042663820,2025-06-22,2025-06-20 07:25,Superspar Queenstown (Card 0151),SuperSpar Protea       QUEENSTOWN   ECZA,Food,Groceries,,-65.98,,3106.72
+177,2042663820,2025-06-22,2025-06-20 11:58,Pick n Pay Queenstown (Card 0151),PnP Fam Frost Street   QUEENSTOWN   ECZA,Food,Groceries,,-199.25,,2907.47
+178,2042663820,2025-06-22,2025-06-22 11:37,Banking App Immediate Payment: Ivan Mcpherson,IVAN MCPHERSON,Personal & Family,Digital Payments,,-500.00,,2407.47
+179,2042663820,2025-06-22,2025-06-22 11:37,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,2406.47
+180,2042663820,2025-06-23,2025-06-23 00:42,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-0.78,,2405.69
+181,2042663820,2025-06-23,2025-06-20 16:55,Total Queenstown (Card 0151),TOTAL LUKHANJI         Queenstown     ZA,Transport,Fuel,,-150.00,,2255.69
+182,2042663820,2025-06-23,2025-06-23 09:54,Banking App Prepaid Purchase: Cell C,Cell C,Communication,Cellphone,,-50.00,,2205.69
+183,2042663820,2025-06-23,2025-06-23 09:54,Prepaid Mobile Purchase Fee,Prepaid Mobile Purchase Fee,Fees,Fees,,,-0.50,2205.19
+184,2042663820,2025-06-24,2025-06-24 05:50,Banking App Prepaid Purchase: Electricity,Electricity,Household,Electricity,,-60.00,,2145.19
+185,2042663820,2025-06-24,2025-06-24 05:50,Prepaid Electricity Purchase Fee,Prepaid Electricity Purchase Fee,Fees,Fees,,,-1.00,2144.19
+186,2042663820,2025-06-25,2025-06-23 17:43,Dis-Chem Queenstown (Card 0151),Dischem Riverside Mall QUEENSTOWN   ECZA,Medical,Pharmacy,,-166.06,,1978.13
+187,2042663820,2025-06-25,2025-06-23 07:34,Superspar Queenstown (Card 0151),SuperSpar Protea       QUEENSTOWN   ECZA,Food,Groceries,,-119.95,,1858.18
+188,2042663820,2025-06-25,2025-06-23 17:49,Pick n Pay Queenstown (Card 0151),PnP Fam Queenstown     QUEENSTOWN   ECZA,Food,Groceries,,-126.98,,1731.20
+189,2042663820,2025-06-25,2025-06-25 10:05,Banking App Prepaid Purchase: Cell C,Cell C,Communication,Cellphone,,-50.00,,1681.20
+190,2042663820,2025-06-25,2025-06-25 10:05,Prepaid Mobile Purchase Fee,Prepaid Mobile Purchase Fee,Fees,Fees,,,-0.50,1680.70
+191,2042663820,2025-06-25,2025-06-25 11:36,Banking App Prepaid Purchase: Electricity,Electricity,Household,Electricity,,-100.00,,1580.70
+192,2042663820,2025-06-25,2025-06-25 11:36,Prepaid Electricity Purchase Fee,Prepaid Electricity Purchase Fee,Fees,Fees,,,-1.00,1579.70
+193,2042663820,2025-06-25,2025-06-25 13:42,PayShap Payment Received: Evie,Evie,Other Income,Other Income,2250.00,,,3829.70
+194,2042663820,2025-06-26,2025-06-26 00:35,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-3.01,,3826.69
+195,2042663820,2025-06-26,2025-06-24 12:09,Pick n Pay Queenstown (Card 0151),PnP Fam Frost Street   QUEENSTOWN   ECZA,Food,Groceries,,-109.26,,3717.43
+196,2042663820,2025-06-26,2025-06-26 07:01,Payment Received: Rtc 052xrk8ssn Chris,RTC 052XRK8SSN Chris,Other Income,Other Income,6000.00,,,9717.43
+197,2042663820,2025-06-26,2025-06-26 07:02,Banking App Immediate Payment: Loren,LOREN,Personal & Family,Digital Payments,,-6000.00,,3717.43
+198,2042663820,2025-06-26,2025-06-26 07:02,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,3716.43
+199,2042663820,2025-06-26,2025-06-26 07:59,Banking App Immediate Payment: Ivan Mcpherson,IVAN MCPHERSON,Personal & Family,Digital Payments,,-1000.00,,2716.43
+200,2042663820,2025-06-26,2025-06-26 07:59,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,2715.43
+201,2042663820,2025-06-26,2025-06-26 21:05,Banking App External Payment: Absa Home Loan,ABSA HOME LOAN,Loans & Accounts,Loan Payments,,-2600.00,,115.43
+202,2042663820,2025-06-26,2025-06-26 21:05,External Payment Fee,External Payment Fee,Fees,Fees,,,-2.00,113.43
+203,2042663820,2025-06-26,2025-06-26 21:46,Immediate Capitec Pay Payment: Lottostar (LOTTOSTAR),LOTTOSTAR|LOTTOSTAR,Entertainment,Betting/Lottery,,-80.00,,33.43
+204,2042663820,2025-06-26,2025-06-26 21:46,Capitec Pay Fee,Capitec Pay Fee,Fees,Fees,,,-1.00,32.43
+205,2042663820,2025-06-27,2025-06-27 00:55,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-0.74,,31.69
+206,2042663820,2025-06-27,2025-06-27 10:22,Payment Received: Rtc 05hlp1g1sn Chris,RTC 05HLP1G1SN Chris,Other Income,Other Income,1000.00,,,1031.69
+207,2042663820,2025-06-27,2025-06-27 11:42,Banking App Prepaid Purchase: Electricity,Electricity,Household,Electricity,,-100.00,,931.69
+208,2042663820,2025-06-27,2025-06-27 11:42,Prepaid Electricity Purchase Fee,Prepaid Electricity Purchase Fee,Fees,Fees,,,-1.00,930.69
+209,2042663820,2025-06-27,2025-06-27 17:40,Banking App Immediate Payment: Loren,LOREN,Personal & Family,Digital Payments,,-373.00,,557.69
+210,2042663820,2025-06-27,2025-06-27 17:40,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,556.69
+211,2042663820,2025-06-29,2025-06-29 12:12,Payment Received: Rtc 05vq41gbtn Chris,RTC 05VQ41GBTN Chris,Other Income,Other Income,500.00,,,1056.69
+212,2042663820,2025-06-29,2025-06-29 16:50,Banking App Prepaid Purchase: Electricity,Electricity,Household,Electricity,,-100.00,,956.69
+213,2042663820,2025-06-29,2025-06-29 16:50,Prepaid Electricity Purchase Fee,Prepaid Electricity Purchase Fee,Fees,Fees,,,-1.00,955.69
+214,2042663820,2025-06-30,2025-06-28 14:21,S2s*newrestsuperstor Queenstown (Card 0151),S2S*NewRestSuperstor   Queenstown   ZAZA,Food,Groceries,,-22.00,,933.69
+215,2042663820,2025-06-30,2025-06-30 17:15,Banking App Prepaid Purchase: Cell C,Cell C,Communication,Cellphone,,-35.00,,898.69
+216,2042663820,2025-06-30,2025-06-30 17:15,Prepaid Mobile Purchase Fee,Prepaid Mobile Purchase Fee,Fees,Fees,,,-0.50,898.19
+217,2042663820,2025-06-30,2025-06-30 21:04,ATM Cash Withdrawal: Absa Queenstown 2 Queenstown Za,ABSA QUEENSTOWN 2      QUEENSTOWN     ZA,Cash,Cash Withdrawal,,-300.00,,598.19
+218,2042663820,2025-06-30,2025-06-30 21:04,ATM Cash Withdrawal Fee,ATM Cash Withdrawal Fee,Fees,Fees,,,-10.00,588.19
+219,2042663820,2025-06-30,2025-06-30 21:16,Payment Received: L Mcpherson,L MCPHERSON,Other Income,Other Income,300.00,,,888.19
+220,2042663820,2025-06-30,2025-06-30 22:44,Interest Received,Interest Received,Interest,Interest,3.41,,,891.60
+221,2042663820,2025-06-30,2025-06-30 22:44,Monthly Account Admin Fee,Monthly Account Admin Fee,Fees,Fees,,,-7.50,884.10
+222,2042663820,2025-07-01,2025-06-30 23:59,Live Better Interest Sweep,LB Interest Sweep Payments | JUN 2025,Transfer,Transfer,,-3.41,,880.69
+223,2042663820,2025-07-01,2025-07-01 10:04,Banking App Prepaid Purchase: Cell C,Cell C,Communication,Cellphone,,-30.00,,850.69
+224,2042663820,2025-07-01,2025-07-01 10:04,Prepaid Mobile Purchase Fee,Prepaid Mobile Purchase Fee,Fees,Fees,,,-0.50,850.19
+225,2042663820,2025-07-01,2025-07-01 11:09,Payment Received: Rtc 05918gsmtn Chris,RTC 05918GSMTN Chris,Other Income,Other Income,200.00,,,1050.19
+226,2042663820,2025-07-01,2025-07-01 11:10,Banking App Prepaid Purchase: Electricity,Electricity,Household,Electricity,,-1020.00,,30.19
+227,2042663820,2025-07-01,2025-07-01 11:10,Prepaid Electricity Purchase Fee,Prepaid Electricity Purchase Fee,Fees,Fees,,,-1.00,29.19
+228,2042663820,2025-07-08,2025-07-08 15:41,Payment Received: L Mcpherson,L MCPHERSON,Other Income,Other Income,251.00,,,280.19
+229,2042663820,2025-07-09,2025-07-09 10:53,Banking App Immediate Payment: Loren,LOREN,Personal & Family,Digital Payments,,-150.00,,130.19
+230,2042663820,2025-07-09,2025-07-09 10:53,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,129.19
+231,2042663820,2025-07-10,2025-07-08 17:41,Engen Queenstown (Card 0151),ENGEN SMITH & WIGGILL  Queenstown     ZA,Transport,Fuel,,-100.10,,29.09
+232,2042663820,2025-07-14,2025-07-14 18:23,Payment Received: L Mcpherson,L MCPHERSON,Other Income,Other Income,400.00,,,429.09
+233,2042663820,2025-07-14,2025-07-14 18:24,Banking App Transfer from Live Better Savings Account (2081327291),Banking App Transfer from Live Better Savings Account (2081327291),Transfer,Transfer,13.00,,,442.09
+234,2042663820,2025-07-17,2025-07-17 10:41,Banking App Immediate Payment: Loren,LOREN,Personal & Family,Digital Payments,,-170.00,,272.09
+235,2042663820,2025-07-17,2025-07-17 10:41,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,271.09
+236,2042663820,2025-07-17,2025-07-17 15:05,Banking App Prepaid Purchase: Cell C,Cell C,Communication,Cellphone,,-10.00,,261.09
+237,2042663820,2025-07-17,2025-07-17 15:05,Prepaid Mobile Purchase Fee,Prepaid Mobile Purchase Fee,Fees,Fees,,,-0.50,260.59
+238,2042663820,2025-07-17,2025-07-17 15:06,Banking App Prepaid Purchase: Cell C,Cell C,Communication,Cellphone,,-19.00,,241.59
+239,2042663820,2025-07-17,2025-07-17 15:06,Prepaid Mobile Purchase Fee,Prepaid Mobile Purchase Fee,Fees,Fees,,,-0.50,241.09
+240,2042663820,2025-07-17,2025-07-17 16:05,Banking App External PayShap Payment: Chris Fnb,Chris fnb,Personal & Family,Digital Payments,,-200.00,,41.09
+241,2042663820,2025-07-17,2025-07-17 16:05,External Immediate Payment Fee,|Chris fnb,Fees,Fees,,,-6.00,35.09
+242,2042663820,2025-07-18,2025-07-18 15:08,Payment Received: L Mcpherson,L MCPHERSON,Other Income,Other Income,1710.00,,,1745.09
+243,2042663820,2025-07-18,2025-07-18 16:44,ATM Cash Withdrawal: Atm05900000b302 East London Za,ATM05900000B302        East London    ZA,Cash,Cash Withdrawal,,-1700.00,,45.09
+244,2042663820,2025-07-18,2025-07-18 16:44,ATM Cash Withdrawal Fee,ATM Cash Withdrawal Fee,Fees,Fees,,,-20.00,25.09
+245,2042663820,2025-07-22,2025-07-22 14:38,Payment Received: R4500 Cwm Payment 2556749424,R4500 CWM                     PAYMENT   2556749424,Other Income,Other Income,2250.00,,,2275.09
+246,2042663820,2025-07-22,2025-07-22 18:06,Banking App Immediate Payment: Ivan Mcpherson,IVAN MCPHERSON,Personal & Family,Digital Payments,,-1500.00,,775.09
+247,2042663820,2025-07-22,2025-07-22 18:06,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,774.09
+248,2042663820,2025-07-23,2025-07-23 11:38,Banking App Immediate Payment: Loren,LOREN,Personal & Family,Digital Payments,,-200.00,,574.09
+249,2042663820,2025-07-23,2025-07-23 11:38,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,573.09
+250,2042663820,2025-07-25,2025-07-25 07:27,Payment Received: Rtc 05ccf7klxn Chris,RTC 05CCF7KLXN Chris,Salary,Salary,6000.00,,,6573.09
+251,2042663820,2025-07-25,2025-07-25 07:29,Banking App Immediate Payment: Loren,LOREN,Personal & Family,Digital Payments,,-6000.00,,573.09
+252,2042663820,2025-07-25,2025-07-25 07:29,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,572.09
+253,2042663820,2025-07-25,2025-07-25 15:53,PayShap Payment Received: Evie,Evie,Other Income,Other Income,2250.00,,,2822.09
+254,2042663820,2025-07-25,2025-07-25 15:56,Banking App External Payment: Absa Home Loan,ABSA HOME LOAN,Loans & Accounts,Loan Payments,,-2630.00,,192.09
+255,2042663820,2025-07-25,2025-07-25 15:56,External Payment Fee,External Payment Fee,Fees,Fees,,,-2.00,190.09
+256,2042663820,2025-07-26,2025-07-24 17:40,Game Queenstown (Card 0151),Game Queenstown        QUEENSTOWN   ZNZA,Household,Furniture & Appliances,,-49.00,,141.09
+257,2042663820,2025-07-26,2025-07-24 17:33,Pep Stores Queenstown (Card 0151),PEP 6497 Queenstown    QUEENSTOWN   ECZA,Personal & Family,Clothing & Shoes,,-60.67,,80.42
+258,2042663820,2025-07-26,2025-07-24 17:17,Pick n Pay Queenstown (Card 0151),PnP Fam Queenstown     QUEENSTOWN   ECZA,Food,Groceries,,-52.28,,28.14
+259,2042663820,2025-07-31,2025-07-31 23:15,Interest Received,Interest Received,Interest,Interest,0.24,,,28.38
+260,2042663820,2025-07-31,2025-07-31 23:15,Monthly Account Admin Fee,Monthly Account Admin Fee,Fees,Fees,,,-7.50,20.88
+261,2042663820,2025-08-01,2025-08-01 10:27,Payment Received: Paul,PAUL,Other Income,Other Income,2000.00,,,2020.88
+262,2042663820,2025-08-01,2025-08-01 13:52,Banking App Immediate Payment: Loren,LOREN,Personal & Family,Digital Payments,,-700.00,,1320.88
+263,2042663820,2025-08-01,2025-08-01 13:52,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,1319.88
+264,2042663820,2025-08-02,2025-08-02 14:24,ATM Cash Withdrawal: Atm05900000b302 East London Za,ATM05900000B302        East London    ZA,Cash,Cash Withdrawal,,-50.00,,1269.88
+265,2042663820,2025-08-02,2025-08-02 14:24,ATM Cash Withdrawal Fee,ATM Cash Withdrawal Fee,Fees,Fees,,,-10.00,1259.88
+266,2042663820,2025-08-02,2025-08-02 14:44,Payment Received: L Mcpherson,L MCPHERSON,Other Income,Other Income,700.00,,,1959.88
+267,2042663820,2025-08-03,2025-08-01 17:28,Woolworths Queenstown (Card 0151),WOOLWORTHS             QUEENSTOWN   ECZA,Personal & Family,Clothing & Shoes,,-436.50,,1523.38
+268,2042663820,2025-08-03,2025-08-01 17:24,Dis-Chem Queenstown (Card 0151),Dischem Riverside Mall QUEENSTOWN   ECZA,Medical,Pharmacy,,-33.00,,1490.38
+269,2042663820,2025-08-03,2025-08-03 19:32,Immediate Capitec Pay Payment: Register Domain Sa (PAYFAST*REGISTER DOM),PAYFAST*REGISTER DOM|REGISTER DOMAIN SA,Personal & Family,Digital Payments,,-154.00,,1336.38
+270,2042663820,2025-08-03,2025-08-03 19:32,Capitec Pay Fee,Capitec Pay Fee,Fees,Fees,,,-1.00,1335.38
+271,2042663820,2025-08-04,2025-08-04 03:43,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-2.50,,1332.88
+272,2042663820,2025-08-04,2025-08-02 14:35,Barcelos Queenstown (Card 0151),BARCELOS QUEENSTOWN    QUEENSTOWN   ZAZA,Food,Restaurants,,-153.60,,1179.28
+273,2042663820,2025-08-05,2025-08-05 05:07,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-0.40,,1178.88
+274,2042663820,2025-08-05,2025-08-05 07:14,Banking App Immediate Payment: Loren,LOREN,Personal & Family,Digital Payments,,-150.00,,1028.88
+275,2042663820,2025-08-05,2025-08-05 07:14,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,1027.88
+276,2042663820,2025-08-06,2025-08-02 14:19,Panda Stores Queenstow East London (Card 0151),PANDA STORES QUEENSTOW EAST LONDON    ZA,Food,Groceries,,-69.99,,957.89
+277,2042663820,2025-08-07,2025-08-07 02:15,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-0.01,,957.88
+278,2042663820,2025-08-08,2025-08-06 16:58,Online Purchase: Pay Just Now Claremont (Card 0151),Pay Just Now           CLAREMONT    WCZA,Loans & Accounts,Other Loans & Accounts,,-566.35,,391.53
+279,2042663820,2025-08-09,2025-08-09 01:24,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-1.65,,389.88
+280,2042663820,2025-08-13,2025-08-13 11:37,Payment Received: L Mcpherson,L MCPHERSON,Other Income,Other Income,778.95,,,1168.83
+281,2042663820,2025-08-14,2025-08-14 10:27,Banking App External PayShap Payment: Chris Fnb,Chris fnb,Personal & Family,Digital Payments,,-1138.83,,30.00
+282,2042663820,2025-08-14,2025-08-14 10:27,External Immediate Payment Fee,|Chris fnb,Fees,Fees,,,-6.00,24.00
+283,2042663820,2025-08-16,2025-08-16 13:06,Card Purchase Insufficient Funds Fee: Superspar Protea Eastern Cape Za,INSF. FUNDS |          SuperSpar Protea       Eastern Cape   ZA,Fees,Fees,,,-1.00,23.00
+284,2042663820,2025-08-16,2025-08-16 15:14,Payment Received: L Mcpherson,L MCPHERSON,Other Income,Other Income,250.00,,,273.00
+285,2042663820,2025-08-17,2025-08-17 12:44,Banking App External PayShap Payment: Chris Fnb,Chris fnb,Personal & Family,Digital Payments,,-240.00,,33.00
+286,2042663820,2025-08-17,2025-08-17 12:44,External Immediate Payment Fee,|Chris fnb,Fees,Fees,,,-6.00,27.00
+287,2042663820,2025-08-19,2025-08-19 00:51,Insf. Funds Github  Inc. San,INSF. FUNDS |          GITHUB  INC.           SAN,,,,,,
+288,2042663820,2025-08-19,2025-08-19 00:06,International Online Purchase Insufficient Funds Fee: Github  Inc. San Francisco Us,INSF. FUNDS |          GITHUB  INC.           SAN FRANCISCO  US,Fees,Fees,,,-3.00,24.00
+289,2042663820,2025-08-19,2025-08-19 08:37,Payment Received: R4500 Cwm Payment 2613997736,R4500 CWM                     PAYMENT   2613997736,Other Income,Other Income,2250.00,,,2274.00
+290,2042663820,2025-08-20,2025-08-20 07:42,Banking App Immediate Payment: Ivan Mcpherson,IVAN MCPHERSON,Personal & Family,Digital Payments,,-1000.00,,1274.00
+291,2042663820,2025-08-20,2025-08-20 07:42,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,1273.00
+292,2042663820,2025-08-22,2025-08-22 13:43,Payment Received: L Mcpherson,L MCPHERSON,Other Income,Other Income,1700.00,,,2973.00
+293,2042663820,2025-08-22,2025-08-22 16:34,ATM Cash Withdrawal: Atm Queenstown N Mall 4queenstown Ecza,ATM Queenstown N Mall 4Queenstown   ECZA,Cash,Cash Withdrawal,,-1700.00,,1273.00
+294,2042663820,2025-08-22,2025-08-22 16:34,ATM Cash Withdrawal Fee,ATM Cash Withdrawal Fee,Fees,Fees,,,-20.00,1253.00
+295,2042663820,2025-08-26,2025-08-26 10:44,Payment Received: Evie Transfer 2629966645,Evie                          TRANSFER  2629966645,Other Income,Other Income,2250.00,,,3503.00
+296,2042663820,2025-08-26,2025-08-26 11:33,Payment Received: Rtc 05g7fc1v2n Chris,RTC 05G7FC1V2N Chris,Salary,Salary,6000.00,,,9503.00
+297,2042663820,2025-08-26,2025-08-26 11:35,Banking App Immediate Payment: Loren,LOREN,Personal & Family,Digital Payments,,-6000.00,,3503.00
+298,2042663820,2025-08-26,2025-08-26 11:35,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,3502.00
+299,2042663820,2025-08-26,2025-08-26 11:36,Banking App External Payment: Absa Home Loan,ABSA HOME LOAN,Loans & Accounts,Loan Payments,,-2970.00,,532.00
+300,2042663820,2025-08-26,2025-08-26 11:36,External Payment Fee,External Payment Fee,Fees,Fees,,,-2.00,530.00
+301,2042663820,2025-08-26,2025-08-26 16:24,Banking App External Payment: Enoch Mgijima,ENOCH MGIJIMA,Uncategorised,Uncategorised,,-500.00,,30.00
+302,2042663820,2025-08-26,2025-08-26 16:24,External Payment Fee,External Payment Fee,Fees,Fees,,,-2.00,28.00
+303,2042663820,2025-08-27,2025-08-27 14:47,Payment Received: Lisa Payment 2634654921,LISA                          PAYMENT   2634654921,Other Income,Other Income,28000.00,,,28028.00
+304,2042663820,2025-08-29,2025-08-29 11:04,Banking App Immediate Payment: Ivan Mcpherson,IVAN MCPHERSON,Personal & Family,Digital Payments,,-150.00,,27878.00
+305,2042663820,2025-08-29,2025-08-29 11:04,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,27877.00
+306,2042663820,2025-08-30,2025-08-30 13:02,Banking App Prepaid Purchase: Electricity,Electricity,Household,Electricity,,-100.00,,27777.00
+307,2042663820,2025-08-30,2025-08-30 13:02,Prepaid Electricity Purchase Fee,Prepaid Electricity Purchase Fee,Fees,Fees,,,-1.00,27776.00
+308,2042663820,2025-08-31,2025-08-31 17:19,Banking App Prepaid Purchase: Electricity,Electricity,Household,Electricity,,-50.00,,27726.00
+309,2042663820,2025-08-31,2025-08-31 17:19,Prepaid Electricity Purchase Fee,Prepaid Electricity Purchase Fee,Fees,Fees,,,-1.00,27725.00
+310,2042663820,2025-08-31,2025-08-31 21:39,Interest Received,Interest Received,Interest,Interest,8.85,,,27733.85
+311,2042663820,2025-08-31,2025-08-31 21:39,Monthly Account Admin Fee,Monthly Account Admin Fee,Fees,Fees,,,-7.50,27726.35
+312,2042663820,2025-09-01,2025-09-01 01:56,Live Better Interest Sweep,LB Interest Sweep Payments | AUG 2025,Transfer,Transfer,,-8.85,,27717.50
+313,2042663820,2025-09-06,2025-09-06 12:12,Payment Received: L Mcpherson,L MCPHERSON,Other Income,Other Income,1500.00,,,29217.50
+314,2042663820,2025-09-06,2025-09-06 19:59,Payment Received: L Mcpherson,L MCPHERSON,Other Income,Other Income,1200.00,,,30417.50
+315,2042663820,2025-09-08,2025-09-06 20:01,Thegalleryguesthous Queenstown (Card 0151),THEGALLERYGUESTHOUS    QUEENSTOWN   ZAZA,Personal & Family,Holiday,,-1780.00,,28637.50
+316,2042663820,2025-09-09,2025-09-07 13:23,KFC Queenstown (Card 0151),KFC KSA1190 QUEENSTOWN Queenstown     ZA,Food,Takeaways,,-111.60,,28525.90
+317,2042663820,2025-09-10,2025-09-10 06:25,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-0.40,,28525.50
+318,2042663820,2025-09-10,2025-09-10 08:31,Payment Received: Rtc 05rkvj8z4n Chris,RTC 05RKVJ8Z4N Chris,Salary,Salary,4000.00,,,32525.50
+319,2042663820,2025-09-10,2025-09-10 08:32,Banking App Transfer to 2042663820: Transfer,Transfer,Transfer,Transfer,,-31900.00,,625.50
+320,2042663820,2025-09-10,2025-09-07 13:34,Astron Energies Queenstown (Card 0151),AE GRIFFITHS C STORE   QUEENSTOWN     ZA,Food,Groceries,,-100.00,,525.50
+321,2042663820,2025-09-11,2025-09-08 18:10,Astron Energies Queenstown (Card 0151),AE GRIFFITHS           QUEENSTOWN     ZA,Transport,Fuel,,-150.00,,375.50
+322,2042663820,2025-09-11,2025-09-11 11:04,Immediate Capitec Pay Payment: Register Domain Sa (PAYFAST*REGISTER DOM),PAYFAST*REGISTER DOM|REGISTER DOMAIN SA,Personal & Family,Digital Payments,,-59.00,,316.50
+323,2042663820,2025-09-11,2025-09-11 11:04,Capitec Pay Fee,Capitec Pay Fee,Fees,Fees,,,-1.00,315.50
+324,2042663820,2025-09-12,2025-09-12 15:38,Banking App Prepaid Purchase: Cell C,Cell C,Communication,Cellphone,,-20.00,,295.50
+325,2042663820,2025-09-12,2025-09-12 15:38,Prepaid Mobile Purchase Fee,Prepaid Mobile Purchase Fee,Fees,Fees,,,-0.50,295.00
+326,2042663820,2025-09-16,2025-09-16 15:51,Banking App Transfer from Live Better Savings Account (2081327291),Banking App Transfer from Live Better Savings Account (2081327291),Transfer,Transfer,14.46,,,309.46
+327,2042663820,2025-09-16,2025-09-16 15:52,Banking App Transfer Received from 2042663820: Transfer,Transfer,Transfer,Transfer,100.00,,,409.46
+328,2042663820,2025-09-16,2025-09-16 15:52,Banking App Immediate Payment: Loren,LOREN,Personal & Family,Digital Payments,,-200.00,,209.46
+329,2042663820,2025-09-16,2025-09-16 15:52,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,208.46
+330,2042663820,2025-09-17,2025-09-17 08:12,Banking App Transfer Received from 2042663820: Transfer,Transfer,Transfer,Transfer,200.00,,,408.46
+331,2042663820,2025-09-17,2025-09-17 08:13,Banking App Immediate Payment: Ivan Mcpherson,IVAN MCPHERSON,Personal & Family,Digital Payments,,-200.00,,208.46
+332,2042663820,2025-09-17,2025-09-17 08:13,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,207.46
+333,2042663820,2025-09-18,2025-09-16 07:30,Superspar Queenstown (Card 0151),SuperSpar Protea       QUEENSTOWN   ECZA,Food,Groceries,,-169.99,,37.47
+334,2042663820,2025-09-19,2025-09-19 04:24,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-0.01,,37.46
+335,2042663820,2025-09-20,2025-09-20 07:57,Banking App Transfer Received from 2042663820: Transfer,Transfer,Transfer,Transfer,600.00,,,637.46
+336,2042663820,2025-09-20,2025-09-20 09:54,Banking App Transfer Received from 2042663820: Transfer,Transfer,Transfer,Transfer,400.00,,,1037.46
+337,2042663820,2025-09-20,2025-09-20 09:55,Banking App Immediate Payment: Ivan Mcpherson,IVAN MCPHERSON,Personal & Family,Digital Payments,,-1000.00,,37.46
+338,2042663820,2025-09-20,2025-09-20 09:55,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,36.46
+339,2042663820,2025-09-20,2025-09-20 12:32,Banking App Transfer Received from 2042663820: Transfer,Transfer,Transfer,Transfer,200.00,,,236.46
+340,2042663820,2025-09-20,2025-09-20 13:48,Payment Received: L Mcpherson,L MCPHERSON,Other Income,Other Income,300.00,,,536.46
+341,2042663820,2025-09-20,2025-09-20 17:25,Payment Received: R4500 Cwm Payment 2677506911,R4500 CWM                     PAYMENT   2677506911,Other Income,Other Income,2250.00,,,2786.46
+342,2042663820,2025-09-22,2025-09-20 14:21,Jet Stores Queenstown (Card 0151),Jet Queenstown Nonesi  Queenstown     ZA,Personal & Family,Clothing & Shoes,,-261.77,,2524.69
+343,2042663820,2025-09-23,2025-09-23 01:09,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-0.23,,2524.46
+344,2042663820,2025-09-23,2025-09-20 12:37,Total Queenstown (Card 0151),Total Lukhanji C       Queenstown     ZA,Transport,Fuel,,-200.00,,2324.46
+345,2042663820,2025-09-23,2025-09-23 15:21,Banking App Immediate Payment: Mw Hector,MW HECTOR,Personal & Family,Digital Payments,,-200.00,,2124.46
+346,2042663820,2025-09-23,2025-09-23 15:21,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,2123.46
+347,2042663820,2025-09-24,2025-09-24 11:36,Immediate Capitec Pay Payment: Christopher Mcpherson (PAYFAST*THE TAX BRU),PAYFAST*THE TAX BRU|CHRISTOPHER MCPHERSON,Personal & Family,Digital Payments,,-99.00,,2024.46
+348,2042663820,2025-09-24,2025-09-24 11:36,Capitec Pay Fee,Capitec Pay Fee,Fees,Fees,,,-1.00,2023.46
+349,2042663820,2025-09-24,2025-09-24 12:27,Immediate Capitec Pay Payment: Christopher Mcpherson (PAYFAST*THE TAX BRU),PAYFAST*THE TAX BRU|CHRISTOPHER MCPHERSON,Personal & Family,Digital Payments,,-10.00,,2013.46
+350,2042663820,2025-09-24,2025-09-24 12:27,Capitec Pay Fee,Capitec Pay Fee,Fees,Fees,,,-1.00,2012.46
+351,2042663820,2025-09-25,2025-09-24 23:40,Banking App Prepaid Purchase: Electricity,Electricity,Household,Electricity,,-100.00,,1912.46
+352,2042663820,2025-09-25,2025-09-24 23:40,Prepaid Electricity Purchase Fee,Prepaid Electricity Purchase Fee,Fees,Fees,,,-1.00,1911.46
+353,2042663820,2025-09-25,2025-09-23 17:34,Superspar Queenstown (Card 0151),SuperSpar Protea       QUEENSTOWN   ECZA,Food,Groceries,,-159.99,,1751.47
+354,2042663820,2025-09-25,2025-09-25 14:32,PayShap Payment Received: Evie,Evie,Other Income,Other Income,2250.00,,,4001.47
+355,2042663820,2025-09-25,2025-09-25 14:35,Banking App External Payment: Absa Home Loan,ABSA HOME LOAN,Loans & Accounts,Loan Payments,,-3040.00,,961.47
+356,2042663820,2025-09-25,2025-09-25 14:35,External Payment Fee,External Payment Fee,Fees,Fees,,,-2.00,959.47
+357,2042663820,2025-09-25,2025-09-25 14:38,Banking App External Payment: Enoch Mgijima,ENOCH MGIJIMA,Uncategorised,Uncategorised,,-500.00,,459.47
+358,2042663820,2025-09-25,2025-09-25 14:38,External Payment Fee,External Payment Fee,Fees,Fees,,,-2.00,457.47
+359,2042663820,2025-09-26,2025-09-26 01:32,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-0.01,,457.46
+360,2042663820,2025-09-26,2025-09-24 13:30,KFC Queenstown (Card 0151),KFC KSA1190 QUEENSTOWN Queenstown     ZA,Food,Takeaways,,-204.60,,252.86
+361,2042663820,2025-09-26,2025-09-24 19:52,S2s*newrestsuperstor Queenstown (Card 0151),S2S*NewRestSuperstor   Queenstown   ZAZA,Food,Groceries,,-60.00,,192.86
+362,2042663820,2025-09-26,2025-09-24 08:50,Engen Queenstown (Card 0151),ENGEN SMITH & WIGGILL  Queenstown     ZA,Transport,Fuel,,-150.00,,42.86
+363,2042663820,2025-09-26,2025-09-26 07:48,Payment Received: Rtc 055rc1yy6n Chris,RTC 055RC1YY6N Chris,Salary,Salary,6000.00,,,6042.86
+364,2042663820,2025-09-26,2025-09-26 07:50,Banking App Immediate Payment: Loren,LOREN,Personal & Family,Digital Payments,,-4300.00,,1742.86
+365,2042663820,2025-09-26,2025-09-26 07:50,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,1741.86
+366,2042663820,2025-09-26,2025-09-26 10:18,Immediate Capitec Pay Payment: Betway (WLD3D324518-B19A-F01),WLD3D324518-B19A-F01|BETWAY,Entertainment,Betting/Lottery,,-100.00,,1641.86
+367,2042663820,2025-09-26,2025-09-26 10:18,Capitec Pay Fee,Capitec Pay Fee,Fees,Fees,,,-1.00,1640.86
+368,2042663820,2025-09-26,2025-09-26 14:21,Banking App Prepaid Purchase: Electricity,Electricity,Household,Electricity,,-100.00,,1540.86
+369,2042663820,2025-09-26,2025-09-26 14:21,Prepaid Electricity Purchase Fee,Prepaid Electricity Purchase Fee,Fees,Fees,,,-1.00,1539.86
+370,2042663820,2025-09-26,2025-09-26 16:03,Banking App Transfer Received from 2042663820: Transfer,Transfer,Transfer,Transfer,200.00,,,1739.86
+371,2042663820,2025-09-26,2025-09-26 17:34,ATM Cash Withdrawal: Paycorp Group Queenstown Za,Paycorp Group          QUEENSTOWN     ZA,Cash,Cash Withdrawal,,-500.00,,1239.86
+372,2042663820,2025-09-26,2025-09-26 17:34,ATM Cash Withdrawal Fee,ATM Cash Withdrawal Fee,Fees,Fees,,,-10.00,1229.86
+373,2042663820,2025-09-27,2025-09-27 01:50,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-1.40,,1228.46
+374,2042663820,2025-09-28,2025-09-26 18:43,Likkaland Queenstown (Card 0151),LIKKALAND              QUEENSTOWN   ZAZA,Entertainment,Alcohol,,-90.00,,1138.46
+375,2042663820,2025-09-28,2025-09-26 17:50,Ferreira Leisu Jeffreys Bay (Card 0151),Yoco   *Ferreira Leisu Jeffreys Bay ECZA,Entertainment,Going Out,,-200.00,,938.46
+376,2042663820,2025-09-28,2025-09-28 08:17,Banking App Prepaid Purchase: Electricity,Electricity,Household,Electricity,,-100.00,,838.46
+377,2042663820,2025-09-28,2025-09-28 08:17,Prepaid Electricity Purchase Fee,Prepaid Electricity Purchase Fee,Fees,Fees,,,-1.00,837.46
+378,2042663820,2025-09-28,2025-09-28 11:54,Banking App Immediate Payment: Loren,LOREN,Personal & Family,Digital Payments,,-200.00,,637.46
+379,2042663820,2025-09-28,2025-09-28 11:54,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,636.46
+380,2042663820,2025-09-29,2025-09-27 10:02,McDonalds Queenstown (Card 0151),MCD Queenstown (770)   Queenstown     ZA,Food,Takeaways,,-128.80,,507.66
+381,2042663820,2025-09-29,2025-09-29 18:07,Banking App Prepaid Purchase: Electricity,Electricity,Household,Electricity,,-100.00,,407.66
+382,2042663820,2025-09-29,2025-09-29 18:07,Prepaid Electricity Purchase Fee,Prepaid Electricity Purchase Fee,Fees,Fees,,,-1.00,406.66
+383,2042663820,2025-09-30,2025-09-30 01:27,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-1.20,,405.46
+384,2042663820,2025-09-30,2025-09-30 18:15,Banking App Transfer Received from 2042663820: Transfer,Transfer,Transfer,Transfer,100.00,,,505.46
+385,2042663820,2025-09-30,2025-09-30 18:17,ATM Cash Withdrawal: 000000000000002 Ueenstown E Za,000000000000002        UEENSTOWN   E  ZA,Cash,Cash Withdrawal,,-100.00,,405.46
+386,2042663820,2025-09-30,2025-09-30 18:17,ATM Cash Withdrawal Fee,ATM Cash Withdrawal Fee,Fees,Fees,,,-10.00,395.46
+387,2042663820,2025-09-30,2025-09-30 23:29,Interest Received,Interest Received,Interest,Interest,15.11,,,410.57
+388,2042663820,2025-09-30,2025-09-30 23:29,Monthly Account Admin Fee,Monthly Account Admin Fee,Fees,Fees,,,-7.50,403.07
+389,2042663820,2025-10-01,2025-09-28 12:57,Romans Pizza Queenstown (Card 0151),ROMANS QUEENSTOWN      QUEENSTOWN     ZA,Food,Takeaways,,-289.90,,113.17
+390,2042663820,2025-10-01,2025-09-28 11:49,Choice Clothing Queenstown (Card 0151),CHOICE CLOTHING NONESI QUEENSTOWN     ZA,Personal & Family,Clothing & Shoes,,-79.98,,33.19
+391,2042663820,2025-10-02,2025-10-02 01:38,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-0.12,,33.07
+392,2042663820,2025-10-06,2025-10-06 12:27,Banking App Transfer Received from 2042663820: Transfer,Transfer,Transfer,Transfer,150.00,,,183.07
+393,2042663820,2025-10-06,2025-10-06 12:28,Immediate Capitec Pay Payment: Christopher Mcpherson (PAYFAST*THE TAX BRU),PAYFAST*THE TAX BRU|CHRISTOPHER MCPHERSON,Personal & Family,Digital Payments,,-15.00,,168.07
+394,2042663820,2025-10-06,2025-10-06 12:28,Capitec Pay Fee,Capitec Pay Fee,Fees,Fees,,,-1.00,167.07
+395,2042663820,2025-10-06,2025-10-06 12:46,Immediate Capitec Pay Payment: Christopher Mcpherson (PAYFAST*THE TAX BRU),PAYFAST*THE TAX BRU|CHRISTOPHER MCPHERSON,Personal & Family,Digital Payments,,-15.00,,152.07
+396,2042663820,2025-10-06,2025-10-06 12:46,Capitec Pay Fee,Capitec Pay Fee,Fees,Fees,,,-1.00,151.07
+397,2042663820,2025-10-07,2025-10-07 08:24,Immediate Capitec Pay Payment: Christopher Mcpherson (PAYFAST*THE TAX BRU),PAYFAST*THE TAX BRU|CHRISTOPHER MCPHERSON,Personal & Family,Digital Payments,,-15.00,,136.07
+398,2042663820,2025-10-07,2025-10-07 08:24,Capitec Pay Fee,Capitec Pay Fee,Fees,Fees,,,-1.00,135.07
+399,2042663820,2025-10-07,2025-10-07 12:33,Immediate Capitec Pay Payment: Christopher Mcpherson (PAYFAST*THE TAX BRU),PAYFAST*THE TAX BRU|CHRISTOPHER MCPHERSON,Personal & Family,Digital Payments,,-15.00,,120.07
+400,2042663820,2025-10-07,2025-10-07 12:33,Capitec Pay Fee,Capitec Pay Fee,Fees,Fees,,,-1.00,119.07
+401,2042663820,2025-10-07,2025-10-07 13:19,Immediate Capitec Pay Payment: Christopher Mcpherson (PAYFAST*THE TAX BRU),PAYFAST*THE TAX BRU|CHRISTOPHER MCPHERSON,Personal & Family,Digital Payments,,-15.00,,104.07
+402,2042663820,2025-10-07,2025-10-07 13:19,Capitec Pay Fee,Capitec Pay Fee,Fees,Fees,,,-1.00,103.07
+403,2042663820,2025-10-07,2025-10-07 13:37,Immediate Capitec Pay Payment: Christopher Mcpherson (PAYFAST*THE TAX BRU),PAYFAST*THE TAX BRU|CHRISTOPHER MCPHERSON,Personal & Family,Digital Payments,,-15.00,,88.07
+404,2042663820,2025-10-07,2025-10-07 13:37,Capitec Pay Fee,Capitec Pay Fee,Fees,Fees,,,-1.00,87.07
+405,2042663820,2025-10-07,2025-10-07 16:15,Immediate Capitec Pay Payment: Christopher Mcpherson (PAYFAST*THE TAX BRU),PAYFAST*THE TAX BRU|CHRISTOPHER MCPHERSON,Personal & Family,Digital Payments,,-15.00,,72.07
+406,2042663820,2025-10-07,2025-10-07 16:15,Capitec Pay Fee,Capitec Pay Fee,Fees,Fees,,,-1.00,71.07
+407,2042663820,2025-10-07,2025-10-07 17:31,Immediate Capitec Pay Payment: Christopher Mcpherson (PAYFAST*THE TAX BRU),PAYFAST*THE TAX BRU|CHRISTOPHER MCPHERSON,Personal & Family,Digital Payments,,-15.00,,56.07
+408,2042663820,2025-10-07,2025-10-07 17:31,Capitec Pay Fee,Capitec Pay Fee,Fees,Fees,,,-1.00,55.07
+409,2042663820,2025-10-10,2025-10-10 19:00,Card Purchase Insufficient Funds Fee: S2s*newrestsuperstor Queenstown Za,INSF. FUNDS |          S2S*NewRestSuperstor   Queenstown     ZA,Fees,Fees,,,-1.00,54.07
+410,2042663820,2025-10-10,2025-10-10 19:00,Card Purchase Insufficient Funds Fee: S2s*newrestsuperstor Queenstown Za,INSF. FUNDS |          S2S*NewRestSuperstor   Queenstown     ZA,Fees,Fees,,,-1.00,53.07
+411,2042663820,2025-10-19,2025-10-19 11:03,Banking App Transfer Received from 2042663820: Transfer,Transfer,Transfer,Transfer,500.00,,,553.07
+412,2042663820,2025-10-19,2025-10-19 11:37,Banking App Transfer Received from 2042663820: Transfer,Transfer,Transfer,Transfer,500.00,,,1053.07
+413,2042663820,2025-10-20,2025-10-20 13:52,Payment Received: L Mcpherson,L MCPHERSON,Other Income,Other Income,2200.00,,,3253.07
+414,2042663820,2025-10-20,2025-10-20 14:38,Payment Received: R4500 Cwm Payment 2737333362,R4500 CWM                     PAYMENT   2737333362,Other Income,Other Income,2250.00,,,5503.07
+415,2042663820,2025-10-20,2025-10-20 17:25,ATM Cash Withdrawal: 000000000000002 Queenstown Za,000000000000002        QUEENSTOWN     ZA,Cash,Cash Withdrawal,,-1700.00,,3803.07
+416,2042663820,2025-10-20,2025-10-20 17:25,ATM Cash Withdrawal Fee,ATM Cash Withdrawal Fee,Fees,Fees,,,-20.00,3783.07
+417,2042663820,2025-10-21,2025-10-21 06:39,Banking App Immediate Payment: Ivan Mcpherson,IVAN MCPHERSON,Personal & Family,Digital Payments,,-1000.00,,2783.07
+418,2042663820,2025-10-21,2025-10-21 06:39,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,2782.07
+419,2042663820,2025-10-21,2025-10-21 06:39,Banking App Transfer to 2042663820: Transfer,Transfer,Transfer,Transfer,,-500.00,,2282.07
+420,2042663820,2025-10-22,2025-10-19 11:44,Checkers Queenstown (Card 0151),Checkers Nonesi Mall   QUEENSTOWN     ZA,Food,Groceries,,-714.21,,1567.86
+421,2042663820,2025-10-22,2025-10-20 07:19,Superspar Queenstown (Card 0151),SuperSpar Protea       QUEENSTOWN   ECZA,Food,Groceries,,-99.99,,1467.87
+422,2042663820,2025-10-22,2025-10-19 11:18,Hpy*style Zone Queens Town (Card 0151),HPY*Style Zone         Queens Town    ZA,Personal & Family,Personal Care,,-120.00,,1347.87
+423,2042663820,2025-10-23,2025-10-23 01:24,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-1.80,,1346.07
+424,2042663820,2025-10-23,2025-10-21 17:41,Superspar Queenstown (Card 0151),SuperSpar Protea       QUEENSTOWN   ECZA,Food,Groceries,,-99.99,,1246.08
+425,2042663820,2025-10-23,2025-10-23 14:08,Banking App Transfer to 2042663820: Transfer,Transfer,Transfer,Transfer,,-900.00,,346.08
+426,2042663820,2025-10-23,2025-10-23 14:09,PayShap Payment Received: Chris,Chris,Salary,Salary,1000.00,,,1346.08
+427,2042663820,2025-10-23,2025-10-23 14:13,PayShap Payment Received: Chris,Chris,Salary,Salary,700.00,,,2046.08
+428,2042663820,2025-10-23,2025-10-23 14:14,Banking App Transfer Received from 2042663820: Transfer,Transfer,Transfer,Transfer,30400.00,,,32446.08
+429,2042663820,2025-10-23,2025-10-23 14:19,Banking App External PayShap Payment: Ettienne Goosen Cc,Ettienne Goosen CC,Personal & Family,Digital Payments,,-31900.00,,546.08
+430,2042663820,2025-10-23,2025-10-23 14:19,External Immediate Payment Fee,|Ettienne Goosen CC,Fees,Fees,,,-6.00,540.08
+431,2042663820,2025-10-24,2025-10-24 01:38,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-0.01,,540.07
+432,2042663820,2025-10-24,2025-10-22 07:21,Engen Queenstown (Card 0151),ENGEN SMITH  &  WIGGIL Queenstown     ZA,Transport,Fuel,,-150.00,,390.07
+433,2042663820,2025-10-24,2025-10-24 08:25,Payment Received: Rtc 057ttgwqbp Chris,RTC 057TTGWQBP Chris,Payment Received,Payment Received,6250.00,,,6640.07
+434,2042663820,2025-10-24,2025-10-24 08:26,Banking App Immediate Payment: Ivan Mcpherson,IVAN MCPHERSON,Personal & Family,Digital Payments,,-300.00,,6340.07
+435,2042663820,2025-10-24,2025-10-24 08:26,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,6339.07
+436,2042663820,2025-10-24,2025-10-24 14:25,PayShap Payment Received: Evie,Evie,Other Income,Other Income,2250.00,,,8589.07
+437,2042663820,2025-10-24,2025-10-24 16:43,Banking App External Payment: Absa Home Loan,ABSA HOME LOAN,Loans & Accounts,Loan Payments,,-2250.00,,6339.07
+438,2042663820,2025-10-24,2025-10-24 16:43,External Payment Fee,External Payment Fee,Fees,Fees,,,-2.00,6337.07
+439,2042663820,2025-10-25,2025-10-23 14:40,Engen Queenstown (Card 0151),ENGEN SMITH  &  WIGGIL Queenstown     ZA,Transport,Fuel,,-150.00,,6187.07
+440,2042663820,2025-10-25,2025-10-23 07:21,Superspar Queenstown (Card 0151),SuperSpar Protea       QUEENSTOWN   ECZA,Food,Groceries,,-159.99,,6027.08
+441,2042663820,2025-10-26,2025-10-26 01:52,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-0.01,,6027.07
+442,2042663820,2025-10-26,2025-10-26 09:15,Banking App Transfer Received from 2042663820: Transfer,Transfer,Transfer,Transfer,4.00,,,6031.07
+443,2042663820,2025-10-26,2025-10-26 09:15,Banking App Immediate Payment: Loren,LOREN,Personal & Family,Digital Payments,,-6000.00,,31.07
+444,2042663820,2025-10-26,2025-10-26 09:15,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,30.07
+445,2042663820,2025-10-27,2025-10-27 08:30,Payment Received: Rtc 05hx6c24bp Chris,RTC 05HX6C24BP Chris,Payment Received,Payment Received,300.00,,,330.07
+446,2042663820,2025-10-27,2025-10-27 08:30,Banking App Immediate Payment: Ivan Mcpherson,IVAN MCPHERSON,Personal & Family,Digital Payments,,-200.00,,130.07
+447,2042663820,2025-10-27,2025-10-27 08:30,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,129.07
+448,2042663820,2025-10-30,2025-10-30 18:24,Banking App Prepaid Purchase: Electricity,Electricity,Household,Electricity,,-90.00,,39.07
+449,2042663820,2025-10-30,2025-10-30 18:24,Prepaid Electricity Purchase Fee,Prepaid Electricity Purchase Fee,Fees,Fees,,,-1.00,38.07
+450,2042663820,2025-10-31,2025-10-31 23:06,Interest Received,Interest Received,Interest,Interest,1.25,,,39.32
+451,2042663820,2025-10-31,2025-10-31 23:06,Monthly Account Admin Fee,Monthly Account Admin Fee,Fees,Fees,,,-7.50,31.82
+452,2042663820,2025-11-01,2025-11-01 04:04,Live Better Interest Sweep,LB Interest Sweep Payments | OCT 2025,Transfer,Transfer,,-1.25,,30.57
+453,2042663820,2025-11-18,2025-11-18 14:39,International Online Purchase Insufficient Funds Fee: Canva* Paaaag4qzir6n55 Camden Us,INSF. FUNDS |          CANVA* PAAAAG4QZIR6N55 CAMDEN         US,Fees,Fees,,,-2.00,28.57
+454,2042663820,2025-11-21,2025-11-21 12:18,Payment Received: L Mcpherson,L MCPHERSON,Other Income,Other Income,1700.00,,,1728.57
+455,2042663820,2025-11-21,2025-11-21 17:13,Banking App Transfer Received from 2042663820: Transfer,Transfer,Transfer,Transfer,0.56,,,1729.13
+456,2042663820,2025-11-21,2025-11-21 17:14,Banking App Transfer Received from 2042663820: Transfer,Transfer,Transfer,Transfer,53.00,,,1782.13
+457,2042663820,2025-11-21,2025-11-21 17:14,ATM Cash Withdrawal: Atm05900000b302 East London Za,ATM05900000B302        East London    ZA,Cash,Cash Withdrawal,,-1700.00,,82.13
+458,2042663820,2025-11-21,2025-11-21 17:14,ATM Cash Withdrawal Fee,ATM Cash Withdrawal Fee,Fees,Fees,,,-20.00,62.13
+459,2042663820,2025-11-25,2025-11-25 10:38,PayShap Payment Received: Evie,Evie,Other Income,Other Income,2250.00,,,2312.13
+460,2042663820,2025-11-25,2025-11-25 11:37,Banking App Immediate Payment: Ivan Mcpherson,IVAN MCPHERSON,Personal & Family,Digital Payments,,-1000.00,,1312.13
+461,2042663820,2025-11-25,2025-11-25 11:37,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,1311.13
+462,2042663820,2025-11-25,2025-11-25 14:55,Payment Received: R4500 Cwm Payment 2815037526,R4500 CWM                     PAYMENT   2815037526,Other Income,Other Income,1000.00,,,2311.13
+463,2042663820,2025-11-26,2025-11-26 09:07,Banking App Immediate Payment: Curtis,CURTIS,Personal & Family,Digital Payments,,-80.00,,2231.13
+464,2042663820,2025-11-26,2025-11-26 09:07,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,2230.13
+465,2042663820,2025-11-26,2025-11-26 09:07,Banking App Immediate Payment: Curtis,CURTIS,Personal & Family,Digital Payments,,-80.00,,2150.13
+466,2042663820,2025-11-26,2025-11-26 09:07,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,2149.13
+467,2042663820,2025-11-26,2025-11-26 21:32,Payment Received: C Naidoo,C NAIDOO,Other Income,Other Income,90.00,,,2239.13
+468,2042663820,2025-11-28,2025-11-28 09:52,Banking App External Payment: Enoch Mgijima,ENOCH MGIJIMA,Uncategorised,Uncategorised,,-500.00,,1739.13
+469,2042663820,2025-11-28,2025-11-28 09:52,External Payment Fee,External Payment Fee,Fees,Fees,,,-2.00,1737.13
+470,2042663820,2025-11-28,2025-11-28 09:52,Banking App External Payment: Absa Home Loan,ABSA HOME LOAN,Loans & Accounts,Loan Payments,,-1700.00,,37.13
+471,2042663820,2025-11-28,2025-11-28 09:52,External Payment Fee,External Payment Fee,Fees,Fees,,,-2.00,35.13
+472,2042663820,2025-11-28,2025-11-28 20:49,Payment Received: L Mcpherson,L MCPHERSON,Other Income,Other Income,1300.00,,,1335.13
+473,2042663820,2025-11-30,2025-11-30 21:55,Interest Received,Interest Received,Interest,Interest,0.64,,,1335.77
+474,2042663820,2025-11-30,2025-11-30 21:55,Monthly Account Admin Fee,Monthly Account Admin Fee,Fees,Fees,,,-7.50,1328.27
+475,2042663820,2025-12-01,2025-12-01 01:59,Live Better Interest Sweep,LB Interest Sweep Payments | NOV 2025,Transfer,Transfer,,-0.64,,1327.63
+476,2042663820,2025-12-01,2025-11-29 06:03,Total Queenstown (Card 0151),Total Queenstown C     Queenstown     ZA,Transport,Fuel,,-1232.50,,95.13
+477,2042663820,2025-12-02,2025-12-02 05:51,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-1.50,,93.63
+478,2042663820,2025-12-02,2025-12-02 10:25,Banking App Prepaid Purchase: Cell C,Cell C,Communication,Cellphone,,-50.00,,43.63
+479,2042663820,2025-12-02,2025-12-02 10:25,Prepaid Mobile Purchase Fee,Prepaid Mobile Purchase Fee,Fees,Fees,,,-0.50,43.13
+480,2042663820,2025-12-08,2025-12-08 11:01,PayShap Payment Received: Chris,Chris,Other Income,Other Income,200.00,,,243.13
+481,2042663820,2025-12-08,2025-12-08 11:02,Banking App Immediate Payment: Lisa Capitec,LISA CAPITEC,Personal & Family,Digital Payments,,-200.00,,43.13
+482,2042663820,2025-12-08,2025-12-08 11:02,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,42.13
+483,2042663820,2025-12-12,2025-12-12 14:46,Payment Received: R4500 Cwm Payment 2857347077,R4500 CWM                     PAYMENT   2857347077,Other Income,Other Income,5000.00,,,5042.13
+484,2042663820,2025-12-14,2025-12-14 11:19,Banking App Immediate Payment: Malik,MALIK,Personal & Family,Digital Payments,,-900.00,,4142.13
+485,2042663820,2025-12-14,2025-12-14 11:19,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,4141.13
+486,2042663820,2025-12-15,2025-12-15 14:51,Payment Received: Evie Transfer 2863721870,Evie                          TRANSFER  2863721870,Other Income,Other Income,2250.00,,,6391.13
+487,2042663820,2025-12-18,2025-12-18 08:53,Banking App External Payment: Absa Home Loan,ABSA HOME LOAN,Loans & Accounts,Loan Payments,,-3050.00,,3341.13
+488,2042663820,2025-12-18,2025-12-18 08:53,External Payment Fee,External Payment Fee,Fees,Fees,,,-2.00,3339.13
+489,2042663820,2025-12-18,2025-12-18 08:53,Banking App External Payment: Enoch Mgijima,ENOCH MGIJIMA,Uncategorised,Uncategorised,,-500.00,,2839.13
+490,2042663820,2025-12-18,2025-12-18 08:53,External Payment Fee,External Payment Fee,Fees,Fees,,,-2.00,2837.13
+491,2042663820,2025-12-19,2025-12-19 17:02,Payment Received: L Mcpherson,L MCPHERSON,Other Income,Other Income,2500.00,,,5337.13
+492,2042663820,2025-12-19,2025-12-19 17:10,Banking App Immediate Payment: Ivan Mcpherson,IVAN MCPHERSON,Personal & Family,Digital Payments,,-1000.00,,4337.13
+493,2042663820,2025-12-19,2025-12-19 17:10,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,4336.13
+494,2042663820,2025-12-19,2025-12-19 17:26,ATM Cash Withdrawal: Atm05900000b302 East London Za,ATM05900000B302        East London    ZA,Cash,Cash Withdrawal,,-2500.00,,1836.13
+495,2042663820,2025-12-19,2025-12-19 17:26,ATM Cash Withdrawal Fee,ATM Cash Withdrawal Fee,Fees,Fees,,,-30.00,1806.13
+496,2042663820,2025-12-22,2025-12-20 11:09,Lekkerland Queenstown (Card 0151),LEKKERLAND             QUEENSTOWN   ZAZA,Food,Groceries,,-87.00,,1719.13
+497,2042663820,2025-12-23,2025-12-23 02:20,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-1.00,,1718.13
+498,2042663820,2025-12-23,2025-12-21 11:53,Online Purchase: Pay Just Now Claremont (Card 0151),Pay Just Now           CLAREMONT    WCZA,Loans & Accounts,Store Account Payments,,-1166.34,,551.79
+499,2042663820,2025-12-23,2025-12-23 10:06,ATM Cash Withdrawal: Paycorp Group Queenstown Za,Paycorp Group          QUEENSTOWN     ZA,Cash,Cash Withdrawal,,-100.00,,451.79
+500,2042663820,2025-12-23,2025-12-23 10:06,ATM Cash Withdrawal Fee,ATM Cash Withdrawal Fee,Fees,Fees,,,-10.00,441.79
+501,2042663820,2025-12-24,2025-12-24 06:49,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-1.66,,440.13
+502,2042663820,2025-12-25,2025-12-23 09:55,Tops Queenstown (Card 0151),Tops Protea            QUEENSTOWN   ECZA,Entertainment,Alcohol,,-318.44,,121.69
+503,2042663820,2025-12-26,2025-12-26 02:13,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-1.56,,120.13
+504,2042663820,2025-12-31,2025-12-31 23:00,Interest Received,Interest Received,Interest,Interest,2.50,,,122.63
+505,2042663820,2025-12-31,2025-12-31 23:00,Monthly Account Admin Fee,Monthly Account Admin Fee,Fees,Fees,,,-7.50,115.13
+506,2042663820,2026-01-01,2026-01-01 06:45,Live Better Interest Sweep,LB Interest Sweep Payments | DEC 2025,Transfer,Transfer,,-2.50,,112.63
+507,2042663820,2026-01-03,2026-01-03 14:38,Payment Received: L Mcpherson,L MCPHERSON,Other Income,Other Income,150.00,,,262.63
+508,2042663820,2026-01-03,2026-01-03 14:44,Banking App External PayShap Payment: Chris Fnb,Chris fnb,Personal & Family,Digital Payments,,-230.00,,32.63
+509,2042663820,2026-01-03,2026-01-03 14:44,External Immediate Payment Fee,|Chris fnb,Fees,Fees,,,-6.00,26.63
+510,2042663820,2026-01-19,2026-01-19 14:37,Payment Received: R4500 Cwm Payment 2920574286,R4500 CWM                     PAYMENT   2920574286,Other Income,Other Income,750.00,,,776.63
+511,2042663820,2026-01-20,2026-01-20 12:53,Payment Received: L Mcpherson,L MCPHERSON,Other Income,Other Income,1800.00,,,2576.63
+512,2042663820,2026-01-20,2026-01-20 13:53,Banking App External Payment: Saving Grace Educati,SAVING GRACE EDUCATI,Uncategorised,Uncategorised,,-1725.00,,851.63
+513,2042663820,2026-01-20,2026-01-20 13:53,External Payment Fee,External Payment Fee,Fees,Fees,,,-2.00,849.63
+514,2042663820,2026-01-20,2026-01-20 13:58,Payment Received: L Mcpherson,L MCPHERSON,Other Income,Other Income,2000.00,,,2849.63
+515,2042663820,2026-01-20,2026-01-20 16:51,ATM Cash Withdrawal: Ag33 22 Griffiths Stre Queenstown Za,AG33 22 Griffiths Stre QUEENSTOWN     ZA,Cash,Cash Withdrawal,,-2000.00,,849.63
+516,2042663820,2026-01-20,2026-01-20 16:51,ATM Cash Withdrawal Fee,ATM Cash Withdrawal Fee,Fees,Fees,,,-20.00,829.63
+517,2042663820,2026-01-20,2026-01-20 19:28,PayShap Payment Received: Chris,Chris,Other Income,Other Income,400.00,,,1229.63
+518,2042663820,2026-01-20,2026-01-20 19:29,Banking App Immediate Payment: Ivan Mcpherson,IVAN MCPHERSON,Personal & Family,Digital Payments,,-1000.00,,229.63
+519,2042663820,2026-01-20,2026-01-20 19:29,Immediate Payment Fee,Immediate Payment Fee,Fees,Fees,,,-1.00,228.63
+520,2042663820,2026-01-21,2026-01-19 18:23,Newrestsuperstor Queenstown (Card 0151),S2S*NewRestSuperstor   Queenstown   ZAZA,Food,Groceries,,-50.00,,178.63
+521,2042663820,2026-01-23,2026-01-23 06:15,PayShap Payment Received: Evie,Evie,Other Income,Other Income,2250.00,,,2428.63
+522,2042663820,2026-01-23,2026-01-23 07:34,Payment Received: Rtc 052m9s7krp Chris,RTC 052M9S7KRP Chris,Payment Received,Payment Received,10000.00,,,12428.63
+523,2042663820,2026-01-23,2026-01-23 07:35,Banking App External Payment: Enoch Mgijima,ENOCH MGIJIMA,Uncategorised,Uncategorised,,-500.00,,11928.63
+524,2042663820,2026-01-23,2026-01-23 07:35,External Payment Fee,External Payment Fee,Fees,Fees,,,-2.00,11926.63
+525,2042663820,2026-01-23,2026-01-23 07:35,Banking App External Payment: Absa Home Loan,ABSA HOME LOAN,Loans & Accounts,Loan Payments,,-1750.00,,10176.63
+526,2042663820,2026-01-23,2026-01-23 07:35,External Payment Fee,External Payment Fee,Fees,Fees,,,-2.00,10174.63
+527,2042663820,2026-01-23,2026-01-23 07:36,Banking App Transfer to 2042663820: Transfer,Transfer,Transfer,Transfer,,-6000.00,,4174.63
+528,2042663820,2026-01-23,2026-01-23 10:23,Banking App External PayShap Payment: J Annendale,J Annendale,Personal & Family,Digital Payments,,-90.00,,4084.63
+529,2042663820,2026-01-23,2026-01-23 10:23,External Immediate Payment Fee,|J Annendale,Fees,Fees,,,-6.00,4078.63
+530,2042663820,2026-01-24,2026-01-22 19:41,Newrestsuperstor Queenstown (Card 0151),S2S*NewRestSuperstor   Queenstown   ZAZA,Food,Groceries,,-40.00,,4038.63
+531,2042663820,2026-01-24,2026-01-24 10:11,Banking App Prepaid Purchase: Cell C,Cell C,Communication,Cellphone,,-25.00,,4013.63
+532,2042663820,2026-01-24,2026-01-24 10:11,Prepaid Mobile Purchase Fee,Prepaid Mobile Purchase Fee,Fees,Fees,,,-0.50,4013.13
+533,2042663820,2026-01-26,2026-01-24 15:36,Dis-Chem Queenstown (Card 0151),Dischem Riverside Mall QUEENSTOWN   ECZA,Medical,Pharmacy,,-155.97,,3857.16
+534,2042663820,2026-01-26,2026-01-24 09:36,Newrestsuperstor Queenstown (Card 0151),S2S*NewRestSuperstor   Queenstown   ZAZA,Food,Groceries,,-20.00,,3837.16
+535,2042663820,2026-01-26,2026-01-23 17:46,Steers Queenstown (Card 0151),STEERS QUEENSTOWN      QUEENSTOWN     ZA,Food,Takeaways,,-79.60,,3757.56
+536,2042663820,2026-01-27,2026-01-27 01:57,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-0.43,,3757.13
+537,2042663820,2026-01-27,2026-01-25 17:41,Newrestsuperstor Queenstown (Card 0151),S2S*NewRestSuperstor   Queenstown   ZAZA,Food,Groceries,,-60.00,,3697.13
+538,2042663820,2026-01-27,2026-01-27 21:39,Immediate Capitec Pay Payment: Easyequities (PST-776495),PST-776495|EASYEQUITIES,Savings & Investments,Investments,,-300.00,,3397.13
+539,2042663820,2026-01-27,2026-01-27 21:39,Capitec Pay Fee,Capitec Pay Fee,Fees,Fees,,,-1.00,3396.13
+540,2042663820,2026-01-28,2026-01-25 11:24,Total Queenstown (Card 0151),Total Lukhanji C       Queenstown     ZA,Transport,Fuel,,-150.00,,3246.13
+541,2042663820,2026-01-28,2026-01-26 17:09,The Crazy Store Queens Queenstown (Card 0151),THE CRAZY STORE QUEENS QUEENSTOWN   ZAZA,Personal & Family,Other Personal & Family,,-75.18,,3170.95
+542,2042663820,2026-01-28,2026-01-24 15:16,Panda Stores Queenstow East London (Card 0151),PANDA STORES QUEENSTOW EAST LONDON    ZA,Food,Groceries,,-139.76,,3031.19
+543,2042663820,2026-01-28,2026-01-25 11:13,Hpy*style Zone Queens Town (Card 0151),HPY*Style Zone         Queens Town    ZA,Personal & Family,Personal Care,,-120.00,,2911.19
+544,2042663820,2026-01-29,2026-01-27 17:15,Econo Foods Eastern Cape (Card 0151),ECONOFOODS QUEENSTOWN  Eastern Cape ZAZA,Food,Groceries,,-157.98,,2753.21
+545,2042663820,2026-01-29,2026-01-29 04:28,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-1.06,,2752.15
+546,2042663820,2026-01-30,2026-01-27 12:04,Checkers Queenstown (Card 0151),Checkers Nonesi Mall   QUEENSTOWN     ZA,Food,Groceries,,-279.99,,2472.16
+547,2042663820,2026-01-30,2026-01-30 01:12,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-0.02,,2472.14
+548,2042663820,2026-01-30,2026-01-28 07:00,Astron Energies Queenstown (Card 0151),AE GRIFFITHS STREET    QUEENSTOWN     ZA,Transport,Fuel,,-200.00,,2272.14
+549,2042663820,2026-01-31,2026-01-31 01:39,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-0.01,,2272.13
+550,2042663820,2026-01-31,2026-01-29 17:37,Superspar Queenstown (Card 0151),SuperSpar Protea       QUEENSTOWN   ECZA,Food,Groceries,,-225.64,,2046.49
+551,2042663820,2026-01-31,2026-01-31 23:19,Interest Received,Interest Received,Interest,Interest,1.71,,,2048.20
+552,2042663820,2026-01-31,2026-01-31 23:19,Monthly Account Admin Fee,Monthly Account Admin Fee,Fees,Fees,,,-7.50,2040.70
+553,2042663820,2026-02-01,2026-01-30 17:44,Pep Stores Queenstown (Card 0151),PEP 6583 Queenstown    QUEENSTOWN   ECZA,Personal & Family,Clothing & Shoes,,-100.86,,1939.84
+554,2042663820,2026-02-01,2026-02-01 06:05,Live Better Interest Sweep,LB Interest Sweep Payments | JAN 2026,Transfer,Transfer,,-1.71,,1938.13
+555,2042663820,2026-02-01,2026-02-01 08:02,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-0.36,,1937.77
+556,2042663820,2026-02-02,2026-02-02 01:35,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-1.14,,1936.63
+557,2042663820,2026-02-02,2026-01-31 11:54,The Crazy Store Queens Queenstown (Card 0151),THE CRAZY STORE QUEENS QUEENSTOWN   ZAZA,Personal & Family,Other Personal & Family,,-69.99,,1866.64
+558,2042663820,2026-02-02,2026-01-31 17:58,Spur Queenstown (Card 0151),BUFFALO SPRINGS SPUR   QUEENSTOWN   ZAZA,Food,Restaurants,,-893.60,,973.04
+559,2042663820,2026-02-02,2026-01-31 09:49,Tonysgifts Queenstown (Card 0151),TONYSGIFTS             QUEENSTOWN   ZAZA,Personal & Family,Digital Payments,,-430.00,,543.04
+560,2042663820,2026-02-02,2026-01-31 11:03,Dis-Chem Queenstown (Card 0151),Dischem Riverside Mall QUEENSTOWN   ECZA,Medical,Pharmacy,,-220.97,,322.07
+561,2042663820,2026-02-02,2026-01-31 10:23,Engen Queenstown (Card 0151),ENGEN KOMANI FUELS     Queenstown     ZA,Transport,Fuel,,-150.00,,172.07
+562,2042663820,2026-02-03,2026-02-03 03:21,Live Better Round-up Transfer,Round-up Transfer,Transfer,Transfer,,-1.44,,170.63
+563,2042663820,2026-02-06,2026-02-06 16:40,Banking App Transfer Received from 2042663820: Transfer,Transfer,Transfer,Transfer,500.00,,,670.63
+564,2042663820,2026-02-06,2026-02-06 16:49,(Pending) Medipark Pharmacy Queenstown (Card 0151),MEDIPARK PHARMACY      QUEENSTOWN     ZA,Medical,Pharmacy,,-162.01,,
+565,2042663820,2026-02-08,2026-02-08 12:17,(Pending) Game Queenstown (Card 0151),Game Queenstown        Queenstown     ZA,Household,Furniture & Appliances,,-277.96,,
