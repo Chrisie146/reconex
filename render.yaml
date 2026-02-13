@@ -5,7 +5,7 @@ databases:
   - name: statementbur-db
     databaseName: statement_analyzer
     user: statement_user
-    plan: starter  # Options: free, starter, standard, pro
+    plan: standard  # New plan format: standard, pro (legacy 'starter' deprecated)
     # PostgreSQL version automatically managed by Render
     ipAllowList: []  # Empty = allow connections from Render services only
 
@@ -13,7 +13,7 @@ services:
   - type: web
     name: statementbur-api
     runtime: python
-    plan: starter  # Options: free, starter, standard, pro
+    plan: starter  # Web service plans: free, starter, standard, pro (still available)
     region: oregon  # Choose closest to your users: oregon, frankfurt, singapore
     
     # Build Configuration
