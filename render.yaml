@@ -1,0 +1,176 @@
+# Render.com Deployment Configuration
+# Bank Statement Analyzer - FastAPI Backend + PostgreSQL Database
+
+databases:
+  - name: statementbur-db
+    databaseName: statement_analyzer
+    user: statement_user
+    plan: starter  # Options: free, starter, standard, pro
+    # PostgreSQL version automatically managed by Render
+    ipAllowList: []  # Empty = allow connections from Render services only
+
+services:
+  - type: web
+    name: statementbur-api
+    runtime: python
+    plan: starter  # Options: free, starter, standard, pro
+    region: oregon  # Choose closest to your users: oregon, frankfurt, singapore
+    
+    # Build Configuration
+    buildCommand: |
+      cd backend
+      pip install --upgrade pip
+      pip install -r requirements.txt
+    
+    # Start Command - Run migrations then start server
+    startCommand: |
+      cd backend
+      alembic upgrade head
+      uvicorn main:app --host 0.0.0.0 --port $PORT --workers 2
+    
+    # Health Check Configuration
+    healthCheckPath: /health
+    
+    # Auto-Deploy Configuration
+    branch: main  # Deploy from main branch
+    autoDeploy: true  # Auto-deploy on git push
+    
+    # Environment Variables
+    envVars:
+      # Database Connection (Auto-populated from database)
+      - key: DATABASE_URL
+        fromDatabase:
+          name: statementbur-db
+          property: connectionString
+      
+      # Application Environment
+      - key: ENVIRONMENT
+        value: production
+      
+      - key: DEBUG
+        value: false
+      
+      # Security - JWT Secret (Auto-generated secure value)
+      - key: SECRET_KEY
+        generateValue: true
+      
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 10080  # 7 days
+      
+      # Python Configuration
+      - key: PYTHON_VERSION
+        value: 3.11
+      
+      # CORS - Update with your frontend URL
+      - key: ALLOWED_ORIGINS
+        value: https://yourdomain.com,https://www.yourdomain.com
+      
+      # API Server
+      - key: API_HOST
+        value: 0.0.0.0
+      
+      - key: API_PORT
+        sync: false  # Render sets PORT automatically
+      
+      # Logging
+      - key: LOG_LEVEL
+        value: INFO
+      
+      # File Upload Limits
+      - key: MAX_UPLOAD_SIZE_MB
+        value: 50
+      
+      # Rate Limiting
+      - key: RATE_LIMIT_ENABLED
+        value: true
+      
+      - key: RATE_LIMIT_PER_MINUTE
+        value: 60
+      
+      - key: RATE_LIMIT_PER_HOUR
+        value: 1000
+      
+      # Storage Backend (Update for cloud storage)
+      - key: STORAGE_BACKEND
+        value: local  # Change to 's3', 'azure', or 'gcs' for production
+      
+      # Redis Cache (Add Redis service separately if needed)
+      - key: CACHE_ENABLED
+        value: false  # Set to true after adding Redis service
+      
+      # - key: REDIS_CACHE_URL
+      #   fromService:
+      #     name: statementbur-redis
+      #     type: redis
+      #     property: connectionString
+      
+      # Celery Background Jobs (Add Redis service first)
+      # - key: CELERY_BROKER_URL
+      #   fromService:
+      #     name: statementbur-redis
+      #     type: redis
+      #     property: connectionString
+      
+      # - key: CELERY_RESULT_BACKEND
+      #   fromService:
+      #     name: statementbur-redis
+      #     type: redis
+      #     property: connectionString
+      
+      # Sentry Error Monitoring (Optional)
+      # - key: SENTRY_DSN
+      #   value: https://your-sentry-dsn@sentry.io/project-id
+      
+      # - key: SENTRY_ENABLED
+      #   value: true
+      
+      # - key: SENTRY_ENVIRONMENT
+      #   value: production
+
+# Optional: Add Redis for caching and background jobs
+# Uncomment to enable:
+#
+# - type: redis
+#   name: statementbur-redis
+#   plan: starter  # Options: free (25MB), starter (256MB), standard, pro
+#   maxmemoryPolicy: allkeys-lru  # Eviction policy
+#   ipAllowList: []  # Empty = allow from Render services only
+
+# Optional: Add Celery Worker for background tasks
+# Uncomment to enable:
+#
+# - type: worker
+#   name: statementbur-worker
+#   runtime: python
+#   plan: starter
+#   buildCommand: |
+#     cd backend
+#     pip install --upgrade pip
+#     pip install -r requirements.txt
+#   startCommand: |
+#     cd backend
+#     celery -A celery_app worker --loglevel=info
+#   envVars:
+#     - key: DATABASE_URL
+#       fromDatabase:
+#         name: statementbur-db
+#         property: connectionString
+#     - key: CELERY_BROKER_URL
+#       fromService:
+#         name: statementbur-redis
+#         type: redis
+#         property: connectionString
+#     - key: CELERY_RESULT_BACKEND
+#       fromService:
+#         name: statementbur-redis
+#         type: redis
+#         property: connectionString
+
+# Deployment Tips:
+# 1. Update ALLOWED_ORIGINS with your actual frontend URL
+# 2. For production, use cloud storage (S3/Azure/GCS) instead of local
+# 3. Enable Redis for better performance and background jobs
+# 4. Monitor with Sentry for error tracking
+# 5. Use Render's "Secrets" feature for sensitive credentials
+# 6. Review Render logs after first deployment
+# 7. Test health check: https://your-app.onrender.com/health

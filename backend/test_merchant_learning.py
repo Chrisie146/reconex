@@ -10,11 +10,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from models import Base, Transaction, UserCategorizationRule
 from services.categorization_learning_service import CategorizationLearningService
+from config import DATABASE_URL
 import uuid
 from datetime import date
 
 # Setup database
-engine = create_engine("sqlite:///statement_analyzer.db")
+engine = create_engine(DATABASE_URL)
 Session = sessionmaker(bind=engine)
 db = Session()
 

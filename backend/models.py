@@ -282,7 +282,11 @@ class TaskStatus(Base):
 
 
 # Database setup using configuration
-from config import DATABASE_URL
+from config import DATABASE_URL, ENVIRONMENT
+
+# Fix Render postgres:// URL to postgresql:// for SQLAlchemy 1.4+ compatibility
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 # Configure engine based on database type
 is_sqlite = DATABASE_URL.startswith("sqlite")
@@ -307,6 +311,17 @@ elif is_postgresql:
     engine_config["pool_timeout"] = 30  # Seconds to wait for connection
     engine_config["pool_pre_ping"] = True  # Verify connections before using
     engine_config["pool_recycle"] = 3600  # Recycle connections after 1 hour
+    
+    # Connection arguments for PostgreSQL
+    connect_args = {
+        "options": "-c statement_timeout=30000"  # 30 second query timeout
+    }
+    
+    # Enable SSL for production environments
+    if ENVIRONMENT == "production":
+        connect_args["sslmode"] = "require"
+    
+    engine_config["connect_args"] = connect_args
 
 engine = create_engine(DATABASE_URL, **engine_config)
 

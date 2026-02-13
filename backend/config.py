@@ -131,6 +131,10 @@ class Config:
         if "EXAMPLE" in cls.DATABASE_URL.upper():
             errors.append("DATABASE_URL contains 'EXAMPLE' - update with actual database path")
         
+        # Check for SQLite in production
+        if cls.ENVIRONMENT == "production" and cls.DATABASE_URL.startswith("sqlite"):
+            errors.append("SQLite is not recommended for production - use PostgreSQL with connection pooling")
+        
         # Validate CORS origins
         if cls.ENVIRONMENT == "production" and "localhost" in cls.ALLOWED_ORIGINS_STR.lower():
             warnings.append("ALLOWED_ORIGINS includes localhost in production - ensure this is intentional")
