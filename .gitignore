@@ -51,6 +51,12 @@ dist/
 uploads/
 temp/
 
+# AWS Credentials (NEVER COMMIT THESE!)
+aws-s3-credentials.txt
+s3-policy.json
+*.pem
+*.key
+
 # OS
 .DS_Store
 Thumbs.db

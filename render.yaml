@@ -86,9 +86,29 @@ services:
       - key: RATE_LIMIT_PER_HOUR
         value: 1000
       
-      # Storage Backend (Update for cloud storage)
+      # Storage Backend - CRITICAL: Use cloud storage in production
+      # Local storage will lose all files on redeploy!
       - key: STORAGE_BACKEND
-        value: local  # Change to 's3', 'azure', or 'gcs' for production
+        value: s3  # Options: s3, azure, gcs (NEVER use 'local' in production)
+      
+      # AWS S3 Configuration (Required when STORAGE_BACKEND=s3)
+      # Create bucket: aws s3 mb s3://statementbur-invoices-prod
+      # Create IAM user with S3 permissions (see FILE_STORAGE_AUDIT_REPORT.md)
+      - key: S3_BUCKET_NAME
+        sync: false  # Set in Render dashboard
+      
+      - key: S3_REGION
+        value: us-west-2  # Choose closest region: us-east-1, us-west-2, eu-west-1
+      
+      - key: S3_ACCESS_KEY
+        sync: false  # Set in Render dashboard (keep secret)
+      
+      - key: S3_SECRET_KEY
+        sync: false  # Set in Render dashboard (keep secret)
+      
+      # File Access Settings
+      - key: SIGNED_URL_EXPIRATION_SECONDS
+        value: 3600  # 1 hour for invoice downloads
       
       # Redis Cache (Add Redis service separately if needed)
       - key: CACHE_ENABLED

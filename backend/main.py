@@ -382,10 +382,10 @@ bulk_categorizer = BulkCategorizer()
 
 # Session-based custom categories storage (in-memory)
 # In production, this would be in the database per session
-session_custom_categories: dict = {}  # session_id -> [custom_categories]
+session_custom_categories: dict = {}  # (user_id, session_id) -> [custom_categories]
 
-# In-memory OCR regions store: session_id -> mapping of pages -> regions
-# Structure: { session_id: { "pages": { 1: { 'date_region': {...}, ... }, 2: {...} }, "amount_type": "single" } }
+# In-memory OCR regions store: (user_id, session_id) -> mapping of pages -> regions
+# Structure: { (user_id, session_id): { "pages": { 1: { 'date_region': {...}, ... }, 2: {...} }, "amount_type": "single" } }
 ocr_region_store: dict = {}
 
 
@@ -2137,7 +2137,8 @@ async def save_ocr_regions(payload: dict, session_id: str, current_user: User = 
 
         # Allow either a single page payload or a multi-page payload (pages dict)
         # If payload contains 'pages', expect structure: { "1": {date_region:..., description_region:...}, "2": {...} }
-        entry = ocr_region_store.get(session_id, {'pages': {}, 'amount_type': 'single'})
+        store_key = (current_user.id, session_id)
+        entry = ocr_region_store.get(store_key, {'pages': {}, 'amount_type': 'single'})
 
         if 'pages' in payload and isinstance(payload['pages'], dict):
             for p_str, regs in payload['pages'].items():
@@ -2157,7 +2158,7 @@ async def save_ocr_regions(payload: dict, session_id: str, current_user: User = 
         if 'amount_type' in payload:
             entry['amount_type'] = payload.get('amount_type', entry.get('amount_type', 'single'))
 
-        ocr_region_store[session_id] = entry
+        ocr_region_store[store_key] = entry
 
         return {"success": True, "message": "Regions saved", "session_id": session_id, "pages_saved": list(entry['pages'].keys())}
     except HTTPException:
@@ -2189,11 +2190,12 @@ async def ocr_extract(
     
     try:
         ensure_session_access(session_id, current_user, db)
-        if not session_id or session_id not in ocr_region_store:
+        store_key = (current_user.id, session_id)
+        if not session_id or store_key not in ocr_region_store:
             raise HTTPException(status_code=400, detail="session_id is required and must have saved regions via /ocr/regions")
 
         content = await file.read()
-        saved = ocr_region_store[session_id]
+        saved = ocr_region_store[store_key]
         pages_map = saved.get('pages', {})
         amount_type = saved.get('amount_type', 'single')
 
@@ -4102,7 +4104,11 @@ def delete_session(session_id: str, current_user: User = Depends(get_current_use
 
 
 @app.post("/sessions/bulk-delete")
-def bulk_delete_sessions(request: BulkDeleteSessionsRequest, db: Session = Depends(get_db)):
+def bulk_delete_sessions(
+    request: BulkDeleteSessionsRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """Delete multiple sessions and all their associated data
     
     Args:
@@ -4127,6 +4133,9 @@ def bulk_delete_sessions(request: BulkDeleteSessionsRequest, db: Session = Depen
         deleted_count = 0
         
         for session_id in request.session_ids:
+            # Verify user has access to this session
+            ensure_session_access(session_id, current_user, db)
+            
             # Count what we're deleting
             txn_count = db.query(Transaction).filter(Transaction.session_id == session_id).count()
             inv_count = db.query(Invoice).filter(Invoice.session_id == session_id).count()
@@ -4177,12 +4186,18 @@ def bulk_delete_sessions(request: BulkDeleteSessionsRequest, db: Session = Depen
 
 
 @app.get("/rules")
-def list_rules(client_id: Optional[int] = None, db: Session = Depends(get_db)):
+def list_rules(client_id: Optional[int] = None, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
         if client_id:
+            # Verify client belongs to authenticated user
+            client = db.query(Client).filter(Client.id == client_id, Client.user_id == current_user.id).first()
+            if not client:
+                raise HTTPException(status_code=404, detail="Client not found")
             rows = db.query(Rule).filter(Rule.client_id == client_id).order_by(Rule.priority.asc()).all()
         else:
-            rows = db.query(Rule).order_by(Rule.priority.asc()).all()
+            # Only show rules for current user's clients
+            client_ids = [c.id for c in db.query(Client.id).filter(Client.user_id == current_user.id).all()]
+            rows = db.query(Rule).filter(Rule.client_id.in_(client_ids)).order_by(Rule.priority.asc()).all()
         out = []
         for r in rows:
             out.append({
@@ -4200,7 +4215,7 @@ def list_rules(client_id: Optional[int] = None, db: Session = Depends(get_db)):
 
 
 @app.post("/rules")
-def create_rule(request: dict, client_id: Optional[int] = None, db: Session = Depends(get_db)):
+def create_rule(request: dict, client_id: Optional[int] = None, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Create a new rule. Body: { name, enabled, priority, conditions, action, auto_apply }"""
     try:
         name = request.get("name")
@@ -4210,6 +4225,12 @@ def create_rule(request: dict, client_id: Optional[int] = None, db: Session = De
         action = request.get("action")
         if conditions is None or action is None:
             raise HTTPException(status_code=400, detail="conditions and action are required")
+
+        # Verify client ownership if client_id provided
+        if client_id is not None:
+            client = db.query(Client).filter(Client.id == client_id, Client.user_id == current_user.id).first()
+            if not client:
+                raise HTTPException(status_code=404, detail="Client not found")
 
         r = Rule(
             client_id=client_id,
@@ -4230,11 +4251,18 @@ def create_rule(request: dict, client_id: Optional[int] = None, db: Session = De
 
 
 @app.put("/rules/{rule_id}")
-def update_rule(rule_id: int, request: dict, db: Session = Depends(get_db)):
+def update_rule(rule_id: int, request: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
         r = db.query(Rule).filter(Rule.id == rule_id).first()
         if not r:
             raise HTTPException(status_code=404, detail="Rule not found")
+
+        # Verify rule belongs to user's client
+        if r.client_id:
+            client = db.query(Client).filter(Client.id == r.client_id, Client.user_id == current_user.id).first()
+            if not client:
+                raise HTTPException(status_code=403, detail="Access denied")
+
         if "name" in request:
             r.name = request.get("name")
         if "enabled" in request:
@@ -4256,11 +4284,18 @@ def update_rule(rule_id: int, request: dict, db: Session = Depends(get_db)):
 
 
 @app.delete("/rules/{rule_id}")
-def delete_rule(rule_id: int, db: Session = Depends(get_db)):
+def delete_rule(rule_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
         r = db.query(Rule).filter(Rule.id == rule_id).first()
         if not r:
             raise HTTPException(status_code=404, detail="Rule not found")
+
+        # Verify rule belongs to user's client
+        if r.client_id:
+            client = db.query(Client).filter(Client.id == r.client_id, Client.user_id == current_user.id).first()
+            if not client:
+                raise HTTPException(status_code=403, detail="Access denied")
+
         db.delete(r)
         db.commit()
         return {"success": True}
@@ -4303,15 +4338,25 @@ def _txn_matches_conditions(txn: dict, conds: dict) -> bool:
 
 
 @app.post("/rules/{rule_id}/preview")
-def preview_rule(rule_id: int, payload: dict, db: Session = Depends(get_db)):
+def preview_rule(rule_id: int, payload: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Preview a rule against a session: body { session_id: '...' }"""
     try:
         sid = payload.get('session_id')
         if not sid:
             raise HTTPException(status_code=400, detail="session_id is required")
+
+        ensure_session_access(sid, current_user, db)
+
         r = db.query(Rule).filter(Rule.id == rule_id).first()
         if not r:
             raise HTTPException(status_code=404, detail="Rule not found")
+
+        # Verify rule belongs to user's client
+        if r.client_id:
+            client = db.query(Client).filter(Client.id == r.client_id, Client.user_id == current_user.id).first()
+            if not client:
+                raise HTTPException(status_code=403, detail="Access denied")
+
         conds = json.loads(r.conditions)
         txns_db = db.query(Transaction).filter(Transaction.session_id == sid).all()
         matches = []
@@ -4327,12 +4372,14 @@ def preview_rule(rule_id: int, payload: dict, db: Session = Depends(get_db)):
 
 
 @app.post("/rules/{rule_id}/apply")
-def apply_rule(rule_id: int, payload: dict, session_id: str = None, db: Session = Depends(get_db)):
+def apply_rule(rule_id: int, payload: dict, session_id: str = None, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Apply a rule to a session. Query param session_id or payload.session_id required."""
     try:
         sid = session_id or payload.get('session_id')
         if not sid:
             raise HTTPException(status_code=400, detail="session_id is required")
+
+        ensure_session_access(sid, current_user, db)
 
         # Prevent modifications if session is locked
         ss = db.query(SessionState).filter(SessionState.session_id == sid).first()
@@ -4342,6 +4389,12 @@ def apply_rule(rule_id: int, payload: dict, session_id: str = None, db: Session 
         r = db.query(Rule).filter(Rule.id == rule_id).first()
         if not r:
             raise HTTPException(status_code=404, detail="Rule not found")
+
+        # Verify rule belongs to user's client
+        if r.client_id:
+            client = db.query(Client).filter(Client.id == r.client_id, Client.user_id == current_user.id).first()
+            if not client:
+                raise HTTPException(status_code=403, detail="Access denied")
 
         conds = json.loads(r.conditions)
         action = json.loads(r.action)
@@ -4455,13 +4508,23 @@ def set_reconciliation_overview(request: OverallReconciliationRequest, session_i
 # =============================================================================
 
 @app.get("/export/transactions")
-def export_transactions(session_id: Optional[str] = None, client_id: Optional[int] = None, db: Session = Depends(get_db)):
+def export_transactions(
+    session_id: Optional[str] = None,
+    client_id: Optional[int] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
     Export all transactions to Excel
     """
     try:
         if not session_id and not client_id:
             raise HTTPException(status_code=400, detail="Either session_id or client_id must be provided")
+        
+        # Ensure user has access to the session if session_id is provided
+        if session_id:
+            ensure_session_access(session_id, current_user, db)
+        
         output = ExcelExporter.export_transactions(session_id, db, client_id)  # BytesIO
         filename_part = session_id[:8] if session_id else f"client_{client_id}"
         headers = {
@@ -4477,13 +4540,23 @@ def export_transactions(session_id: Optional[str] = None, client_id: Optional[in
 
 
 @app.get("/export/summary")
-def export_summary(session_id: Optional[str] = None, client_id: Optional[int] = None, db: Session = Depends(get_db)):
+def export_summary(
+    session_id: Optional[str] = None,
+    client_id: Optional[int] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
     Export monthly summary to Excel (multi-sheet)
     """
     try:
         if not session_id and not client_id:
             raise HTTPException(status_code=400, detail="Either session_id or client_id must be provided")
+        
+        # Ensure user has access to the session if session_id is provided
+        if session_id:
+            ensure_session_access(session_id, current_user, db)
+        
         summary = calculate_monthly_summary(session_id, db, client_id)
         output = ExcelExporter.export_monthly_summary(summary)  # BytesIO
         filename_part = session_id[:8] if session_id else f"client_{client_id}"
@@ -4500,11 +4573,12 @@ def export_summary(session_id: Optional[str] = None, client_id: Optional[int] = 
 
 
 @app.get("/export/category")
-def export_category(session_id: str, category: str, db: Session = Depends(get_db)):
+def export_category(session_id: str, category: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """
     Export a single category workbook with month sections (opening balance + running balances).
     """
     try:
+        ensure_session_access(session_id, current_user, db)
         output = ExcelExporter.export_category_monthly(session_id, category, db)
         headers = {
             "Content-Disposition": f'attachment; filename="category_{category[:16]}_{session_id[:8]}.xlsx"'
@@ -4525,6 +4599,7 @@ def export_all_categories(
     date_to: Optional[str] = None,
     include_vat: bool = False,
     categories: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -4538,6 +4613,8 @@ def export_all_categories(
     - categories: Comma-separated list of category names to include (optional, default: all)
     """
     try:
+        ensure_session_access(session_id, current_user, db)
+        
         import traceback
         print(f"\n{'='*60}")
         print(f"CATEGORY EXPORT REQUEST")
