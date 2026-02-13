@@ -5,7 +5,7 @@ databases:
   - name: statementbur-db
     databaseName: statement_analyzer
     user: statement_user
-    plan: starter  # Database plans: free, starter, standard, pro
+    plan: free  # Database plans: free, standard, pro (starter deprecated)
     # PostgreSQL version automatically managed by Render
     ipAllowList: []  # Empty = allow connections from Render services only
 
