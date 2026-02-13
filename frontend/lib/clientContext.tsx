@@ -65,14 +65,8 @@ export function ClientProvider({ children }: { children: ReactNode }) {
     setIsLoading(true)
     setError(null)
     try {
-      const url = `${API_BASE}/clients`
-      console.log('[ClientContext] Fetching clients from:', url)
-      const response = await apiFetch('/clients')
-      if (!response.ok) {
-        console.error('[ClientContext] Failed to fetch clients:', response.status, response.statusText)
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-      const data = await response.json()
+      console.log('[ClientContext] Fetching clients')
+      const data = await apiFetch('/clients')
       console.log('[ClientContext] Clients loaded:', data)
       setClients(data.clients || [])
       // If we had a current client but it's no longer in the list, clear it
@@ -95,11 +89,9 @@ export function ClientProvider({ children }: { children: ReactNode }) {
     }
     setIsLoading(true)
     try {
-      const response = await apiFetch(`/clients?name=${encodeURIComponent(name)}`, {
+      const newClient = await apiFetch(`/clients?name=${encodeURIComponent(name)}`, {
         method: 'POST'
       })
-      if (!response.ok) throw new Error('Failed to create client')
-      const newClient = await response.json()
       console.log('[ClientContext] New client created:', newClient)
       // Refresh the full client list to ensure consistency and prevent data loss
       await refreshClients()
@@ -117,12 +109,10 @@ export function ClientProvider({ children }: { children: ReactNode }) {
   const updateClient = async (id: number, name: string): Promise<Client> => {
     setIsLoading(true)
     try {
-      const response = await apiFetch(
+      const updated = await apiFetch(
         `/clients/${id}?name=${encodeURIComponent(name)}`,
         { method: 'PUT' }
       )
-      if (!response.ok) throw new Error('Failed to update client')
-      const updated = await response.json()
       setClients(clients.map(c => c.id === id ? updated : c))
       if (currentClient?.id === id) {
         setCurrentClient(updated)
@@ -140,11 +130,10 @@ export function ClientProvider({ children }: { children: ReactNode }) {
   const deleteClient = async (id: number): Promise<void> => {
     setIsLoading(true)
     try {
-      const response = await apiFetch(
+      await apiFetch(
         `/clients/${id}`,
         { method: 'DELETE' }
       )
-      if (!response.ok) throw new Error('Failed to delete client')
       setClients(clients.filter(c => c.id !== id))
       if (currentClient?.id === id) {
         setCurrentClient(null)
