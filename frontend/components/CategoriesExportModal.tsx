@@ -188,7 +188,7 @@ export default function CategoriesExportModal({
       })
 
       // Generate filename
-      const dateRangeStr = dateFrom && dateTo ? `${dateFrom}_to_${dateTo}` : sessionId.substring(0, 8)
+      const dateRangeStr = dateFrom && dateTo ? `${dateFrom}_to_${dateTo}` : (sessionId?.substring(0, 8) || 'export')
       const vatStr = includeVAT ? '_with_vat' : ''
       const filename = `categories${vatStr}_${dateRangeStr}.xlsx`
 

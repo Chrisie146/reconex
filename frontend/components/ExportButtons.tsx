@@ -97,7 +97,7 @@ export default function ExportButtons({ sessionId, currentClient }: ExportButton
       const url = window.URL.createObjectURL(response.data)
       const link = document.createElement('a')
       link.href = url
-      link.download = `categories_${sessionId.substring(0, 8)}.xlsx`
+      link.download = `categories_${sessionId?.substring(0, 8) || 'export'}.xlsx`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)

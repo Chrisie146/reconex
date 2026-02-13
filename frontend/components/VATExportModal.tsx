@@ -109,7 +109,7 @@ export default function VATExportModal({
       })
 
       // Generate filename based on export type and date range
-      const dateRangeStr = dateFrom && dateTo ? `${dateFrom}_to_${dateTo}` : sessionId.substring(0, 8)
+      const dateRangeStr = dateFrom && dateTo ? `${dateFrom}_to_${dateTo}` : (sessionId?.substring(0, 8) || 'export')
       const typeStr = exportType === 'both' ? 'report' : exportType.replace('_', '_')
       const filename = `vat_${typeStr}_${dateRangeStr}.xlsx`
 

@@ -90,7 +90,7 @@ export default function Sidebar({ sessionId, selectedStatement = '', onStatement
       let filename: string
       
       endpoint = `${API_BASE_URL}/export/${type}`
-      filename = `${type}_${sessionId.substring(0, 8)}.xlsx`
+      filename = `${type}_${sessionId?.substring(0, 8) || 'export'}.xlsx`
       
       const response = await axios.get(endpoint, {
         params: { session_id: sessionId, format: 'excel' },
