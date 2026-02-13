@@ -10,6 +10,7 @@ import os
 import re
 from datetime import datetime
 from typing import Tuple, List, Dict, Any, Optional
+import pandas as pd
 
 # Import multilingual column mapping
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
