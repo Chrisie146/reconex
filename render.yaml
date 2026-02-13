@@ -59,7 +59,7 @@ services:
       
       # Python Configuration
       - key: PYTHON_VERSION
-        value: 3.11
+        value: 3.11.8
       
       # CORS - Update with your frontend URL
       - key: ALLOWED_ORIGINS
