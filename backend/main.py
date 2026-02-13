@@ -1724,11 +1724,11 @@ async def upload_pdf_statement(
     try:
         # Read file content
         content = await file.read()
-        logger.info(f\"[PDF_UPLOAD] File read successfully, size: {len(content)} bytes\")
+        logger.info(f"[PDF_UPLOAD] File read successfully, size: {len(content)} bytes")
 
         try:
             csv_bytes, statement_year, detected_bank = pdf_to_csv_bytes(content)
-            logger.info(f\"[PDF_UPLOAD] PDF parsed successfully, detected year: {statement_year}, bank: {detected_bank}\")
+            logger.info(f"[PDF_UPLOAD] PDF parsed successfully, detected year: {statement_year}, bank: {detected_bank}")
         except PDFParserError as pe:
             raise HTTPException(status_code=400, detail=f"PDF parse error: {str(pe)}")
 
@@ -3959,7 +3959,6 @@ def session_status(session_id: str, current_user: User = Depends(get_current_use
 
 
 @app.get("/sessions")
-@cached(ttl=600)  # Cache for 10 minutes
 async def list_sessions(request: Request, client_id: Optional[int] = None, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Return a list of previous upload sessions with basic metadata.
 
