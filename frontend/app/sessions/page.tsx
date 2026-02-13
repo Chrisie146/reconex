@@ -6,7 +6,7 @@ import { Trash2 } from 'lucide-react'
 import { apiFetch } from '@/lib/apiFetch'
 import { useClient } from '@/lib/clientContext'
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 export default function Page() {
   const [sessions, setSessions] = React.useState<any[]>([])
