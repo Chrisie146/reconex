@@ -22,6 +22,10 @@ client.interceptors.response.use(
     if (error?.response?.status === 401) {
       clearToken()
       clearAuthUser()
+      // Redirect to login if we're in the browser
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(error)
   }
