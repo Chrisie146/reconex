@@ -70,9 +70,14 @@ else:
 print("\n[STEP 3] DIRECT ADAPTER PROCESSING")
 print("-"*80)
 
-from services.parser import _find_data_start, _clean_dataframe
+from services.parser import _find_data_start, _clean_rows
+import pandas as pd
+
 df_adapter = _find_data_start(csv_bytes)
-df_adapter = _clean_dataframe(df_adapter)
+headers, data_rows = df_adapter
+clean_headers, cleaned_rows = _clean_rows(headers, data_rows)
+df_adapter = pd.DataFrame(cleaned_rows)
+df_adapter.columns = clean_headers
 
 print(f"Adapter input columns: {list(df_adapter.columns)}")
 print(f"Adapter input rows: {len(df_adapter)}")

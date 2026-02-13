@@ -209,12 +209,21 @@ def normalize_csv(file_content: bytes, statement_year: int = None, forced_bank: 
     """
     try:
         # Use smart header detection
-        df = _find_data_start(file_content)
-        if df is None or df.empty:
+        result = _find_data_start(file_content)
+        if result is None:
             return [], "Could not find data in CSV file", [], "unknown"
         
-        # Normalize column names (strip whitespace) and clean noise
-        df = _clean_dataframe(df)
+        headers, data_rows = result
+        
+        # Clean the data
+        clean_headers, cleaned_rows = _clean_rows(headers, data_rows)
+        
+        # Convert to pandas DataFrame
+        if not cleaned_rows:
+            return [], "No data rows found in CSV file", [], "unknown"
+            
+        df = pd.DataFrame(cleaned_rows)
+        df.columns = clean_headers
         
         # Detect bank from headers and sample rows
         headers_list = list(df.columns)
