@@ -109,34 +109,52 @@ async def validate_file_upload(
         )
     
     # Validate MIME type using magic bytes (more secure than trusting file extension)
+    mime_type = None
     if HAS_MAGIC:
         try:
             # Try to detect MIME type from content
-            mime = magic.from_buffer(content[:2048], mime=True)  # Check first 2KB
+            mime_type = magic.from_buffer(content[:2048], mime=True)  # Check first 2KB
+            logger.info(f"MIME type detected: {file.filename} -> {mime_type}")
             
-            if mime not in allowed_types:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Invalid file type '{mime}'. Allowed types: {', '.join(sorted(set([t.split('/')[-1] for t in allowed_types])))}"
-                )
+            if mime_type not in allowed_types:
+                logger.warning(f"MIME type mismatch for {file.filename}: got '{mime_type}', allowed {allowed_types}")
+                # Check by extension as fallback before rejecting
+                if require_extension:
+                    file_lower = file.filename.lower()
+                    if any(file_lower.endswith(ext.lower()) for ext in require_extension):
+                        # Extension is correct, warn but allow
+                        logger.info(f"MIME type mismatch but extension valid, allowing: {file.filename}")
+                    else:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Invalid file type '{mime_type}'. Allowed types: {', '.join(sorted(set([t.split('/')[-1] for t in allowed_types])))}"
+                        )
+                else:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Invalid file type '{mime_type}'. Expected one of: {', '.join(allowed_types)}"
+                    )
             
-            logger.info(f"File validation passed: {file.filename} ({file_size} bytes, {mime})")
+            logger.info(f"File validation passed: {file.filename} ({file_size} bytes, {mime_type})")
             
+        except HTTPException:
+            raise
         except Exception as e:
-            # If magic fails, fall back to extension check with warning
-            logger.warning(f"MIME type detection failed for {file.filename}: {e}")
+            # If magic library fails completely, fall back to extension check
+            logger.warning(f"MIME type detection error for {file.filename}: {e}. Falling back to extension check.")
             
-            # Basic extension check as fallback
+            # Check by extension only
             if require_extension:
                 file_lower = file.filename.lower()
                 if not any(file_lower.endswith(ext.lower()) for ext in require_extension):
                     raise HTTPException(
                         status_code=400,
-                        detail=f"Could not validate file type. Extension must be: {', '.join(require_extension)}"
+                        detail=f"File extension check failed. Must be: {', '.join(require_extension)}"
                     )
+            logger.info(f"File validated by extension: {file.filename} ({file_size} bytes)")
     else:
         # Magic not available - use extension-only validation
-        logger.debug(f"File validation (extension-only): {file.filename} ({file_size} bytes)")
+        logger.debug(f"File validation (extension-only, python-magic unavailable): {file.filename} ({file_size} bytes)")
         if require_extension:
             file_lower = file.filename.lower()
             if not any(file_lower.endswith(ext.lower()) for ext in require_extension):

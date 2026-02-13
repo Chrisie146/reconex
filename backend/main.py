@@ -1709,11 +1709,17 @@ async def upload_pdf_statement(
     Args:
         client_id: Optional client ID for multi-client support
     """
+    logger.info(f"[PDF_UPLOAD] Starting upload for user {current_user.id}, file: {file.filename}, client_id: {client_id}, preview: {preview}")
+    
     # Rate limiting
     rate_info = upload_limiter.check_rate_limit(request, current_user.id)
     
     # Validate PDF upload (size, type, content)
-    await validate_pdf_upload(file)
+    try:
+        await validate_pdf_upload(file)
+    except Exception as e:
+        logger.error(f"[PDF_UPLOAD] File validation failed for {file.filename}: {str(e)}")
+        raise
     
     try:
         # Read file content
@@ -1735,13 +1741,15 @@ async def upload_pdf_statement(
         if not normalized_transactions:
             raise HTTPException(status_code=400, detail="No valid transactions found in PDF")
         
-        print(f"[PDF_UPLOAD] Detected bank source: {bank_source}")
+        logger.info(f"[PDF_UPLOAD] Detected bank source: {bank_source}")
 
         # Validate client ownership if provided
         if client_id is not None:
+            logger.info(f"[PDF_UPLOAD] Validating client {client_id} belongs to user {current_user.id}")
             client = db.query(Client).filter(Client.id == client_id, Client.user_id == current_user.id).first()
             if not client:
-                raise HTTPException(status_code=404, detail="Client not found")
+                logger.error(f"[PDF_UPLOAD] Client {client_id} not found or doesn't belong to user {current_user.id}")
+                raise HTTPException(status_code=404, detail=f"Client {client_id} not found or doesn't belong to your account")
 
         # Load enabled rules for potential auto-apply
         try:
@@ -1876,9 +1884,9 @@ async def upload_pdf_statement(
         raise
     except Exception as e:
         import traceback
-        print(f"[ERROR] clear_all_categories failed: {str(e)}")
-        traceback.print_exc()
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"[PDF_UPLOAD] Unexpected error: {str(e)}")
+        logger.error(f"[PDF_UPLOAD] Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=400, detail=f"Upload failed: {str(e)}")
 
 
 @app.post("/save_parsed")
