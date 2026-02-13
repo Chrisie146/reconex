@@ -90,6 +90,9 @@ export function ClientProvider({ children }: { children: ReactNode }) {
   }
 
   const createClient = async (name: string): Promise<Client> => {
+    if (!isAuthenticated()) {
+      throw new Error('You must be logged in to create a client')
+    }
     setIsLoading(true)
     try {
       const response = await apiFetch(`/clients?name=${encodeURIComponent(name)}`, {
