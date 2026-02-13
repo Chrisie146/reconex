@@ -59,7 +59,7 @@ services:
       
       # CORS - Update with your frontend URL
       - key: ALLOWED_ORIGINS
-        value: https://yourdomain.com,https://www.yourdomain.com
+        value: https://reconex-frontend.onrender.com
       
       # API Server
       - key: API_HOST
