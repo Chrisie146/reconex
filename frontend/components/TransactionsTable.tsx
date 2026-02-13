@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode, useRef } from 'react'
 import { ChevronDown, FileText, X, Tag, Users, Trash2, Search, Settings, Check } from 'lucide-react'
 import axios from '@/lib/axiosClient'
+import { isAxiosError } from 'axios'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { arrayMove, SortableContext, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -989,7 +990,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
                       .finally(() => setLoading(false))
                   } catch (error: any) {
                     console.error('Failed to clear categories:', error)
-                    if (axios.isAxiosError(error) && error.response?.data) {
+                    if (isAxiosError(error) && error.response?.data) {
                       console.error('Backend error details:', error.response.data)
                       setSuccessMessage(`Failed to clear categories: ${error.response.data.detail || 'Unknown error'}`)
                     } else {
