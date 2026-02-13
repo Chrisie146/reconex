@@ -73,6 +73,10 @@ export function ClientProvider({ children }: { children: ReactNode }) {
       if (currentClient && !data.clients.find((c: Client) => c.id === currentClient.id)) {
         setCurrentClient(null)
       }
+      // If no current client is selected and we have clients, select the first one
+      if (!currentClient && data.clients && data.clients.length > 0) {
+        setCurrentClient(data.clients[0])
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch clients'
       console.error('[ClientContext] Error:', message)

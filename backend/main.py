@@ -588,10 +588,19 @@ def register(request: UserRegister, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(new_user)
         
+        # Create default client for new user
+        default_client = Client(
+            user_id=new_user.id,
+            name="My Business"
+        )
+        db.add(default_client)
+        db.commit()
+        db.refresh(default_client)
+        
         # Create access token
         access_token = create_access_token(data={"sub": str(new_user.id)})
         
-        logger.info(f"✓ New user registered: {request.email}")
+        logger.info(f"✓ New user registered: {request.email} with default client")
         
         return TokenResponse(
             access_token=access_token,
