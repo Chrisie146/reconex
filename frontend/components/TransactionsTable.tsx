@@ -555,6 +555,8 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
       description: 'Description',
       merchant: 'Merchant',
       amount: 'Amount',
+      vat_amount: 'VAT Amount',
+      amount_excl_vat: 'Amount Excl VAT',
       category: 'Category',
       invoice: 'Invoice',
       running_balance: 'Running Balance',
