@@ -697,7 +697,7 @@ class ExcelExporter:
 
     @staticmethod
     def _sanitize_sheet_name(name: str) -> str:
-        """
+        r"""
         Sanitize a category name for use as an Excel sheet name.
         Excel sheet names can't contain: : \ / ? * [ ]
         Max 31 characters.
