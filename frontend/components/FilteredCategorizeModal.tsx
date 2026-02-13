@@ -52,7 +52,7 @@ export default function FilteredCategorizeModal({ isOpen, onClose, transactions,
 
   const toggleId = (id: number) => {
     setSelectedIds((prev) => {
-      if (prev.includes(id)) return prev.filter((x) => x !== id)
+      if (prev.includes(id)) return prev.filter((x: number) => x !== id)
       return [...prev, id]
     })
   }

@@ -303,13 +303,13 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
         if (txnFilter) {
           switch (txnFilter) {
             case 'expenses':
-              txns = txns.filter((t) => Number(t.amount) < 0)
+              txns = txns.filter((t: any) => Number(t.amount) < 0)
               break
             case 'income':
-              txns = txns.filter((t) => Number(t.amount) > 0)
+              txns = txns.filter((t: any) => Number(t.amount) > 0)
               break
             case 'uncategorized':
-              txns = txns.filter((t) => !t.category || t.category === '')
+              txns = txns.filter((t: any) => !t.category || t.category === '')
               break
             default:
               // no-op for unknown filters
