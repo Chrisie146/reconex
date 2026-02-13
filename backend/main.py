@@ -1724,9 +1724,11 @@ async def upload_pdf_statement(
     try:
         # Read file content
         content = await file.read()
+        logger.info(f\"[PDF_UPLOAD] File read successfully, size: {len(content)} bytes\")
 
         try:
             csv_bytes, statement_year, detected_bank = pdf_to_csv_bytes(content)
+            logger.info(f\"[PDF_UPLOAD] PDF parsed successfully, detected year: {statement_year}, bank: {detected_bank}\")
         except PDFParserError as pe:
             raise HTTPException(status_code=400, detail=f"PDF parse error: {str(pe)}")
 
@@ -2210,7 +2212,6 @@ async def ocr_extract(
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.get("/transactions", tags=["Transactions"])
-@cached(ttl=300)  # Cache for 5 minutes
 async def get_transactions(
     request: Request,
     session_id: Optional[str] = None,
@@ -2219,6 +2220,7 @@ async def get_transactions(
     q: Optional[str] = None,
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
+    limit: Optional[int] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -2273,6 +2275,10 @@ async def get_transactions(
         )
 
     transactions = query.order_by(Transaction.date.desc()).all()
+    
+    # Apply limit if provided (for dashboard preview)
+    if limit and limit > 0:
+        transactions = transactions[:limit]
     
     # Get session state friendly names for statement identification
     session_names = {}
