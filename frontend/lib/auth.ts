@@ -46,3 +46,12 @@ export function clearAuthUser(): void {
 export function isAuthenticated(): boolean {
   return Boolean(getToken())
 }
+
+export function logout(): void {
+  clearToken()
+  clearAuthUser()
+  // Clear any other auth-related data
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('selected_client')
+  }
+}

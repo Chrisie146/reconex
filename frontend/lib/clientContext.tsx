@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { apiFetch } from './apiFetch'
+import { isAuthenticated } from './auth'
 
 export interface Client {
   id: number
@@ -30,9 +31,11 @@ export function ClientProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
-  // Load clients on mount
+  // Load clients on mount only if authenticated
   useEffect(() => {
-    refreshClients()
+    if (isAuthenticated()) {
+      refreshClients()
+    }
   }, [])
 
   // Load saved current client from localStorage
