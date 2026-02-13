@@ -48,7 +48,7 @@ export default function CategoryTransactionsModal({ isOpen, onClose, sessionId, 
         setTransactions(txns)
         
         // Auto-expand all months initially
-        const months = new Set(txns.map((t: Transaction) => t.date.substring(0, 7)))
+        const months = new Set<string>(txns.map((t: Transaction) => t.date.substring(0, 7)))
         setExpandedMonths(months)
       } catch (e) {
         console.error('Failed to load transactions for category', e)
