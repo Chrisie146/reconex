@@ -17,12 +17,23 @@ export default function RegisterPage() {
     e.preventDefault()
     setError(null)
     setLoading(true)
+
+    // Client-side validation
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters')
+      setLoading(false)
+      return
+    }
+
     try {
-      const response = await axios.post('/auth/register', {
+      const payload: any = {
         email,
         password,
-        full_name: fullName || undefined,
-      })
+      }
+      if (fullName.trim()) {
+        payload.full_name = fullName.trim()
+      }
+      const response = await axios.post('/auth/register', payload)
       const data = response.data
       setToken(data.access_token)
       setAuthUser({ user_id: data.user_id, email: data.email, full_name: data.full_name })
