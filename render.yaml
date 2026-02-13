@@ -57,10 +57,6 @@ services:
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: 10080  # 7 days
       
-      # Python Configuration
-      - key: PYTHON_VERSION
-        value: 3.11.8
-      
       # CORS - Update with your frontend URL
       - key: ALLOWED_ORIGINS
         value: https://yourdomain.com,https://www.yourdomain.com
