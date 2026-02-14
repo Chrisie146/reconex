@@ -29,16 +29,11 @@ export default function Page() {
       if (currentClient?.id) {
         url += `?client_id=${currentClient.id}`
       }
-      const res = await apiFetch(url)
-      if (!res.ok) {
-        console.error('Failed to load sessions', await res.text())
-        setSessions([])
-        return
-      }
-      const j = await res.json()
-      setSessions(j.sessions || [])
+      const data = await apiFetch(url)
+      // apiFetch already returns parsed JSON and throws on error
+      setSessions(data.sessions || [])
     } catch (e) {
-      console.error(e)
+      console.error('Failed to load sessions:', e)
       setSessions([])
     } finally {
       setLoading(false)
@@ -52,24 +47,17 @@ export default function Page() {
     setError(null)
 
     try {
-      let res
-      
       // Use bulk endpoint if multiple sessions, otherwise use single delete
       if (deleteConfirm.sessionIds.length === 1) {
-        res = await apiFetch(`${API_BASE}/sessions/${deleteConfirm.sessionIds[0]}`, {
+        await apiFetch(`${API_BASE}/sessions/${deleteConfirm.sessionIds[0]}`, {
           method: 'DELETE',
         })
       } else {
-        res = await apiFetch(`${API_BASE}/sessions/bulk-delete`, {
+        await apiFetch(`${API_BASE}/sessions/bulk-delete`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ session_ids: deleteConfirm.sessionIds }),
         })
-      }
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
-        throw new Error(errorData.detail || `Failed to delete session(s) (${res.status})`)
       }
 
       const count = deleteConfirm.sessionIds.length
