@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { BarChart3, TrendingUp, TrendingDown, ChevronDown, ChevronUp } from 'lucide-react'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
 import axios from '@/lib/axiosClient'
 import CategoryTransactionsModal from './CategoryTransactionsModal'
+import MonthlyTransactionsModal from './MonthlyTransactionsModal'
 import type { Client } from '@/lib/clientContext'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -15,6 +17,9 @@ interface CategoryBreakdownProps {
 
 interface MonthData {
   month: string
+  total_income: number
+  total_expenses: number
+  net_balance: number
   categories: Record<string, number>
 }
 
@@ -26,6 +31,8 @@ export default function CategoryBreakdown({ sessionId, currentClient }: Category
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [showIncome, setShowIncome] = useState(true)
   const [showExpenses, setShowExpenses] = useState(true)
+  const [isMonthModalOpen, setIsMonthModalOpen] = useState(false)
+  const [selectedMonthData, setSelectedMonthData] = useState<{ month: string; data: MonthData } | null>(null)
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -123,9 +130,37 @@ export default function CategoryBreakdown({ sessionId, currentClient }: Category
     'bg-amber-500',
   ]
 
+  const CHART_COLORS = ['#3b82f6', '#6366f1', '#a855f7', '#ec4899', '#f43f5e', '#f97316', '#f59e0b', '#10b981', '#06b6d4', '#8b5cf6']
+
+  // Prepare data for donut chart (top 7 expense categories + "Other")
+  const donutData = (() => {
+    const top = expenseCategories.slice(0, 7)
+    const otherTotal = expenseCategories.slice(7).reduce((sum, [_, amt]) => sum + amt, 0)
+    const data = top.map(([name, value]) => ({ name, value: Math.round(value * 100) / 100 }))
+    if (otherTotal > 0) data.push({ name: 'Other', value: Math.round(otherTotal * 100) / 100 })
+    return data
+  })()
+
+  // Prepare data for monthly bar chart - use pre-computed totals from backend
+  const barData = [...months]
+    .sort((a, b) => a.month.localeCompare(b.month))
+    .map(m => ({
+      month: m.month,
+      Income: Math.round(m.total_income || 0),
+      Expenses: Math.round(m.total_expenses || 0)
+    }))
+
   const openCategory = (category: string) => {
     setSelectedCategory(category)
     setIsModalOpen(true)
+  }
+
+  const openMonth = (monthKey: string) => {
+    const monthInfo = months.find(m => m.month === monthKey)
+    if (monthInfo) {
+      setSelectedMonthData({ month: monthKey, data: monthInfo })
+      setIsMonthModalOpen(true)
+    }
   }
 
   const renderCategoryRow = (category: string, amount: number, total: number, index: number, isIncome: boolean) => {
@@ -204,6 +239,72 @@ export default function CategoryBreakdown({ sessionId, currentClient }: Category
           )}
         </div>
       </div>
+
+      {/* Charts Section */}
+      {(barData.length > 0 || donutData.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 border-b border-neutral-200">
+          {/* Monthly Income vs Expenses Bar Chart */}
+          {barData.length > 0 && (
+            <div className="p-6 border-r border-neutral-200">
+              <h4 className="text-sm font-semibold text-neutral-700 mb-3">Income vs Expenses by Month</h4>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={barData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `R${(v / 1000).toFixed(0)}k`} />
+                  <Tooltip formatter={(value) => `R${Number(value).toLocaleString('en-ZA')}`} />
+                  <Bar dataKey="Income" fill="#22c55e" radius={[4, 4, 0, 0]} cursor="pointer" onClick={(data: any) => { if (data?.month) openMonth(data.month) }} />
+                  <Bar dataKey="Expenses" fill="#ef4444" radius={[4, 4, 0, 0]} cursor="pointer" onClick={(data: any) => { if (data?.month) openMonth(data.month) }} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* Expense Category Donut Chart */}
+          {donutData.length > 0 && (
+            <div className="p-6">
+              <h4 className="text-sm font-semibold text-neutral-700 mb-3">Expense Distribution</h4>
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie
+                    data={donutData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={85}
+                    paddingAngle={2}
+                    dataKey="value"
+                    onClick={(data: any) => {
+                      if (data && data.name) {
+                        openCategory(data.name)
+                      }
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {donutData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => `R${Number(value).toLocaleString('en-ZA')}`} />
+                  <Legend
+                    layout="vertical"
+                    verticalAlign="middle"
+                    align="right"
+                    iconType="circle"
+                    iconSize={8}
+                    formatter={(value) => <span className="text-xs text-neutral-700">{String(value)}</span>}
+                    onClick={(data: any) => {
+                      if (data && data.value) {
+                        openCategory(String(data.value))
+                      }
+                    }}
+                    wrapperStyle={{ cursor: 'pointer' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="overflow-x-auto">
         {/* Income Section */}
@@ -305,12 +406,24 @@ export default function CategoryBreakdown({ sessionId, currentClient }: Category
         </div>
       )}
 
-      {selectedCategory && sessionId && (
+      {selectedCategory && (sessionId || currentClient?.id) && (
         <CategoryTransactionsModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           sessionId={sessionId}
+          currentClient={currentClient}
           category={selectedCategory}
+        />
+      )}
+
+      {selectedMonthData && (
+        <MonthlyTransactionsModal
+          isOpen={isMonthModalOpen}
+          onClose={() => setIsMonthModalOpen(false)}
+          sessionId={sessionId}
+          currentClient={currentClient}
+          month={selectedMonthData.month}
+          monthData={selectedMonthData.data}
         />
       )}
     </div>

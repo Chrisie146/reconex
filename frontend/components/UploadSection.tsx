@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { FileUp, AlertCircle, CheckCircle } from 'lucide-react'
+import { FileUp, AlertCircle, Upload, FileText, Shield, Loader2 } from 'lucide-react'
 import axios from '@/lib/axiosClient'
 import UploadPreviewModal from './UploadPreviewModal'
+import ColumnMappingModal from './ColumnMappingModal'
 import { useClient } from '@/lib/clientContext'
-import LoadingButton from './LoadingButton'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -22,13 +22,14 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
   const [isPdfSelected, setIsPdfSelected] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [columnMappingOpen, setColumnMappingOpen] = useState(false)
+  const [dragActive, setDragActive] = useState(false)
 
   const { currentClient } = useClient()
 
   const handleFileSelect = async (file: File) => {
     if (!file) return
 
-    // Accept CSV or PDF
     const isCSV = file.name.toLowerCase().endsWith('.csv')
     const isPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
     if (!isCSV && !isPDF) {
@@ -36,7 +37,6 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
       return
     }
 
-    // Validate file size (5MB for CSV, 10MB for PDF)
     const maxSize = isPDF ? 10 * 1024 * 1024 : 5 * 1024 * 1024
     if (file.size > maxSize) {
       setError(`File is too large. Maximum size: ${isPDF ? '10MB' : '5MB'}`)
@@ -52,14 +52,12 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
       const formData = new FormData()
       formData.append('file', file)
 
-      // Build params with client_id if available
       let params = 'preview=true'
       if (currentClient?.id) {
         params += `&client_id=${currentClient.id}`
       }
-      
+
       const endpoint = isPDF ? `${API_BASE_URL}/upload_pdf?${params}` : `${API_BASE_URL}/upload?${params}`
-      // Request preview first
       const response = await axios.post(endpoint, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
       const data = response.data
       if (data && data.preview && Array.isArray(data.transactions)) {
@@ -67,7 +65,6 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
         setIsPdfSelected(isPDF)
         setPreviewOpen(true)
       } else {
-        // fallback: proceed with direct upload
         const finalParams = currentClient?.id ? `client_id=${currentClient.id}` : ''
         const saveEndpoint = isPDF ? `${API_BASE_URL}/upload_pdf?${finalParams}` : `${API_BASE_URL}/upload?${finalParams}`
         const resp2 = await axios.post(saveEndpoint, formData)
@@ -77,8 +74,18 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
       }
     } catch (err: any) {
       const errorMessage = err.response?.data?.detail || err.message || 'Upload failed'
-      setError(errorMessage)
-      setFileName('')
+      const isCSV = file.name.toLowerCase().endsWith('.csv')
+      const isDetectionFailure = errorMessage.toLowerCase().includes('column') ||
+        errorMessage.toLowerCase().includes('no valid transactions') ||
+        errorMessage.toLowerCase().includes('could not identify') ||
+        errorMessage.toLowerCase().includes('invalid csv')
+      if (isCSV && isDetectionFailure) {
+        setError('')
+        setColumnMappingOpen(true)
+      } else {
+        setError(errorMessage)
+        setFileName('')
+      }
     } finally {
       setLoading(false)
     }
@@ -87,7 +94,7 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     e.stopPropagation()
-    
+    setDragActive(false)
     const file = e.dataTransfer.files[0]
     handleFileSelect(file)
   }
@@ -95,43 +102,82 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     e.stopPropagation()
+    setDragActive(true)
   }
 
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragActive(false)
+  }
+
+  const supportedBanks = [
+    'Standard Bank', 'ABSA', 'FNB', 'Capitec', 'Nedbank', 'Investec',
+  ]
+
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto space-y-5">
+      {/* Client Warning */}
       {!currentClient && (
-        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 text-sm">
-          ⚠️ Please select or create a client before uploading statements.
+        <div className="flex items-start gap-3 rounded-xl bg-amber-50 ring-1 ring-amber-200 px-4 py-3">
+          <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+          <p className="text-sm text-amber-800">
+            Please select or create a client before uploading statements.
+          </p>
         </div>
       )}
-      
+
+      {/* Drop Zone */}
       <div
         onDrop={handleDrop}
         onDragOver={handleDragOver}
-        className="border-2 border-dashed border-neutral-300 rounded-lg p-12 text-center bg-neutral-50 hover:bg-neutral-100 transition-colors"
+        onDragLeave={handleDragLeave}
+        className={`
+          relative rounded-2xl border-2 border-dashed p-12 text-center transition-all duration-200
+          ${dragActive
+            ? 'border-indigo-400 bg-indigo-50/60 ring-4 ring-indigo-100'
+            : 'border-neutral-300 bg-neutral-50 hover:border-neutral-400 hover:bg-neutral-100/60'}
+        `}
       >
-        <div className="flex justify-center mb-4">
-          <div className="p-4 bg-white rounded-lg border border-neutral-200">
-            <FileUp className="w-8 h-8 text-neutral-900" />
+        {/* Icon */}
+        <div className="flex justify-center mb-5">
+          <div className={`
+            rounded-xl p-3.5 transition-colors duration-200
+            ${dragActive ? 'bg-indigo-100' : 'bg-white ring-1 ring-neutral-200 shadow-sm'}
+          `}>
+            <Upload className={`w-7 h-7 ${dragActive ? 'text-indigo-600' : 'text-neutral-700'}`} />
           </div>
         </div>
 
-        <h2 className="text-2xl font-bold text-neutral-900 mb-2">Upload Bank Statement</h2>
-        <p className="text-neutral-600 mb-6">
-          Drag and drop your CSV or PDF bank statement here or click to select
+        {/* Heading */}
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-2">
+          Upload Statement
+        </p>
+        <h2 className="text-xl font-semibold text-neutral-900 mb-1">
+          {dragActive ? 'Drop your file here' : 'Upload Bank Statement'}
+        </h2>
+        <p className="text-sm text-neutral-500 mb-6">
+          Drag and drop your CSV or PDF bank statement, or click to browse
         </p>
 
-        <div className="flex justify-center">
-          <LoadingButton
-            onClick={() => fileInputRef.current?.click()}
-            loading={loading}
-            loadingText="Processing..."
-            variant="primary"
-            disabled={loading || !currentClient}
-          >
-            Select File
-          </LoadingButton>
-        </div>
+        {/* Upload Button */}
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={loading || !currentClient}
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            <>
+              <FileUp className="w-4 h-4" />
+              Select File
+            </>
+          )}
+        </button>
 
         <input
           ref={fileInputRef}
@@ -144,20 +190,35 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
           disabled={loading}
         />
 
-        <div className="mt-6 text-sm text-neutral-600">
-          <p className="font-medium mb-2">Required columns (for CSV):</p>
-          <ul className="list-disc list-inside space-y-1">
-            <li><strong>Date</strong> - Transaction date (any common format)</li>
-            <li><strong>Description</strong> - Transaction description</li>
-            <li><strong>Amount/Debit/Credit</strong> - Transaction amount</li>
-          </ul>
+        {/* Supported Banks */}
+        <div className="mt-8 pt-6 border-t border-neutral-200">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-3">
+            Supported Banks
+          </p>
+          <div className="flex flex-wrap justify-center gap-2">
+            {supportedBanks.map((bank) => (
+              <span
+                key={bank}
+                className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-medium text-neutral-600 ring-1 ring-neutral-200"
+              >
+                <Shield className="w-3 h-3 text-indigo-500" />
+                {bank}
+              </span>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-neutral-400">
+            Other banks supported via manual column mapping
+          </p>
         </div>
 
-        <div className="mt-6 text-xs text-neutral-500 flex justify-center items-center gap-1">
-          📄 Max file size: CSV 5MB, PDF 10MB
+        {/* File Size Note */}
+        <div className="mt-4 flex items-center justify-center gap-1.5 text-xs text-neutral-400">
+          <FileText className="w-3.5 h-3.5" />
+          <span>Max file size: CSV 5MB, PDF 10MB</span>
         </div>
       </div>
 
+      {/* Preview + Column Mapping Modals */}
       <UploadPreviewModal
         isOpen={previewOpen}
         parsed={previewRows || []}
@@ -171,22 +232,37 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
         }}
       />
 
-      {/* Status Messages */}
+      <ColumnMappingModal
+        isOpen={columnMappingOpen}
+        file={selectedFile}
+        onClose={() => {
+          setColumnMappingOpen(false)
+          setFileName('')
+        }}
+        onSaved={(sessionId, count, categories) => {
+          setColumnMappingOpen(false)
+          onUploadSuccess(sessionId, count, categories)
+          setFileName('')
+        }}
+      />
+
+      {/* Status: File Selected */}
       {fileName && (
-        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2">
-          <FileUp className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-          <div className="text-sm text-blue-900">
-            Selected: <strong>{fileName}</strong>
-          </div>
+        <div className="flex items-start gap-3 rounded-xl bg-indigo-50 ring-1 ring-indigo-200 px-4 py-3">
+          <FileUp className="w-4 h-4 text-indigo-600 mt-0.5 flex-shrink-0" />
+          <p className="text-sm text-indigo-800">
+            Selected: <span className="font-medium">{fileName}</span>
+          </p>
         </div>
       )}
 
+      {/* Status: Error */}
       {error && (
-        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
-          <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
-          <div className="text-sm text-red-900">
-            <strong>Error:</strong> {error}
-          </div>
+        <div className="flex items-start gap-3 rounded-xl bg-red-50 ring-1 ring-red-200 px-4 py-3">
+          <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+          <p className="text-sm text-red-800">
+            <span className="font-medium">Error:</span> {error}
+          </p>
         </div>
       )}
     </div>

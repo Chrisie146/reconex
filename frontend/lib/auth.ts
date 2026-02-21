@@ -15,6 +15,7 @@ export function getToken(): string | null {
 export function setToken(token: string): void {
   if (typeof window === 'undefined') return
   localStorage.setItem(TOKEN_KEY, token)
+  window.dispatchEvent(new Event('auth:login'))
 }
 
 export function clearToken(): void {

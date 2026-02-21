@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import axios from '@/lib/axiosClient'
+import { toast } from 'sonner'
+import { useClient } from '@/lib/clientContext'
 import LoadingButton from './LoadingButton'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -29,6 +31,7 @@ export default function BulkCategoryModal({
   onSuccess,
   onCategoryCreated,
 }: BulkCategoryModalProps) {
+  const { currentClient } = useClient()
   const [selectedCategory, setSelectedCategory] = useState('')
   const [applyBulk, setApplyBulk] = useState(false)
   const [keyword, setKeyword] = useState('')
@@ -88,7 +91,7 @@ export default function BulkCategoryModal({
       const response = await axios.post(
         `${API_BASE_URL}/categories`,
         { category_name: newCategoryName },
-        { params: { session_id: sessionId } }
+        { params: { session_id: sessionId, ...(currentClient?.id ? { client_id: currentClient.id } : {}) } }
       )
 
       if (response.data.success) {
@@ -107,12 +110,12 @@ export default function BulkCategoryModal({
 
   const handleBulkApply = async () => {
     if (!selectedCategory) {
-      alert('Please select a category')
+      toast.error('Please select a category')
       return
     }
 
     if (applyBulk && !keyword) {
-      alert('Please enter a keyword')
+      toast.error('Please enter a keyword')
       return
     }
 
@@ -158,7 +161,7 @@ export default function BulkCategoryModal({
       onClose()
     } catch (error: any) {
       const errorMessage = error.response?.data?.detail || 'Failed to apply category'
-      alert(`Error: ${errorMessage}`)
+      toast.error(`Error: ${errorMessage}`)
     } finally {
       setLoading(false)
     }

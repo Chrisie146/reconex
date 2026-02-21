@@ -142,18 +142,26 @@ def get_category_summary(session_id: str = None, db: Session = None, client_id: 
 
 
 def get_transactions_by_category(
-    session_id: str,
     category: str,
-    db: Session
+    db: Session,
+    session_id: Optional[str] = None,
+    client_id: Optional[int] = None
 ) -> List[Dict[str, Any]]:
     """
     Get all transactions for a specific category
+    Accepts either session_id or client_id
     """
     
-    transactions = db.query(Transaction).filter(
-        Transaction.session_id == session_id,
-        Transaction.category == category
-    ).order_by(Transaction.date.desc()).all()
+    query = db.query(Transaction).filter(Transaction.category == category)
+    
+    if session_id:
+        query = query.filter(Transaction.session_id == session_id)
+    elif client_id:
+        query = query.filter(Transaction.client_id == client_id)
+    else:
+        raise ValueError("Either session_id or client_id must be provided")
+    
+    transactions = query.order_by(Transaction.date.desc()).all()
     
     return [
         {
@@ -172,77 +180,146 @@ def get_transactions_by_category(
 import os
 from io import BytesIO
 import openpyxl
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side, numbers
+from openpyxl.utils import get_column_letter
 from models import TransactionMerchant
 
 
 class ExcelExporter:
-    """Generate accountant-ready Excel exports"""
-    
-    # Style definitions
-    HEADER_FILL = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
-    HEADER_FONT = Font(bold=True, color="FFFFFF", size=11)
-    TOTAL_FILL = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
-    TOTAL_FONT = Font(bold=True, size=11)
-    SUBTITLE_FILL = PatternFill(start_color="E7E6E6", end_color="E7E6E6", fill_type="solid")
-    SUBTITLE_FONT = Font(bold=True, size=10)
+    """Generate polished, accountant-ready Excel exports with branded styling."""
+
+    # ── Colour palette (indigo brand) ──────────────────────────
+    _INDIGO_DARK   = "3730A3"   # indigo-800  – header backgrounds
+    _INDIGO_MID    = "4F46E5"   # indigo-600  – accent / titles
+    _INDIGO_LIGHT  = "E0E7FF"   # indigo-100  – alternate row stripe
+    _INDIGO_PALE   = "EEF2FF"   # indigo-50   – very light tint
+    _NEUTRAL_100   = "F5F5F5"
+    _NEUTRAL_200   = "E5E5E5"
+    _NEUTRAL_700   = "404040"
+    _GREEN_DARK    = "065F46"   # emerald-800
+    _GREEN_BG      = "D1FAE5"   # emerald-100
+    _RED_DARK      = "991B1B"   # red-800
+    _RED_BG        = "FEE2E2"   # red-100
+
+    # ── Reusable style objects ─────────────────────────────────
+    HEADER_FILL  = PatternFill(start_color=_INDIGO_DARK, end_color=_INDIGO_DARK, fill_type="solid")
+    HEADER_FONT  = Font(name="Calibri", bold=True, color="FFFFFF", size=10)
+    TOTAL_FILL   = PatternFill(start_color=_INDIGO_LIGHT, end_color=_INDIGO_LIGHT, fill_type="solid")
+    TOTAL_FONT   = Font(name="Calibri", bold=True, size=10)
+    STRIPE_FILL  = PatternFill(start_color=_INDIGO_PALE, end_color=_INDIGO_PALE, fill_type="solid")
+    SUBTITLE_FILL = PatternFill(start_color=_NEUTRAL_200, end_color=_NEUTRAL_200, fill_type="solid")
+    SUBTITLE_FONT = Font(name="Calibri", bold=True, size=10, color=_NEUTRAL_700)
+    TITLE_FONT   = Font(name="Calibri", bold=True, size=13, color="FFFFFF")
+    BODY_FONT    = Font(name="Calibri", size=10)
     BORDER = Border(
-        left=Side(style='thin'),
-        right=Side(style='thin'),
-        top=Side(style='thin'),
-        bottom=Side(style='thin')
+        left=Side(style="thin", color=_NEUTRAL_200),
+        right=Side(style="thin", color=_NEUTRAL_200),
+        top=Side(style="thin", color=_NEUTRAL_200),
+        bottom=Side(style="thin", color=_NEUTRAL_200),
     )
-    
+    CURRENCY_FMT = 'R #,##0.00'
+    AMOUNT_POSITIVE_FONT = Font(name="Calibri", size=10, color=_GREEN_DARK)
+    AMOUNT_NEGATIVE_FONT = Font(name="Calibri", size=10, color=_RED_DARK)
+
+    # ── Helpers ────────────────────────────────────────────────
+    @staticmethod
+    def _style_header_row(ws, row: int, num_cols: int):
+        """Apply branded header style to a row."""
+        for col in range(1, num_cols + 1):
+            cell = ws.cell(row=row, column=col)
+            cell.fill = ExcelExporter.HEADER_FILL
+            cell.font = ExcelExporter.HEADER_FONT
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.border = ExcelExporter.BORDER
+
+    @staticmethod
+    def _style_data_row(ws, row: int, num_cols: int, is_stripe: bool = False):
+        """Apply body/stripe style to a data row."""
+        for col in range(1, num_cols + 1):
+            cell = ws.cell(row=row, column=col)
+            cell.font = ExcelExporter.BODY_FONT
+            cell.border = ExcelExporter.BORDER
+            cell.alignment = Alignment(horizontal="left", vertical="center")
+            if is_stripe:
+                cell.fill = ExcelExporter.STRIPE_FILL
+
+    @staticmethod
+    def _style_total_row(ws, row: int, num_cols: int):
+        """Apply totals bar style."""
+        for col in range(1, num_cols + 1):
+            cell = ws.cell(row=row, column=col)
+            cell.fill = ExcelExporter.TOTAL_FILL
+            cell.font = ExcelExporter.TOTAL_FONT
+            cell.border = ExcelExporter.BORDER
+
+    @staticmethod
+    def _style_amount_cell(cell, value):
+        """Colour an amount cell green (positive) or red (negative)."""
+        cell.number_format = ExcelExporter.CURRENCY_FMT
+        if value is not None:
+            if isinstance(value, (int, float)):
+                cell.font = (
+                    ExcelExporter.AMOUNT_POSITIVE_FONT if value >= 0
+                    else ExcelExporter.AMOUNT_NEGATIVE_FONT
+                )
+
+    @staticmethod
+    def _freeze_and_filter(ws, header_row: int, num_cols: int):
+        """Freeze panes below the header and add auto-filter."""
+        ws.freeze_panes = ws.cell(row=header_row + 1, column=1)
+        last_col_letter = get_column_letter(num_cols)
+        ws.auto_filter.ref = f"A{header_row}:{last_col_letter}{ws.max_row}"
+
+    @staticmethod
+    def _set_print_setup(ws):
+        """Sensible print defaults."""
+        ws.sheet_properties.pageSetUpPr = openpyxl.worksheet.properties.PageSetupProperties(fitToPage=True)
+        ws.page_setup.fitToWidth = 1
+        ws.page_setup.fitToHeight = 0
+        ws.page_setup.orientation = "landscape"
+
+    @staticmethod
+    def _write_branded_title(ws, title: str, num_cols: int, row: int = 1):
+        """Write a branded title bar spanning all columns."""
+        ws.merge_cells(
+            start_row=row, start_column=1,
+            end_row=row, end_column=num_cols,
+        )
+        cell = ws.cell(row=row, column=1)
+        cell.value = title
+        cell.font = ExcelExporter.TITLE_FONT
+        cell.fill = PatternFill(start_color=ExcelExporter._INDIGO_MID, end_color=ExcelExporter._INDIGO_MID, fill_type="solid")
+        cell.alignment = Alignment(horizontal="left", vertical="center")
+        ws.row_dimensions[row].height = 28
+
+    @staticmethod
+    def _write_subtitle_row(ws, text: str, num_cols: int, row: int):
+        """Write a subtitle / section bar."""
+        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=num_cols)
+        cell = ws.cell(row=row, column=1)
+        cell.value = text
+        cell.font = ExcelExporter.SUBTITLE_FONT
+        cell.fill = ExcelExporter.SUBTITLE_FILL
+        cell.alignment = Alignment(horizontal="left", vertical="center")
+
+    @staticmethod
+    def _write_info_row(ws, label: str, value, row: int, value_fmt: Optional[str] = None):
+        """Write a label–value pair in columns A and B."""
+        ws.cell(row=row, column=1, value=label).font = Font(name="Calibri", bold=True, size=10)
+        v_cell = ws.cell(row=row, column=2, value=value)
+        v_cell.font = ExcelExporter.BODY_FONT
+        if value_fmt:
+            v_cell.number_format = value_fmt
+
     @staticmethod
     def _get_merchant_for_transaction(transaction_id: int, db: Session) -> str:
-        """Get merchant name for a transaction, or empty string if none"""
         merchant_record = db.query(TransactionMerchant).filter(
             TransactionMerchant.transaction_id == transaction_id
         ).first()
         return merchant_record.merchant if merchant_record and merchant_record.merchant else ""
-    
+
     @staticmethod
-    def _get_all_merchants(session_id: str, db: Session) -> Dict[str, Dict[str, Any]]:
-        """
-        Get all merchants with their transaction counts and total amounts
-        Returns: {merchant_name: {total_amount, count, categories}}
-        """
-        transactions = db.query(Transaction).filter(
-            Transaction.session_id == session_id
-        ).all()
-        
-        merchants: Dict[str, Dict[str, Any]] = {}
-        
-        for txn in transactions:
-            merchant = ExcelExporter._get_merchant_for_transaction(txn.id, db)
-            if not merchant:
-                merchant = "Unattributed"
-            
-            if merchant not in merchants:
-                merchants[merchant] = {
-                    "total_amount": 0.0,
-                    "count": 0,
-                    "categories": {}
-                }
-            
-            merchants[merchant]["total_amount"] += abs(txn.amount)
-            merchants[merchant]["count"] += 1
-            
-            cat = txn.category or "Uncategorized"
-            if cat not in merchants[merchant]["categories"]:
-                merchants[merchant]["categories"][cat] = 0
-            merchants[merchant]["categories"][cat] += 1
-        
-        return merchants
-    
-    @staticmethod
-    def export_transactions(session_id: Optional[str], db: Session, client_id: Optional[int] = None) -> BytesIO:
-        """
-        Export all transactions to Excel
-        Clean, professional format suitable for accountants
-        """
-        
-        # Fetch transactions based on session_id or client_id
+    def _get_all_merchants(session_id: str, db: Session, client_id: Optional[int] = None) -> Dict[str, Dict[str, Any]]:
         query = db.query(Transaction)
         if session_id:
             query = query.filter(Transaction.session_id == session_id)
@@ -250,139 +327,452 @@ class ExcelExporter:
             query = query.filter(Transaction.client_id == client_id)
         else:
             raise ValueError("Either session_id or client_id must be provided")
-        
+        transactions = query.all()
+
+        merchants: Dict[str, Dict[str, Any]] = {}
+        for txn in transactions:
+            merchant = ExcelExporter._get_merchant_for_transaction(txn.id, db)
+            if not merchant:
+                merchant = "Unattributed"
+            if merchant not in merchants:
+                merchants[merchant] = {"total_amount": 0.0, "count": 0, "categories": {}}
+            merchants[merchant]["total_amount"] += abs(txn.amount)
+            merchants[merchant]["count"] += 1
+            cat = txn.category or "Uncategorized"
+            merchants[merchant]["categories"][cat] = merchants[merchant]["categories"].get(cat, 0) + 1
+        return merchants
+
+    @staticmethod
+    def _sanitize_sheet_name(name: str) -> str:
+        import re
+        sanitized = re.sub(r'[\:\\/\?\*\[\]]', '', name)
+        return sanitized[:31]
+
+    @staticmethod
+    def _build_summary_sheet(
+        ws,
+        transactions: list,
+        categories_map: Dict[str, list],
+        include_vat: bool = False,
+    ):
+        """Write the Category × Month pivot summary sheet.
+
+        Layout (top → bottom):
+          Title bar
+          Column header row  (Category | month1 | … | Total)
+          ── INCOME section banner ──
+          income category rows
+          VAT on Income row  (only when include_vat)
+          Income Total row
+          ── EXPENSES section banner ──
+          expense category rows
+          VAT on Expenses row  (only when include_vat)
+          Expenses Total row
+          ── NET row ──  (Income Total − |Expenses Total| per month)
+
+        VAT is split by transaction sign:
+          amount >= 0  →  VAT on Income
+          amount <  0  →  VAT on Expenses
+        Both VAT rows are included in their respective section subtotals.
+        """
+        # ── Collect months ────────────────────────────────────────────
+        all_months_set = set()
+        for t in transactions:
+            all_months_set.add(t.date.strftime("%Y-%m"))
+        all_months = sorted(all_months_set)
+
+        num_data_cols = len(all_months)
+        num_cols      = 1 + num_data_cols + 1  # label | months | Total
+        total_col     = num_cols
+        first_month_col = 2
+
+        # ── Column widths ─────────────────────────────────────────────
+        ws.column_dimensions[get_column_letter(1)].width = 26
+        for ci in range(first_month_col, total_col + 1):
+            ws.column_dimensions[get_column_letter(ci)].width = 15
+
+        # ── Title bar ─────────────────────────────────────────────────
+        ExcelExporter._write_branded_title(
+            ws,
+            "Category Summary  –  " + ("Excl. VAT amounts" if include_vat else "Net amounts"),
+            num_cols,
+            row=1,
+        )
+
+        # ── Header row ────────────────────────────────────────────────
+        HDR = 3
+        ws.cell(row=HDR, column=1, value="Category")
+        for mi, month in enumerate(all_months):
+            ws.cell(row=HDR, column=first_month_col + mi, value=month)
+        ws.cell(row=HDR, column=total_col, value="Total")
+        ExcelExporter._style_header_row(ws, HDR, num_cols)
+        for ci in range(first_month_col, total_col + 1):
+            ws.cell(row=HDR, column=ci).alignment = Alignment(horizontal="right", vertical="center")
+
+        # ── Build pivot data ───────────────────────────────────────────
+        # inc_vat_per_month: VAT from amount >= 0 transactions
+        # exp_vat_per_month: VAT from amount <  0 transactions
+        pivot: Dict[str, Dict[str, float]] = {}
+        inc_vat_per_month: Dict[str, float] = {m: 0.0 for m in all_months}
+        exp_vat_per_month: Dict[str, float] = {m: 0.0 for m in all_months}
+
+        for cat, txns in categories_map.items():
+            pivot[cat] = {m: 0.0 for m in all_months}
+            for t in txns:
+                mk = t.date.strftime("%Y-%m")
+                if include_vat:
+                    vat_amt = t.vat_amount or 0.0
+                    pivot[cat][mk] += t.amount - vat_amt
+                    if t.amount >= 0:
+                        inc_vat_per_month[mk] += vat_amt
+                    else:
+                        exp_vat_per_month[mk] += vat_amt
+                else:
+                    pivot[cat][mk] += t.amount
+
+        # ── Classify categories into Income / Expenses ─────────────────
+        # A category is Income if its overall net sum >= 0, Expenses otherwise.
+        income_cats  = sorted(c for c in categories_map if sum(pivot[c].values()) >= 0)
+        expense_cats = sorted(c for c in categories_map if sum(pivot[c].values()) < 0)
+
+        # ── Style helpers ──────────────────────────────────────────────
+        GREEN_FONT  = Font(name="Calibri", size=10, color=ExcelExporter._GREEN_DARK)
+        RED_FONT    = Font(name="Calibri", size=10, color=ExcelExporter._RED_DARK)
+        VAT_FILL    = PatternFill(start_color="FEF9C3", end_color="FEF9C3", fill_type="solid")
+        VAT_FONT    = Font(name="Calibri", bold=True, size=10, color="92400E")
+        INC_BANNER_FILL = PatternFill(start_color=ExcelExporter._GREEN_BG, end_color=ExcelExporter._GREEN_BG, fill_type="solid")
+        INC_BANNER_FONT = Font(name="Calibri", bold=True, size=10, color=ExcelExporter._GREEN_DARK)
+        EXP_BANNER_FILL = PatternFill(start_color=ExcelExporter._RED_BG, end_color=ExcelExporter._RED_BG, fill_type="solid")
+        EXP_BANNER_FONT = Font(name="Calibri", bold=True, size=10, color=ExcelExporter._RED_DARK)
+        NET_FILL        = PatternFill(start_color=ExcelExporter._INDIGO_DARK, end_color=ExcelExporter._INDIGO_DARK, fill_type="solid")
+        NET_FONT        = Font(name="Calibri", bold=True, size=10, color="FFFFFF")
+        INC_TOTAL_FNT   = Font(name="Calibri", bold=True, size=10, color=ExcelExporter._GREEN_DARK)
+        EXP_TOTAL_FNT   = Font(name="Calibri", bold=True, size=10, color=ExcelExporter._RED_DARK)
+
+        data_start_row = HDR + 1
+        row = data_start_row
+
+        # Accumulators for column-level totals
+        inc_col: Dict[str, float] = {m: 0.0 for m in all_months}
+        exp_col: Dict[str, float] = {m: 0.0 for m in all_months}
+
+        # ── Helper: write one category data row ────────────────────────
+        def _write_cat_row(cat: str, stripe: bool):
+            nonlocal row
+            lbl = ws.cell(row=row, column=1, value=cat)
+            lbl.font = ExcelExporter.BODY_FONT
+            lbl.border = ExcelExporter.BORDER
+            row_total = 0.0
+            for mi, month in enumerate(all_months):
+                val = pivot[cat].get(month, 0.0)
+                row_total += val
+                ci = first_month_col + mi
+                c = ws.cell(row=row, column=ci, value=val if val != 0.0 else None)
+                c.number_format = ExcelExporter.CURRENCY_FMT
+                c.alignment = Alignment(horizontal="right", vertical="center")
+                c.border = ExcelExporter.BORDER
+                if val != 0.0:
+                    c.font = GREEN_FONT if val >= 0 else RED_FONT
+            rt = ws.cell(row=row, column=total_col, value=row_total)
+            rt.number_format = ExcelExporter.CURRENCY_FMT
+            rt.alignment = Alignment(horizontal="right", vertical="center")
+            rt.fill = ExcelExporter.TOTAL_FILL
+            rt.font = Font(name="Calibri", bold=True, size=10,
+                           color=ExcelExporter._GREEN_DARK if row_total >= 0 else ExcelExporter._RED_DARK)
+            rt.border = ExcelExporter.BORDER
+            if stripe:
+                for ci in range(1, num_cols + 1):
+                    cell = ws.cell(row=row, column=ci)
+                    if not cell.fill or cell.fill.fill_type == "none":
+                        cell.fill = ExcelExporter.STRIPE_FILL
+            row += 1
+
+        # ── Helper: write a section banner ────────────────────────────
+        def _write_banner(label: str, fill: PatternFill, font: Font):
+            nonlocal row
+            for ci in range(1, num_cols + 1):
+                c = ws.cell(row=row, column=ci)
+                c.fill = fill
+                c.border = ExcelExporter.BORDER
+                c.font = font
+            ws.cell(row=row, column=1).value = label
+            ws.cell(row=row, column=1).alignment = Alignment(horizontal="left", vertical="center", indent=1)
+            row += 1
+
+        # ── Helper: write a subtotal row (Income Total / Expenses Total) ─
+        def _write_subtotal_row(label: str, col_sums: Dict[str, float], font: Font):
+            nonlocal row
+            row_grand = 0.0
+            lbl = ws.cell(row=row, column=1, value=label)
+            lbl.font = font
+            lbl.fill = ExcelExporter.TOTAL_FILL
+            lbl.border = ExcelExporter.BORDER
+            lbl.alignment = Alignment(horizontal="left", vertical="center")
+            for mi, month in enumerate(all_months):
+                cv = col_sums.get(month, 0.0)
+                row_grand += cv
+                ci = first_month_col + mi
+                c = ws.cell(row=row, column=ci, value=cv if cv != 0.0 else None)
+                c.number_format = ExcelExporter.CURRENCY_FMT
+                c.alignment = Alignment(horizontal="right", vertical="center")
+                c.fill = ExcelExporter.TOTAL_FILL
+                c.font = font
+                c.border = ExcelExporter.BORDER
+            gc = ws.cell(row=row, column=total_col, value=row_grand)
+            gc.number_format = ExcelExporter.CURRENCY_FMT
+            gc.alignment = Alignment(horizontal="right", vertical="center")
+            gc.fill = ExcelExporter.TOTAL_FILL
+            gc.font = font
+            gc.border = ExcelExporter.BORDER
+            row += 1
+            return row_grand
+
+        # ══════════════════════ INCOME SECTION ═══════════════════════
+        _write_banner("INCOME", INC_BANNER_FILL, INC_BANNER_FONT)
+
+        for i, cat in enumerate(income_cats):
+            for m in all_months:
+                inc_col[m] += pivot[cat].get(m, 0.0)
+            _write_cat_row(cat, stripe=(i % 2 == 1))
+
+        # VAT on Income row (before Income Total)
+        if include_vat:
+            inc_vat_total = 0.0
+            lbl = ws.cell(row=row, column=1, value="VAT on Income")
+            lbl.font = VAT_FONT
+            lbl.fill = VAT_FILL
+            lbl.border = ExcelExporter.BORDER
+            for mi, month in enumerate(all_months):
+                vv = inc_vat_per_month.get(month, 0.0)
+                inc_vat_total += vv
+                inc_col[month] += vv   # include in Income Total
+                ci = first_month_col + mi
+                c = ws.cell(row=row, column=ci, value=vv if vv != 0.0 else None)
+                c.number_format = ExcelExporter.CURRENCY_FMT
+                c.alignment = Alignment(horizontal="right", vertical="center")
+                c.fill = VAT_FILL
+                c.font = VAT_FONT
+                c.border = ExcelExporter.BORDER
+            vt = ws.cell(row=row, column=total_col, value=inc_vat_total)
+            vt.number_format = ExcelExporter.CURRENCY_FMT
+            vt.alignment = Alignment(horizontal="right", vertical="center")
+            vt.fill = VAT_FILL
+            vt.font = VAT_FONT
+            vt.border = ExcelExporter.BORDER
+            row += 1
+
+        inc_grand = _write_subtotal_row("Income Total", inc_col, INC_TOTAL_FNT)
+
+        # ══════════════════════ EXPENSES SECTION ═════════════════════
+        _write_banner("EXPENSES", EXP_BANNER_FILL, EXP_BANNER_FONT)
+
+        for i, cat in enumerate(expense_cats):
+            for m in all_months:
+                exp_col[m] += pivot[cat].get(m, 0.0)
+            _write_cat_row(cat, stripe=(i % 2 == 1))
+
+        # VAT on Expenses row (before Expenses Total)
+        if include_vat:
+            exp_vat_total = 0.0
+            lbl = ws.cell(row=row, column=1, value="VAT on Expenses")
+            lbl.font = VAT_FONT
+            lbl.fill = VAT_FILL
+            lbl.border = ExcelExporter.BORDER
+            for mi, month in enumerate(all_months):
+                vv = exp_vat_per_month.get(month, 0.0)
+                exp_vat_total += vv
+                exp_col[month] += vv   # include in Expenses Total
+                ci = first_month_col + mi
+                c = ws.cell(row=row, column=ci, value=vv if vv != 0.0 else None)
+                c.number_format = ExcelExporter.CURRENCY_FMT
+                c.alignment = Alignment(horizontal="right", vertical="center")
+                c.fill = VAT_FILL
+                c.font = VAT_FONT
+                c.border = ExcelExporter.BORDER
+            vt = ws.cell(row=row, column=total_col, value=exp_vat_total)
+            vt.number_format = ExcelExporter.CURRENCY_FMT
+            vt.alignment = Alignment(horizontal="right", vertical="center")
+            vt.fill = VAT_FILL
+            vt.font = VAT_FONT
+            vt.border = ExcelExporter.BORDER
+            row += 1
+
+        exp_grand = _write_subtotal_row("Expenses Total", exp_col, EXP_TOTAL_FNT)
+
+        # ══════════════════════ NET ROW ═══════════════════════════════
+        net_grand = 0.0
+        lbl = ws.cell(row=row, column=1, value="NET")
+        lbl.font = NET_FONT
+        lbl.fill = NET_FILL
+        lbl.border = ExcelExporter.BORDER
+        lbl.alignment = Alignment(horizontal="left", vertical="center")
+        for mi, month in enumerate(all_months):
+            net_val = inc_col.get(month, 0.0) + exp_col.get(month, 0.0)
+            net_grand += net_val
+            ci = first_month_col + mi
+            c = ws.cell(row=row, column=ci, value=net_val if net_val != 0.0 else None)
+            c.number_format = ExcelExporter.CURRENCY_FMT
+            c.alignment = Alignment(horizontal="right", vertical="center")
+            c.fill = NET_FILL
+            c.font = NET_FONT
+            c.border = ExcelExporter.BORDER
+        gc = ws.cell(row=row, column=total_col, value=net_grand)
+        gc.number_format = ExcelExporter.CURRENCY_FMT
+        gc.alignment = Alignment(horizontal="right", vertical="center")
+        gc.fill = NET_FILL
+        gc.font = NET_FONT
+        gc.border = ExcelExporter.BORDER
+        row += 1
+
+        # ── Freeze panes (keep header + category column visible) ───────
+        ws.freeze_panes = ws.cell(row=data_start_row, column=first_month_col)
+        ExcelExporter._set_print_setup(ws)
+
+    # ══════════════════════════════════════════════════════════
+    #  EXPORT: TRANSACTIONS
+    # ══════════════════════════════════════════════════════════
+    @staticmethod
+    def export_transactions(session_id: Optional[str], db: Session, client_id: Optional[int] = None, include_vat: bool = False) -> BytesIO:
+        """Export all transactions – clean, professional format."""
+        query = db.query(Transaction)
+        if session_id:
+            query = query.filter(Transaction.session_id == session_id)
+        elif client_id:
+            query = query.filter(Transaction.client_id == client_id)
+        else:
+            raise ValueError("Either session_id or client_id must be provided")
+
         transactions = query.order_by(Transaction.date).all()
-        
-        # Create workbook
+
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Transactions"
-        
-        # Set column widths
-        ws.column_dimensions['A'].width = 12
-        ws.column_dimensions['B'].width = 35
-        ws.column_dimensions['C'].width = 15
-        ws.column_dimensions['D'].width = 15
-        
-        # Headers
-        headers = ["Date", "Description", "Amount", "Category"]
-        for col_num, header in enumerate(headers, 1):
-            cell = ws.cell(row=1, column=col_num)
-            cell.value = header
-            cell.fill = ExcelExporter.HEADER_FILL
-            cell.font = ExcelExporter.HEADER_FONT
-            cell.alignment = Alignment(horizontal="center", vertical="center")
-            cell.border = ExcelExporter.BORDER
-        
-        # Data rows
-        for row_num, txn in enumerate(transactions, 2):
-            ws.cell(row=row_num, column=1).value = txn.date.isoformat()
-            ws.cell(row=row_num, column=2).value = txn.description
-            ws.cell(row=row_num, column=3).value = txn.amount
-            ws.cell(row=row_num, column=4).value = txn.category
-            
-            # Format amount column as currency
-            ws.cell(row=row_num, column=3).number_format = '#,##0.00'
-            
-            # Apply borders
-            for col in range(1, 5):
-                ws.cell(row=row_num, column=col).border = ExcelExporter.BORDER
-                ws.cell(row=row_num, column=col).alignment = Alignment(horizontal="left")
-        
-        # Total row
+
+        if include_vat:
+            NUM_COLS = 6
+            col_widths = {"A": 14, "B": 42, "C": 18, "D": 16, "E": 18, "F": 20}
+            headers = ["Date", "Description", "Amount (Incl VAT)", "VAT Amount", "Amount (Excl VAT)", "Category"]
+        else:
+            NUM_COLS = 4
+            col_widths = {"A": 14, "B": 42, "C": 18, "D": 20}
+            headers = ["Date", "Description", "Amount", "Category"]
+
+        for letter, w in col_widths.items():
+            ws.column_dimensions[letter].width = w
+
+        # Title bar
+        ExcelExporter._write_branded_title(ws, "Transaction Export", NUM_COLS, row=1)
+
+        # Info rows
         if transactions:
-            total_row = len(transactions) + 2
-            ws.cell(row=total_row, column=1).value = "TOTAL"
-            ws.cell(row=total_row, column=1).font = ExcelExporter.TOTAL_FONT
-            ws.cell(row=total_row, column=1).fill = ExcelExporter.TOTAL_FILL
-            
-            # Sum formula
-            total_formula = f"=SUM(C2:C{total_row-1})"
-            ws.cell(row=total_row, column=3).value = total_formula
-            ws.cell(row=total_row, column=3).font = ExcelExporter.TOTAL_FONT
-            ws.cell(row=total_row, column=3).fill = ExcelExporter.TOTAL_FILL
-            ws.cell(row=total_row, column=3).number_format = '#,##0.00'
-            
-            for col in range(1, 5):
-                ws.cell(row=total_row, column=col).border = ExcelExporter.BORDER
-        
-        # Save to bytes
+            date_range = f"{transactions[0].date.isoformat()}  to  {transactions[-1].date.isoformat()}"
+            ExcelExporter._write_info_row(ws, "Period:", date_range, row=2)
+        ExcelExporter._write_info_row(ws, "Transactions:", len(transactions), row=3)
+
+        # Header row
+        HEADER_ROW = 5
+        for col, header in enumerate(headers, 1):
+            ws.cell(row=HEADER_ROW, column=col, value=header)
+        ExcelExporter._style_header_row(ws, HEADER_ROW, NUM_COLS)
+
+        # Data rows
+        for i, txn in enumerate(transactions):
+            r = HEADER_ROW + 1 + i
+            ws.cell(row=r, column=1, value=txn.date.isoformat())
+            ws.cell(row=r, column=2, value=txn.description)
+
+            if include_vat:
+                vat_amount = txn.vat_amount if txn.vat_amount is not None else 0.0
+                amount_incl = txn.amount
+                amount_excl = amount_incl - vat_amount
+                c3 = ws.cell(row=r, column=3, value=amount_incl)
+                c3.number_format = ExcelExporter.CURRENCY_FMT
+                c4 = ws.cell(row=r, column=4, value=vat_amount)
+                c4.number_format = ExcelExporter.CURRENCY_FMT
+                c5 = ws.cell(row=r, column=5, value=amount_excl)
+                c5.number_format = ExcelExporter.CURRENCY_FMT
+                ws.cell(row=r, column=6, value=txn.category or "Uncategorized")
+            else:
+                amt_cell = ws.cell(row=r, column=3, value=txn.amount)
+                ws.cell(row=r, column=4, value=txn.category or "Uncategorized")
+                ExcelExporter._style_amount_cell(amt_cell, txn.amount)
+
+            ExcelExporter._style_data_row(ws, r, NUM_COLS, is_stripe=(i % 2 == 1))
+
+        # Totals row
+        if transactions:
+            total_r = HEADER_ROW + 1 + len(transactions)
+            ws.cell(row=total_r, column=1, value="TOTAL")
+            ws.cell(row=total_r, column=3, value=f"=SUM(C{HEADER_ROW+1}:C{total_r-1})")
+            ws.cell(row=total_r, column=3).number_format = ExcelExporter.CURRENCY_FMT
+            if include_vat:
+                ws.cell(row=total_r, column=4, value=f"=SUM(D{HEADER_ROW+1}:D{total_r-1})")
+                ws.cell(row=total_r, column=4).number_format = ExcelExporter.CURRENCY_FMT
+                ws.cell(row=total_r, column=5, value=f"=SUM(E{HEADER_ROW+1}:E{total_r-1})")
+                ws.cell(row=total_r, column=5).number_format = ExcelExporter.CURRENCY_FMT
+            ExcelExporter._style_total_row(ws, total_r, NUM_COLS)
+
+        ExcelExporter._freeze_and_filter(ws, HEADER_ROW, NUM_COLS)
+        ExcelExporter._set_print_setup(ws)
+
         output = BytesIO()
         wb.save(output)
         output.seek(0)
         return output
 
+    # ══════════════════════════════════════════════════════════
+    #  EXPORT: FOR ACCOUNTANT
+    # ══════════════════════════════════════════════════════════
     @staticmethod
-    def export_for_accountant(session_id: str, db: Session) -> BytesIO:
-        """
-        Create a comprehensive Excel export optimized for accountants.
-        Includes:
-        1. Executive Summary - Key metrics and KPIs
-        2. Merchant Analysis - Top merchants, transaction counts
-        3. Detailed Transactions - Full list with merchant data
-        4. Category Summaries - Per-category breakdown with merchant details
-        """
-        
-        # Fetch all data
-        transactions = db.query(Transaction).filter(
-            Transaction.session_id == session_id
-        ).order_by(Transaction.date).all()
-        
+    def export_for_accountant(session_id: str, db: Session, client_id: Optional[int] = None, include_vat: bool = False) -> BytesIO:
+        """Comprehensive multi-sheet report for accountants."""
+        query = db.query(Transaction)
+        if session_id:
+            query = query.filter(Transaction.session_id == session_id)
+        elif client_id:
+            query = query.filter(Transaction.client_id == client_id)
+        else:
+            raise ValueError("Either session_id or client_id must be provided")
+        transactions = query.order_by(Transaction.date).all()
+
         if not transactions:
             wb = openpyxl.Workbook()
             ws = wb.active
             ws.title = "No Data"
-            ws['A1'] = "No transactions found for this session"
+            ws["A1"] = "No transactions found for this session"
             output = BytesIO()
             wb.save(output)
             output.seek(0)
             return output
-        
-        merchants = ExcelExporter._get_all_merchants(session_id, db)
-        
-        # Create workbook
+
+        merchants = ExcelExporter._get_all_merchants(session_id, db, client_id)
+
         wb = openpyxl.Workbook()
-        ws_summary = wb.active
-        ws_summary.title = "Executive Summary"
-        
-        # ===== SHEET 1: EXECUTIVE SUMMARY =====
-        ws_summary.column_dimensions['A'].width = 25
-        ws_summary.column_dimensions['B'].width = 18
-        
-        # Title
-        ws_summary.merge_cells('A1:B1')
-        title_cell = ws_summary['A1']
-        title_cell.value = "EXECUTIVE SUMMARY"
-        title_cell.font = Font(bold=True, size=14, color="FFFFFF")
-        title_cell.fill = ExcelExporter.HEADER_FILL
-        title_cell.alignment = Alignment(horizontal='center', vertical='center')
-        ws_summary.row_dimensions[1].height = 25
-        
-        # Date range
-        date_range = f"{transactions[0].date.isoformat()} to {transactions[-1].date.isoformat()}"
-        ws_summary['A2'] = "Period:"
-        ws_summary['B2'] = date_range
-        ws_summary['A2'].font = Font(bold=True)
-        
-        row = 4
-        
+
+        # ── Sheet 1: Executive Summary ────────────────────────
+        ws_s = wb.active
+        ws_s.title = "Executive Summary"
+        ws_s.column_dimensions["A"].width = 28
+        ws_s.column_dimensions["B"].width = 20
+
+        ExcelExporter._write_branded_title(ws_s, "Executive Summary", 2, row=1)
+
+        date_range = f"{transactions[0].date.isoformat()}  to  {transactions[-1].date.isoformat()}"
+        ExcelExporter._write_info_row(ws_s, "Period:", date_range, row=3)
+        ExcelExporter._write_info_row(ws_s, "Generated:", date.today().isoformat(), row=4)
+
         # Key Metrics
-        total_income = 0.0
-        total_expenses = 0.0
-        
-        for t in transactions:
-            if t.amount >= 0:
-                total_income += t.amount
-            else:
-                total_expenses += abs(t.amount)
-        
+        total_income = sum(t.amount for t in transactions if t.amount >= 0)
+        total_expenses = sum(abs(t.amount) for t in transactions if t.amount < 0)
         net_balance = total_income - total_expenses
-        
-        ws_summary[f'A{row}'] = "KEY METRICS"
-        ws_summary[f'A{row}'].font = ExcelExporter.SUBTITLE_FONT
-        ws_summary[f'A{row}'].fill = ExcelExporter.SUBTITLE_FILL
+
+        # VAT totals (when applicable)
+        total_vat = sum((t.vat_amount or 0.0) for t in transactions) if include_vat else 0.0
+        total_excl_vat = sum(t.amount - (t.vat_amount or 0.0) for t in transactions) if include_vat else 0.0
+
+        row = 6
+        ExcelExporter._write_subtitle_row(ws_s, "KEY METRICS", 2, row)
         row += 1
-        
         metrics = [
             ("Total Income", total_income),
             ("Total Expenses", total_expenses),
@@ -390,645 +780,628 @@ class ExcelExporter:
             ("Transaction Count", len(transactions)),
             ("Unique Merchants", len(merchants)),
         ]
-        
-        for metric_name, metric_value in metrics:
-            ws_summary[f'A{row}'] = metric_name
-            ws_summary[f'B{row}'] = metric_value
-            ws_summary[f'A{row}'].font = Font(bold=True)
-            if isinstance(metric_value, float):
-                ws_summary[f'B{row}'].number_format = '#,##0.00'
+        if include_vat:
+            metrics.append(("Total VAT", total_vat))
+            metrics.append(("Total Excl. VAT", total_excl_vat))
+        for label, val in metrics:
+            ExcelExporter._write_info_row(ws_s, label, val, row, ExcelExporter.CURRENCY_FMT if isinstance(val, float) else None)
+            if isinstance(val, float):
+                ExcelExporter._style_amount_cell(ws_s.cell(row=row, column=2), val)
             row += 1
-        
+
+        # Income by Category
         row += 1
-        
-        # Category Breakdown - Split by Income and Expenses
-        ws_summary[f'A{row}'] = "INCOME BY CATEGORY"
-        ws_summary[f'A{row}'].font = ExcelExporter.SUBTITLE_FONT
-        ws_summary[f'A{row}'].fill = ExcelExporter.SUBTITLE_FILL
+        ExcelExporter._write_subtitle_row(ws_s, "INCOME BY CATEGORY", 2, row)
         row += 1
-        
-        # Headers
-        ws_summary[f'A{row}'] = "Category"
-        ws_summary[f'B{row}'] = "Amount"
-        for col in ['A', 'B']:
-            ws_summary[f'{col}{row}'].fill = ExcelExporter.HEADER_FILL
-            ws_summary[f'{col}{row}'].font = ExcelExporter.HEADER_FONT
+        for col, h in enumerate(["Category", "Amount"], 1):
+            ws_s.cell(row=row, column=col, value=h)
+        ExcelExporter._style_header_row(ws_s, row, 2)
         row += 1
-        
-        # Income categories (amount >= 0)
+
         income_cats: Dict[str, float] = {}
         for t in transactions:
             if t.amount >= 0:
                 cat = t.category or "Uncategorized"
                 income_cats[cat] = income_cats.get(cat, 0) + t.amount
-        
         sorted_income = sorted(income_cats.items(), key=lambda x: x[1], reverse=True)
-        income_row_start = row
-        for cat, amount in sorted_income:
-            ws_summary[f'A{row}'] = cat
-            ws_summary[f'B{row}'] = amount
-            ws_summary[f'B{row}'].number_format = '#,##0.00'
+        inc_start = row
+        for i, (cat, amount) in enumerate(sorted_income):
+            ws_s.cell(row=row, column=1, value=cat)
+            c = ws_s.cell(row=row, column=2, value=amount)
+            c.number_format = ExcelExporter.CURRENCY_FMT
+            ExcelExporter._style_data_row(ws_s, row, 2, is_stripe=(i % 2 == 1))
             row += 1
-        
-        # Income subtotal
-        income_row_end = row - 1
         if sorted_income:
-            ws_summary[f'A{row}'] = "Income Subtotal"
-            ws_summary[f'A{row}'].font = ExcelExporter.TOTAL_FONT
-            ws_summary[f'A{row}'].fill = ExcelExporter.TOTAL_FILL
-            ws_summary[f'B{row}'] = f"=SUM(B{income_row_start}:B{income_row_end})"
-            ws_summary[f'B{row}'].font = ExcelExporter.TOTAL_FONT
-            ws_summary[f'B{row}'].fill = ExcelExporter.TOTAL_FILL
-            ws_summary[f'B{row}'].number_format = '#,##0.00'
+            ws_s.cell(row=row, column=1, value="Income Subtotal")
+            ws_s.cell(row=row, column=2, value=f"=SUM(B{inc_start}:B{row-1})")
+            ws_s.cell(row=row, column=2).number_format = ExcelExporter.CURRENCY_FMT
+            ExcelExporter._style_total_row(ws_s, row, 2)
             row += 2
-        
-        # Expenses heading
-        ws_summary[f'A{row}'] = "EXPENSES BY CATEGORY"
-        ws_summary[f'A{row}'].font = ExcelExporter.SUBTITLE_FONT
-        ws_summary[f'A{row}'].fill = ExcelExporter.SUBTITLE_FILL
+
+        # Expenses by Category
+        ExcelExporter._write_subtitle_row(ws_s, "EXPENSES BY CATEGORY", 2, row)
         row += 1
-        
-        # Headers
-        ws_summary[f'A{row}'] = "Category"
-        ws_summary[f'B{row}'] = "Amount"
-        for col in ['A', 'B']:
-            ws_summary[f'{col}{row}'].fill = ExcelExporter.HEADER_FILL
-            ws_summary[f'{col}{row}'].font = ExcelExporter.HEADER_FONT
+        for col, h in enumerate(["Category", "Amount"], 1):
+            ws_s.cell(row=row, column=col, value=h)
+        ExcelExporter._style_header_row(ws_s, row, 2)
         row += 1
-        
-        # Expense categories (amount < 0)
+
         expense_cats: Dict[str, float] = {}
         for t in transactions:
             if t.amount < 0:
                 cat = t.category or "Uncategorized"
                 expense_cats[cat] = expense_cats.get(cat, 0) + abs(t.amount)
-        
         sorted_expenses = sorted(expense_cats.items(), key=lambda x: x[1], reverse=True)
-        expense_row_start = row
-        for cat, amount in sorted_expenses:
-            ws_summary[f'A{row}'] = cat
-            ws_summary[f'B{row}'] = amount
-            ws_summary[f'B{row}'].number_format = '#,##0.00'
+        exp_start = row
+        for i, (cat, amount) in enumerate(sorted_expenses):
+            ws_s.cell(row=row, column=1, value=cat)
+            c = ws_s.cell(row=row, column=2, value=amount)
+            c.number_format = ExcelExporter.CURRENCY_FMT
+            ExcelExporter._style_data_row(ws_s, row, 2, is_stripe=(i % 2 == 1))
             row += 1
-        
-        # Expense subtotal
-        expense_row_end = row - 1
         if sorted_expenses:
-            ws_summary[f'A{row}'] = "Expense Subtotal"
-            ws_summary[f'A{row}'].font = ExcelExporter.TOTAL_FONT
-            ws_summary[f'A{row}'].fill = ExcelExporter.TOTAL_FILL
-            ws_summary[f'B{row}'] = f"=SUM(B{expense_row_start}:B{expense_row_end})"
-            ws_summary[f'B{row}'].font = ExcelExporter.TOTAL_FONT
-            ws_summary[f'B{row}'].fill = ExcelExporter.TOTAL_FILL
-            ws_summary[f'B{row}'].number_format = '#,##0.00'
+            ws_s.cell(row=row, column=1, value="Expense Subtotal")
+            ws_s.cell(row=row, column=2, value=f"=SUM(B{exp_start}:B{row-1})")
+            ws_s.cell(row=row, column=2).number_format = ExcelExporter.CURRENCY_FMT
+            ExcelExporter._style_total_row(ws_s, row, 2)
             row += 2
-        
-        # NET BALANCE (the important one)
-        ws_summary[f'A{row}'] = "NET BALANCE"
-        ws_summary[f'A{row}'].font = Font(bold=True, size=12, color="FFFFFF")
-        ws_summary[f'A{row}'].fill = PatternFill(start_color="70AD47", end_color="70AD47", fill_type="solid")
-        ws_summary[f'B{row}'] = net_balance
-        ws_summary[f'B{row}'].font = Font(bold=True, size=12, color="FFFFFF")
-        ws_summary[f'B{row}'].fill = PatternFill(start_color="70AD47", end_color="70AD47", fill_type="solid")
-        ws_summary[f'B{row}'].number_format = '#,##0.00'
-        
-        # ===== SHEET 2: MERCHANT ANALYSIS =====
-        ws_merchants = wb.create_sheet("Merchant Analysis")
-        ws_merchants.column_dimensions['A'].width = 30
-        ws_merchants.column_dimensions['B'].width = 15
-        ws_merchants.column_dimensions['C'].width = 15
-        ws_merchants.column_dimensions['D'].width = 20
-        
-        # Headers
-        headers = ["Merchant", "Transaction Count", "Total Amount", "Avg Per Transaction"]
-        for col_num, header in enumerate(headers, 1):
-            cell = ws_merchants.cell(row=1, column=col_num)
-            cell.value = header
-            cell.fill = ExcelExporter.HEADER_FILL
-            cell.font = ExcelExporter.HEADER_FONT
-            cell.alignment = Alignment(horizontal="center")
-            cell.border = ExcelExporter.BORDER
-        
-        # Sort merchants by total amount descending
-        sorted_merchants = sorted(
-            merchants.items(),
-            key=lambda x: x[1]["total_amount"],
-            reverse=True
-        )
-        
-        for row_num, (merchant_name, data) in enumerate(sorted_merchants, 2):
-            ws_merchants.cell(row=row_num, column=1).value = merchant_name
-            ws_merchants.cell(row=row_num, column=2).value = data["count"]
-            ws_merchants.cell(row=row_num, column=3).value = data["total_amount"]
-            ws_merchants.cell(row=row_num, column=3).number_format = '#,##0.00'
-            
-            avg = data["total_amount"] / data["count"] if data["count"] > 0 else 0
-            ws_merchants.cell(row=row_num, column=4).value = avg
-            ws_merchants.cell(row=row_num, column=4).number_format = '#,##0.00'
-            
-            for col in range(1, 5):
-                ws_merchants.cell(row=row_num, column=col).border = ExcelExporter.BORDER
-        
-        # ===== SHEET 3: DETAILED TRANSACTIONS =====
-        ws_detail = wb.create_sheet("Transactions")
-        ws_detail.column_dimensions['A'].width = 12
-        ws_detail.column_dimensions['B'].width = 35
-        ws_detail.column_dimensions['C'].width = 25
-        ws_detail.column_dimensions['D'].width = 15
-        ws_detail.column_dimensions['E'].width = 15
-        
-        # Headers
-        headers = ["Date", "Description", "Merchant", "Amount", "Category"]
-        for col_num, header in enumerate(headers, 1):
-            cell = ws_detail.cell(row=1, column=col_num)
-            cell.value = header
-            cell.fill = ExcelExporter.HEADER_FILL
-            cell.font = ExcelExporter.HEADER_FONT
-            cell.alignment = Alignment(horizontal="center")
-            cell.border = ExcelExporter.BORDER
-        
-        # Transaction rows
-        for row_num, txn in enumerate(transactions, 2):
+
+        # Net Balance highlight
+        ExcelExporter._write_subtitle_row(ws_s, "NET BALANCE", 2, row)
+        row += 1
+        net_fill_color = ExcelExporter._GREEN_BG if net_balance >= 0 else ExcelExporter._RED_BG
+        net_font_color = ExcelExporter._GREEN_DARK if net_balance >= 0 else ExcelExporter._RED_DARK
+        ws_s.cell(row=row, column=1, value="Net Balance")
+        ws_s.cell(row=row, column=1).font = Font(name="Calibri", bold=True, size=12, color=net_font_color)
+        ws_s.cell(row=row, column=1).fill = PatternFill(start_color=net_fill_color, end_color=net_fill_color, fill_type="solid")
+        nb_cell = ws_s.cell(row=row, column=2, value=net_balance)
+        nb_cell.font = Font(name="Calibri", bold=True, size=12, color=net_font_color)
+        nb_cell.fill = PatternFill(start_color=net_fill_color, end_color=net_fill_color, fill_type="solid")
+        nb_cell.number_format = ExcelExporter.CURRENCY_FMT
+
+        ExcelExporter._set_print_setup(ws_s)
+
+        # ── Sheet 2: Merchant Analysis ────────────────────────
+        ws_m = wb.create_sheet("Merchant Analysis")
+        NUM_M = 4
+        for letter, w in {"A": 32, "B": 18, "C": 18, "D": 22}.items():
+            ws_m.column_dimensions[letter].width = w
+
+        ExcelExporter._write_branded_title(ws_m, "Merchant Analysis", NUM_M, row=1)
+
+        HEADER_R = 3
+        for col, h in enumerate(["Merchant", "Transactions", "Total Amount", "Avg Per Transaction"], 1):
+            ws_m.cell(row=HEADER_R, column=col, value=h)
+        ExcelExporter._style_header_row(ws_m, HEADER_R, NUM_M)
+
+        sorted_merchants = sorted(merchants.items(), key=lambda x: x[1]["total_amount"], reverse=True)
+        for i, (name, data) in enumerate(sorted_merchants):
+            r = HEADER_R + 1 + i
+            ws_m.cell(row=r, column=1, value=name)
+            ws_m.cell(row=r, column=2, value=data["count"])
+            amt_c = ws_m.cell(row=r, column=3, value=data["total_amount"])
+            amt_c.number_format = ExcelExporter.CURRENCY_FMT
+            avg = data["total_amount"] / data["count"] if data["count"] else 0
+            avg_c = ws_m.cell(row=r, column=4, value=avg)
+            avg_c.number_format = ExcelExporter.CURRENCY_FMT
+            ExcelExporter._style_data_row(ws_m, r, NUM_M, is_stripe=(i % 2 == 1))
+
+        ExcelExporter._freeze_and_filter(ws_m, HEADER_R, NUM_M)
+        ExcelExporter._set_print_setup(ws_m)
+
+        # ── Sheet 3: Detailed Transactions ────────────────────
+        ws_d = wb.create_sheet("Transactions")
+
+        if include_vat:
+            NUM_D = 7
+            d_col_widths = {"A": 14, "B": 42, "C": 28, "D": 18, "E": 16, "F": 18, "G": 20}
+            d_headers = ["Date", "Description", "Merchant", "Amount (Incl VAT)", "VAT Amount", "Amount (Excl VAT)", "Category"]
+        else:
+            NUM_D = 5
+            d_col_widths = {"A": 14, "B": 42, "C": 28, "D": 18, "E": 20}
+            d_headers = ["Date", "Description", "Merchant", "Amount", "Category"]
+
+        for letter, w in d_col_widths.items():
+            ws_d.column_dimensions[letter].width = w
+
+        ExcelExporter._write_branded_title(ws_d, "Detailed Transactions", NUM_D, row=1)
+
+        D_HEADER = 3
+        for col, h in enumerate(d_headers, 1):
+            ws_d.cell(row=D_HEADER, column=col, value=h)
+        ExcelExporter._style_header_row(ws_d, D_HEADER, NUM_D)
+
+        for i, txn in enumerate(transactions):
+            r = D_HEADER + 1 + i
             merchant = ExcelExporter._get_merchant_for_transaction(txn.id, db) or ""
-            
-            ws_detail.cell(row=row_num, column=1).value = txn.date.isoformat()
-            ws_detail.cell(row=row_num, column=2).value = txn.description
-            ws_detail.cell(row=row_num, column=3).value = merchant
-            ws_detail.cell(row=row_num, column=4).value = txn.amount
-            ws_detail.cell(row=row_num, column=4).number_format = '#,##0.00'
-            ws_detail.cell(row=row_num, column=5).value = txn.category or "Uncategorized"
-            
-            for col in range(1, 6):
-                ws_detail.cell(row=row_num, column=col).border = ExcelExporter.BORDER
-        
-        # Total row for transactions
+            ws_d.cell(row=r, column=1, value=txn.date.isoformat())
+            ws_d.cell(row=r, column=2, value=txn.description)
+            ws_d.cell(row=r, column=3, value=merchant)
+
+            if include_vat:
+                vat_amt = txn.vat_amount if txn.vat_amount is not None else 0.0
+                amt_incl = txn.amount
+                amt_excl = amt_incl - vat_amt
+                c4 = ws_d.cell(row=r, column=4, value=amt_incl)
+                c4.number_format = ExcelExporter.CURRENCY_FMT
+                c5 = ws_d.cell(row=r, column=5, value=vat_amt)
+                c5.number_format = ExcelExporter.CURRENCY_FMT
+                c6 = ws_d.cell(row=r, column=6, value=amt_excl)
+                c6.number_format = ExcelExporter.CURRENCY_FMT
+                ws_d.cell(row=r, column=7, value=txn.category or "Uncategorized")
+            else:
+                amt_c = ws_d.cell(row=r, column=4, value=txn.amount)
+                ws_d.cell(row=r, column=5, value=txn.category or "Uncategorized")
+                ExcelExporter._style_amount_cell(amt_c, txn.amount)
+
+            ExcelExporter._style_data_row(ws_d, r, NUM_D, is_stripe=(i % 2 == 1))
+
         if transactions:
-            total_row = len(transactions) + 2
-            ws_detail.cell(row=total_row, column=4).value = f"=SUM(D2:D{total_row-1})"
-            ws_detail.cell(row=total_row, column=4).font = ExcelExporter.TOTAL_FONT
-            ws_detail.cell(row=total_row, column=4).fill = ExcelExporter.TOTAL_FILL
-            ws_detail.cell(row=total_row, column=4).number_format = '#,##0.00'
-        
-        # Save to bytes
+            total_r = D_HEADER + 1 + len(transactions)
+            ws_d.cell(row=total_r, column=1, value="TOTAL")
+            ws_d.cell(row=total_r, column=4, value=f"=SUM(D{D_HEADER+1}:D{total_r-1})")
+            ws_d.cell(row=total_r, column=4).number_format = ExcelExporter.CURRENCY_FMT
+            if include_vat:
+                ws_d.cell(row=total_r, column=5, value=f"=SUM(E{D_HEADER+1}:E{total_r-1})")
+                ws_d.cell(row=total_r, column=5).number_format = ExcelExporter.CURRENCY_FMT
+                ws_d.cell(row=total_r, column=6, value=f"=SUM(F{D_HEADER+1}:F{total_r-1})")
+                ws_d.cell(row=total_r, column=6).number_format = ExcelExporter.CURRENCY_FMT
+            ExcelExporter._style_total_row(ws_d, total_r, NUM_D)
+
+        ExcelExporter._freeze_and_filter(ws_d, D_HEADER, NUM_D)
+        ExcelExporter._set_print_setup(ws_d)
+
         output = BytesIO()
         wb.save(output)
         output.seek(0)
         return output
 
+    # ══════════════════════════════════════════════════════════
+    #  EXPORT: SINGLE CATEGORY (monthly sections)
+    # ══════════════════════════════════════════════════════════
     @staticmethod
-    def export_category_monthly(session_id: str, category: str, db: Session) -> BytesIO:
-        """
-        Export transactions for a single category across months.
-
-        Structure: single workbook with one sheet named for the category.
-        For each month include an opening balance (cumulative amount prior to month)
-        then the transactions for that month with a running balance.
-        """
-
-        # Fetch transactions for this category
-        txns = db.query(Transaction).filter(
-            Transaction.session_id == session_id,
-            Transaction.category == category
-        ).order_by(Transaction.date).all()
+    def export_category_monthly(session_id: str, category: str, db: Session, client_id: Optional[int] = None) -> BytesIO:
+        query = db.query(Transaction).filter(Transaction.category == category)
+        if session_id:
+            query = query.filter(Transaction.session_id == session_id)
+        elif client_id:
+            query = query.filter(Transaction.client_id == client_id)
+        else:
+            raise ValueError("Either session_id or client_id must be provided")
+        txns = query.order_by(Transaction.date).all()
 
         wb = openpyxl.Workbook()
-        # sanitize sheet name (max 31 chars and remove Excel-invalid characters)
         sheet_name = ExcelExporter._sanitize_sheet_name(category)
         ws = wb.active
         ws.title = sheet_name
+        NUM_COLS = 4
 
-        # Header
-        ws.column_dimensions['A'].width = 12
-        ws.column_dimensions['B'].width = 40
-        ws.column_dimensions['C'].width = 15
-        ws.column_dimensions['D'].width = 18
+        for letter, w in {"A": 14, "B": 42, "C": 18, "D": 20}.items():
+            ws.column_dimensions[letter].width = w
 
-        # Title
-        ws.merge_cells('A1:D1')
-        title_cell = ws.cell(row=1, column=1)
-        title_cell.value = f"Category: {category}"
-        title_cell.font = ExcelExporter.HEADER_FONT
-        title_cell.fill = ExcelExporter.HEADER_FILL
-        title_cell.alignment = Alignment(horizontal='left')
-
-        # Start writing after title
+        ExcelExporter._write_branded_title(ws, f"Category: {category}", NUM_COLS, row=1)
         row = 3
 
         if not txns:
-            ws.cell(row=row, column=1).value = "No transactions for this category"
+            ws.cell(row=row, column=1, value="No transactions for this category")
             output = BytesIO()
             wb.save(output)
             output.seek(0)
             return output
 
-        # Group by month (YYYY-MM)
+        # Group by month
         months: Dict[str, List[Any]] = {}
         for t in txns:
             m = t.date.strftime("%Y-%m")
             months.setdefault(m, []).append(t)
 
-        # Get sorted month keys
         month_keys = sorted(months.keys())
+        all_txns_by_month = [(mk, months[mk]) for mk in month_keys]
 
-        # Precompute cumulative amounts prior to each month
+        # Cumulative sums
         cumulative_before: Dict[str, float] = {}
-        all_txns_by_month = []
-        # Build list of (month, txns) in order
-        for mk in month_keys:
-            all_txns_by_month.append((mk, months[mk]))
+        for idx, (mk, _) in enumerate(all_txns_by_month):
+            cumulative_before[mk] = sum(
+                pt.amount for j in range(idx) for pt in all_txns_by_month[j][1]
+            )
 
-        # compute cumulative sums
-        for idx, (mk, mtxns) in enumerate(all_txns_by_month):
-            # sum of amounts for all previous months
-            prev_sum = 0.0
-            for j in range(0, idx):
-                for pt in all_txns_by_month[j][1]:
-                    prev_sum += pt.amount
-            cumulative_before[mk] = prev_sum
-
-        # For each month write opening balance and rows
         for mk, mtxns in all_txns_by_month:
             # Month header
-            ws.cell(row=row, column=1).value = mk
-            ws.cell(row=row, column=1).font = ExcelExporter.HEADER_FONT
-            ws.cell(row=row, column=1).fill = ExcelExporter.HEADER_FILL
+            ExcelExporter._write_subtitle_row(ws, mk, NUM_COLS, row)
             row += 1
 
-            # Opening balance row
-            ws.cell(row=row, column=1).value = "Opening balance"
-            ws.cell(row=row, column=3).value = cumulative_before.get(mk, 0.0)
-            ws.cell(row=row, column=3).number_format = '#,##0.00'
+            # Opening balance
+            ws.cell(row=row, column=1, value="Opening balance").font = Font(name="Calibri", italic=True, size=10)
+            ob_cell = ws.cell(row=row, column=NUM_COLS, value=cumulative_before.get(mk, 0.0))
+            ob_cell.number_format = ExcelExporter.CURRENCY_FMT
+            ob_cell.font = Font(name="Calibri", italic=True, size=10)
             row += 1
 
-            # Table header for transactions
-            headers = ["Date", "Description", "Amount", "Running Balance"]
-            for col_num, header in enumerate(headers, 1):
-                cell = ws.cell(row=row, column=col_num)
-                cell.value = header
-                cell.fill = ExcelExporter.HEADER_FILL
-                cell.font = ExcelExporter.HEADER_FONT
-                cell.alignment = Alignment(horizontal="center")
-                cell.border = ExcelExporter.BORDER
+            # Column headers
+            for col, h in enumerate(["Date", "Description", "Amount", "Running Balance"], 1):
+                ws.cell(row=row, column=col, value=h)
+            ExcelExporter._style_header_row(ws, row, NUM_COLS)
             row += 1
 
-            # Running balance starts at opening
             running = cumulative_before.get(mk, 0.0)
-            for t in mtxns:
-                ws.cell(row=row, column=1).value = t.date.isoformat()
-                ws.cell(row=row, column=2).value = t.description
-                ws.cell(row=row, column=3).value = t.amount
-                ws.cell(row=row, column=3).number_format = '#,##0.00'
+            for i, t in enumerate(mtxns):
+                ws.cell(row=row, column=1, value=t.date.isoformat())
+                ws.cell(row=row, column=2, value=t.description)
+                amt_c = ws.cell(row=row, column=3, value=t.amount)
                 running += t.amount
-                ws.cell(row=row, column=4).value = running
-                ws.cell(row=row, column=4).number_format = '#,##0.00'
-
-                # apply borders
-                for c in range(1, 5):
-                    ws.cell(row=row, column=c).border = ExcelExporter.BORDER
+                bal_c = ws.cell(row=row, column=4, value=running)
+                ExcelExporter._style_data_row(ws, row, NUM_COLS, is_stripe=(i % 2 == 1))
+                ExcelExporter._style_amount_cell(amt_c, t.amount)
+                bal_c.number_format = ExcelExporter.CURRENCY_FMT
                 row += 1
 
-            # blank row between months
-            row += 1
+            row += 1  # blank between months
 
+        ExcelExporter._set_print_setup(ws)
         output = BytesIO()
         wb.save(output)
         output.seek(0)
         return output
 
-    @staticmethod
-    def _sanitize_sheet_name(name: str) -> str:
-        r"""
-        Sanitize a category name for use as an Excel sheet name.
-        Excel sheet names can't contain: : \ / ? * [ ]
-        Max 31 characters.
-        """
-        # Remove invalid Excel sheet name characters
-        invalid_chars = r'[\:\/\?\*\[\]]'
-        import re
-        sanitized = re.sub(invalid_chars, '', name)
-        # Truncate to 31 chars
-        return sanitized[:31]
-
+    # ══════════════════════════════════════════════════════════
+    #  EXPORT: ALL CATEGORIES (one sheet per category)
+    # ══════════════════════════════════════════════════════════
     @staticmethod
     def export_all_categories_monthly(
         session_id: str,
         db: Session,
+        client_id: Optional[int] = None,
         date_from: Optional[str] = None,
         date_to: Optional[str] = None,
         include_vat: bool = False,
-        selected_categories: Optional[List[str]] = None
+        selected_categories: Optional[List[str]] = None,
     ) -> BytesIO:
-        """
-        Export all categories: one sheet per category with month sections.
-        
-        Parameters:
-        - session_id: The session ID
-        - db: Database session
-        - date_from: Optional start date in YYYY-MM-DD format
-        - date_to: Optional end date in YYYY-MM-DD format
-        - include_vat: Whether to include VAT columns (Amount Incl VAT, VAT Amount, Amount Excl VAT)
-        - selected_categories: Optional list of category names to export (None = all)
-        """
         from datetime import datetime
-        
-        # Debug logging
-        print(f"[EXPORT DEBUG] include_vat={include_vat}, type={type(include_vat).__name__}")
-        
-        # Build query with date filtering
-        query = db.query(Transaction).filter(Transaction.session_id == session_id)
-        
+
+        query = db.query(Transaction)
+        if session_id:
+            query = query.filter(Transaction.session_id == session_id)
+        elif client_id:
+            query = query.filter(Transaction.client_id == client_id)
+        else:
+            raise ValueError("Either session_id or client_id must be provided")
         if date_from:
             query = query.filter(Transaction.date >= datetime.strptime(date_from, "%Y-%m-%d").date())
         if date_to:
             query = query.filter(Transaction.date <= datetime.strptime(date_to, "%Y-%m-%d").date())
-        
         transactions = query.order_by(Transaction.date).all()
-        
+
         if not transactions:
-            # Return empty workbook if no transactions
             wb = openpyxl.Workbook()
             ws = wb.active
             ws.title = "No Data"
-            ws['A1'] = "No transactions found for this session"
+            ws["A1"] = "No transactions found for this session"
             output = BytesIO()
             wb.save(output)
             output.seek(0)
             return output
-        
-        # Group transactions by category
+
+        # Group by category
         categories_map: Dict[str, List[Any]] = {}
         for t in transactions:
-            cat_name = t.category if t.category else 'Uncategorized'
+            cat_name = t.category or "Uncategorized"
             categories_map.setdefault(cat_name, []).append(t)
-        
-        print(f"[EXPORT DEBUG] Found {len(categories_map)} unique categories: {list(categories_map.keys())}")
-        print(f"[EXPORT DEBUG] selected_categories filter: {selected_categories}")
-        
-        # Filter by selected categories if provided
+
         if selected_categories:
             categories_map = {k: v for k, v in categories_map.items() if k in selected_categories}
-            print(f"[EXPORT DEBUG] After filtering: {len(categories_map)} categories: {list(categories_map.keys())}")
+
+        if include_vat:
+            num_cols = 6
+            col_widths = {"A": 14, "B": 42, "C": 18, "D": 16, "E": 18, "F": 20}
+            headers = ["Date", "Description", "Amount (Incl VAT)", "VAT Amount", "Amount (Excl VAT)", "Running Balance"]
         else:
-            print(f"[EXPORT DEBUG] No filter applied, exporting all {len(categories_map)} categories")
+            num_cols = 4
+            col_widths = {"A": 14, "B": 42, "C": 18, "D": 20}
+            headers = ["Date", "Description", "Amount", "Running Balance"]
 
         wb = openpyxl.Workbook()
-        first = True
-        
+
+        # ── Summary sheet (pivot: categories × months) ─────────────────
+        ws_summary = wb.active
+        ws_summary.title = "Summary"
+        ExcelExporter._build_summary_sheet(
+            ws_summary,
+            transactions,
+            categories_map,
+            include_vat=include_vat,
+        )
+
         for category, txns in categories_map.items():
-            # Sanitize category name for Excel sheet title
             sheet_name = ExcelExporter._sanitize_sheet_name(category)
-            if first:
-                ws = wb.active
-                ws.title = sheet_name
-                first = False
-            else:
-                ws = wb.create_sheet(title=sheet_name)
+            # Always create new sheets — Summary already occupies wb.active
+            ws = wb.create_sheet(title=sheet_name)
 
-            # Set column widths based on whether VAT columns are included
-            print(f"[EXPORT DEBUG] Sheet '{sheet_name}': include_vat={include_vat}, type={type(include_vat).__name__}")
-            
-            if include_vat:
-                print(f"[EXPORT DEBUG] Adding VAT columns for sheet '{sheet_name}'")
-                ws.column_dimensions['A'].width = 12  # Date
-                ws.column_dimensions['B'].width = 40  # Description
-                ws.column_dimensions['C'].width = 15  # Amount Incl VAT
-                ws.column_dimensions['D'].width = 15  # VAT Amount
-                ws.column_dimensions['E'].width = 15  # Amount Excl VAT
-                ws.column_dimensions['F'].width = 18  # Running Balance
-                merge_range = 'A1:F1'
-                num_cols = 6
-            else:
-                print(f"[EXPORT DEBUG] Using standard columns (no VAT) for sheet '{sheet_name}'")
-                ws.column_dimensions['A'].width = 12  # Date
-                ws.column_dimensions['B'].width = 40  # Description
-                ws.column_dimensions['C'].width = 15  # Amount
-                ws.column_dimensions['D'].width = 18  # Running Balance
-                merge_range = 'A1:D1'
-                num_cols = 4
+            for letter, w in col_widths.items():
+                ws.column_dimensions[letter].width = w
 
-            # Category header
-            ws.merge_cells(merge_range)
-            ws.cell(row=1, column=1).value = f"Category: {category}"
-            ws.cell(row=1, column=1).font = ExcelExporter.HEADER_FONT
-            ws.cell(row=1, column=1).fill = ExcelExporter.HEADER_FILL
+            ExcelExporter._write_branded_title(ws, f"Category: {category}", num_cols, row=1)
 
             row = 3
+            data_first_row = None
 
-            # Group transactions by month
+            # Group by month
             months: Dict[str, List[Any]] = {}
             for t in txns:
                 m = t.date.strftime("%Y-%m")
                 months.setdefault(m, []).append(t)
-
             month_keys = sorted(months.keys())
             all_txns_by_month = [(mk, months[mk]) for mk in month_keys]
 
-            # Process each month
             for idx, (mk, mtxns) in enumerate(all_txns_by_month):
-                # Calculate opening balance
-                prev_sum = 0.0
-                for j in range(0, idx):
-                    for pt in all_txns_by_month[j][1]:
-                        prev_sum += pt.amount
+                prev_sum = sum(
+                    pt.amount for j in range(idx) for pt in all_txns_by_month[j][1]
+                )
 
-                # Month header
-                ws.cell(row=row, column=1).value = mk
-                ws.cell(row=row, column=1).font = ExcelExporter.HEADER_FONT
-                ws.cell(row=row, column=1).fill = ExcelExporter.HEADER_FILL
+                # Month section header
+                ExcelExporter._write_subtitle_row(ws, mk, num_cols, row)
                 row += 1
 
-                # Opening balance row
-                ws.cell(row=row, column=1).value = "Opening balance"
-                balance_col = num_cols  # Last column
-                ws.cell(row=row, column=balance_col).value = prev_sum
-                ws.cell(row=row, column=balance_col).number_format = '#,##0.00'
+                # Opening balance
+                ws.cell(row=row, column=1, value="Opening balance").font = Font(name="Calibri", italic=True, size=10)
+                ob_cell = ws.cell(row=row, column=num_cols, value=prev_sum)
+                ob_cell.number_format = ExcelExporter.CURRENCY_FMT
+                ob_cell.font = Font(name="Calibri", italic=True, size=10)
                 row += 1
 
                 # Column headers
-                if include_vat:
-                    headers = ["Date", "Description", "Amount (Incl VAT)", "VAT Amount", "Amount (Excl VAT)", "Running Balance"]
-                    print(f"[EXPORT DEBUG] Adding VAT headers: {headers}")
-                else:
-                    headers = ["Date", "Description", "Amount", "Running Balance"]
-                    print(f"[EXPORT DEBUG] Adding standard headers: {headers}")
-                
-                for col_num, header in enumerate(headers, 1):
-                    cell = ws.cell(row=row, column=col_num)
-                    cell.value = header
-                    cell.fill = ExcelExporter.HEADER_FILL
-                    cell.font = ExcelExporter.HEADER_FONT
-                    cell.alignment = Alignment(horizontal="center")
-                    cell.border = ExcelExporter.BORDER
+                for col, h in enumerate(headers, 1):
+                    ws.cell(row=row, column=col, value=h)
+                ExcelExporter._style_header_row(ws, row, num_cols)
                 row += 1
 
-                # Transaction rows
                 running = prev_sum
-                row_count = 0
-                for t in mtxns:
-                    ws.cell(row=row, column=1).value = t.date.isoformat()
-                    ws.cell(row=row, column=2).value = t.description
-                    
-                    if row_count == 0:
-                        print(f"[EXPORT DEBUG] Processing first transaction in month {mk}: include_vat={include_vat}")
-                    
+                for i, t in enumerate(mtxns):
+                    ws.cell(row=row, column=1, value=t.date.isoformat())
+                    ws.cell(row=row, column=2, value=t.description)
+
+                    # mark the first data row for this sheet (used for totals)
+                    if data_first_row is None:
+                        data_first_row = row
+
                     if include_vat:
-                        # Calculate VAT components
-                        vat_rate = 0.15  # 15% South African VAT
                         vat_amount = t.vat_amount if t.vat_amount is not None else 0.0
                         amount_incl_vat = t.amount
                         amount_excl_vat = amount_incl_vat - vat_amount
-                        
-                        if row_count == 0:
-                            print(f"[EXPORT DEBUG] Writing VAT columns: incl={amount_incl_vat}, vat={vat_amount}, excl={amount_excl_vat}")
-                        
-                        ws.cell(row=row, column=3).value = amount_incl_vat
-                        ws.cell(row=row, column=3).number_format = '#,##0.00'
-                        
-                        ws.cell(row=row, column=4).value = vat_amount
-                        ws.cell(row=row, column=4).number_format = '#,##0.00'
-                        
-                        ws.cell(row=row, column=5).value = amount_excl_vat
-                        ws.cell(row=row, column=5).number_format = '#,##0.00'
-                        
-                        running += t.amount
-                        ws.cell(row=row, column=6).value = running
-                        ws.cell(row=row, column=6).number_format = '#,##0.00'
-                    else:
-                        if row_count == 0:
-                            print(f"[EXPORT DEBUG] Writing standard columns (no VAT)")
-                        
-                        ws.cell(row=row, column=3).value = t.amount
-                        ws.cell(row=row, column=3).number_format = '#,##0.00'
-                        
-                        running += t.amount
-                        ws.cell(row=row, column=4).value = running
-                        ws.cell(row=row, column=4).number_format = '#,##0.00'
-                    
-                    # Apply borders to all cells in the row
-                    for c in range(1, num_cols + 1):
-                        ws.cell(row=row, column=c).border = ExcelExporter.BORDER
-                    row += 1
-                    row_count += 1
 
-                row += 1  # Space between months
+                        c3 = ws.cell(row=row, column=3, value=amount_incl_vat)
+                        c3.number_format = ExcelExporter.CURRENCY_FMT
+                        c4 = ws.cell(row=row, column=4, value=vat_amount)
+                        c4.number_format = ExcelExporter.CURRENCY_FMT
+                        c5 = ws.cell(row=row, column=5, value=amount_excl_vat)
+                        c5.number_format = ExcelExporter.CURRENCY_FMT
+
+                        running += t.amount
+                        c6 = ws.cell(row=row, column=6, value=running)
+                        c6.number_format = ExcelExporter.CURRENCY_FMT
+                    else:
+                        amt_c = ws.cell(row=row, column=3, value=t.amount)
+                        running += t.amount
+                        bal_c = ws.cell(row=row, column=4, value=running)
+                        ExcelExporter._style_amount_cell(amt_c, t.amount)
+                        bal_c.number_format = ExcelExporter.CURRENCY_FMT
+
+                    ExcelExporter._style_data_row(ws, row, num_cols, is_stripe=(i % 2 == 1))
+                    row += 1
+
+                row += 1  # blank between months
+
+            # After listing all months, write totals for the sheet
+            if data_first_row is not None:
+                total_label_row = row
+                ws.cell(row=total_label_row, column=1, value="TOTAL")
+                if include_vat:
+                    # Amount (Incl VAT) is col 3, VAT Amount col 4, Amount Excl VAT col 5
+                    ws.cell(row=total_label_row, column=3, value=f"=SUM(C{data_first_row}:C{row-1})")
+                    ws.cell(row=total_label_row, column=3).number_format = ExcelExporter.CURRENCY_FMT
+                    ws.cell(row=total_label_row, column=4, value=f"=SUM(D{data_first_row}:D{row-1})")
+                    ws.cell(row=total_label_row, column=4).number_format = ExcelExporter.CURRENCY_FMT
+                    ws.cell(row=total_label_row, column=5, value=f"=SUM(E{data_first_row}:E{row-1})")
+                    ws.cell(row=total_label_row, column=5).number_format = ExcelExporter.CURRENCY_FMT
+                else:
+                    # Amount is col 3 when VAT not included
+                    ws.cell(row=total_label_row, column=3, value=f"=SUM(C{data_first_row}:C{row-1})")
+                    ws.cell(row=total_label_row, column=3).number_format = ExcelExporter.CURRENCY_FMT
+
+                ExcelExporter._style_total_row(ws, total_label_row, num_cols)
+                row += 1
+
+            ExcelExporter._set_print_setup(ws)
 
         output = BytesIO()
         wb.save(output)
         output.seek(0)
         return output
-    
+
+    # ══════════════════════════════════════════════════════════
+    #  EXPORT: MONTHLY SUMMARY
+    # ══════════════════════════════════════════════════════════
     @staticmethod
-    def export_monthly_summary(summary_data: Dict[str, Any]) -> BytesIO:
-        """
-        Export monthly summary to Excel
-        Multi-sheet: Overview + Category Details
-        """
-        
+    def export_monthly_summary(summary_data: Dict[str, Any], include_vat: bool = False, transactions: Optional[List[Any]] = None) -> BytesIO:
         wb = openpyxl.Workbook()
-        
-        # ===== SHEET 1: Monthly Overview =====
-        ws_overview = wb.active
-        ws_overview.title = "Monthly Summary"
-        
-        # Column widths
-        ws_overview.column_dimensions['A'].width = 12
-        ws_overview.column_dimensions['B'].width = 15
-        ws_overview.column_dimensions['C'].width = 15
-        ws_overview.column_dimensions['D'].width = 15
-        
-        # Headers
-        headers = ["Month", "Total Income", "Total Expenses", "Net Balance"]
-        for col_num, header in enumerate(headers, 1):
-            cell = ws_overview.cell(row=1, column=col_num)
-            cell.value = header
-            cell.fill = ExcelExporter.HEADER_FILL
-            cell.font = ExcelExporter.HEADER_FONT
-            cell.alignment = Alignment(horizontal="center")
-            cell.border = ExcelExporter.BORDER
-        
-        # Data rows
+
+        # ── Sheet 1: Monthly Overview ─────────────────────────
+        ws_o = wb.active
+        ws_o.title = "Monthly Summary"
+
+        if include_vat:
+            NUM_O = 7
+            o_headers = [
+                "Month",
+                "Total Income",
+                "Total Expenses",
+                "Net Balance",
+                "VAT Output",
+                "VAT Input",
+                "Total Excl. VAT",
+            ]
+            for letter, w in {"A": 14, "B": 18, "C": 18, "D": 18, "E": 16, "F": 16, "G": 18}.items():
+                ws_o.column_dimensions[letter].width = w
+        else:
+            NUM_O = 4
+            o_headers = ["Month", "Total Income", "Total Expenses", "Net Balance"]
+            for letter, w in {"A": 14, "B": 18, "C": 18, "D": 18}.items():
+                ws_o.column_dimensions[letter].width = w
+
+        ExcelExporter._write_branded_title(ws_o, "Monthly Summary", NUM_O, row=1)
+
+        HEADER_R = 3
+        for col, h in enumerate(o_headers, 1):
+            ws_o.cell(row=HEADER_R, column=col, value=h)
+        ExcelExporter._style_header_row(ws_o, HEADER_R, NUM_O)
+
         months = summary_data.get("months", [])
-        for row_num, month in enumerate(months, 2):
-            ws_overview.cell(row=row_num, column=1).value = month["month"]
-            ws_overview.cell(row=row_num, column=2).value = month["total_income"]
-            ws_overview.cell(row=row_num, column=3).value = month["total_expenses"]
-            ws_overview.cell(row=row_num, column=4).value = month["net_balance"]
-            
-            for col in range(1, 5):
-                cell = ws_overview.cell(row=row_num, column=col)
-                cell.border = ExcelExporter.BORDER
-                if col > 1:
-                    cell.number_format = '#,##0.00'
-        
+
+        # Pre-compute per-month VAT output/input and excl totals from transactions if available
+        month_output_vat: Dict[str, float] = {}
+        month_input_vat: Dict[str, float] = {}
+        month_excl: Dict[str, float] = {}
+        if include_vat and transactions:
+            for t in transactions:
+                mk = t.date.strftime("%Y-%m")
+                vat = t.vat_amount if t.vat_amount is not None else 0.0
+                amt = t.amount if t.amount is not None else 0.0
+                # classify VAT: positive amounts -> output, negative amounts -> input
+                if amt >= 0:
+                    month_output_vat[mk] = month_output_vat.get(mk, 0.0) + abs(vat)
+                else:
+                    month_input_vat[mk] = month_input_vat.get(mk, 0.0) + abs(vat)
+                month_excl[mk] = month_excl.get(mk, 0.0) + (amt - vat)
+
+        for i, month in enumerate(months):
+            r = HEADER_R + 1 + i
+            ws_o.cell(row=r, column=1, value=month["month"])
+            for col_idx, key in enumerate(["total_income", "total_expenses", "net_balance"], 2):
+                c = ws_o.cell(row=r, column=col_idx, value=month[key])
+                c.number_format = ExcelExporter.CURRENCY_FMT
+                if key == "net_balance":
+                    ExcelExporter._style_amount_cell(c, month[key])
+            if include_vat:
+                mk = month["month"]
+                c5 = ws_o.cell(row=r, column=5, value=month_output_vat.get(mk, 0.0))
+                c5.number_format = ExcelExporter.CURRENCY_FMT
+                c6 = ws_o.cell(row=r, column=6, value=month_input_vat.get(mk, 0.0))
+                c6.number_format = ExcelExporter.CURRENCY_FMT
+                c7 = ws_o.cell(row=r, column=7, value=month_excl.get(mk, 0.0))
+                c7.number_format = ExcelExporter.CURRENCY_FMT
+            ExcelExporter._style_data_row(ws_o, r, NUM_O, is_stripe=(i % 2 == 1))
+
         # Overall totals
         if months:
-            total_row = len(months) + 2
+            total_r = HEADER_R + 1 + len(months)
             overall = summary_data.get("overall", {})
-            
-            ws_overview.cell(row=total_row, column=1).value = "OVERALL"
-            ws_overview.cell(row=total_row, column=2).value = overall.get("total_income", 0)
-            ws_overview.cell(row=total_row, column=3).value = overall.get("total_expenses", 0)
-            ws_overview.cell(row=total_row, column=4).value = overall.get("net_balance", 0)
-            
-            for col in range(1, 5):
-                cell = ws_overview.cell(row=total_row, column=col)
-                cell.fill = ExcelExporter.TOTAL_FILL
-                cell.font = ExcelExporter.TOTAL_FONT
-                cell.border = ExcelExporter.BORDER
-                if col > 1:
-                    cell.number_format = '#,##0.00'
-        
-        # ===== SHEET 2: Category Breakdown =====
-        ws_categories = wb.create_sheet("Category Breakdown")
-        ws_categories.column_dimensions['A'].width = 20
-        ws_categories.column_dimensions['B'].width = 15
-        
-        # Headers
-        for col_num, header in enumerate(["Category", "Total Amount"], 1):
-            cell = ws_categories.cell(row=1, column=col_num)
-            cell.value = header
-            cell.fill = ExcelExporter.HEADER_FILL
-            cell.font = ExcelExporter.HEADER_FONT
-            cell.alignment = Alignment(horizontal="center")
-            cell.border = ExcelExporter.BORDER
-        
-        # Aggregate categories across all months
+            ws_o.cell(row=total_r, column=1, value="OVERALL")
+            for col_idx, key in enumerate(["total_income", "total_expenses", "net_balance"], 2):
+                c = ws_o.cell(row=total_r, column=col_idx, value=overall.get(key, 0))
+                c.number_format = ExcelExporter.CURRENCY_FMT
+            if include_vat:
+                total_output_vat = sum(month_output_vat.values())
+                total_input_vat = sum(month_input_vat.values())
+                total_excl_val = sum(month_excl.values())
+                ws_o.cell(row=total_r, column=5, value=total_output_vat)
+                ws_o.cell(row=total_r, column=5).number_format = ExcelExporter.CURRENCY_FMT
+                ws_o.cell(row=total_r, column=6, value=total_input_vat)
+                ws_o.cell(row=total_r, column=6).number_format = ExcelExporter.CURRENCY_FMT
+                ws_o.cell(row=total_r, column=7, value=total_excl_val)
+                ws_o.cell(row=total_r, column=7).number_format = ExcelExporter.CURRENCY_FMT
+            ExcelExporter._style_total_row(ws_o, total_r, NUM_O)
+
+        ExcelExporter._freeze_and_filter(ws_o, HEADER_R, NUM_O)
+        ExcelExporter._set_print_setup(ws_o)
+
+        # ── Sheet 2: Category Breakdown ───────────────────────
+        ws_c = wb.create_sheet("Category Breakdown")
+
+        if include_vat:
+            NUM_C = 5
+            c_headers = ["Category", "Amount", "VAT Output", "VAT Input", "Amount Excl. VAT"]
+            for letter, w in {"A": 24, "B": 18, "C": 16, "D": 16, "E": 20}.items():
+                ws_c.column_dimensions[letter].width = w
+        else:
+            NUM_C = 2
+            c_headers = ["Category", "Total Amount"]
+            ws_c.column_dimensions["A"].width = 24
+            ws_c.column_dimensions["B"].width = 18
+
+        ExcelExporter._write_branded_title(ws_c, "Category Breakdown", NUM_C, row=1)
+
+        C_HEADER = 3
+        for col, h in enumerate(c_headers, 1):
+            ws_c.cell(row=C_HEADER, column=col, value=h)
+        ExcelExporter._style_header_row(ws_c, C_HEADER, NUM_C)
+
         all_categories: Dict[str, float] = {}
-        for month in months:
-            for category, amount in month.get("categories", {}).items():
-                if category not in all_categories:
-                    all_categories[category] = 0
-                all_categories[category] += amount
-        
-        # Sort by amount descending
-        sorted_cats = sorted(all_categories.items(), key=lambda x: x[1], reverse=True)
-        
-        # Data rows
-        for row_num, (category, amount) in enumerate(sorted_cats, 2):
-            ws_categories.cell(row=row_num, column=1).value = category
-            ws_categories.cell(row=row_num, column=2).value = amount
-            ws_categories.cell(row=row_num, column=2).number_format = '#,##0.00'
-            
-            for col in range(1, 3):
-                ws_categories.cell(row=row_num, column=col).border = ExcelExporter.BORDER
-        
-        # Total row
+        cat_output_vat: Dict[str, float] = {}
+        cat_input_vat: Dict[str, float] = {}
+        cat_excl: Dict[str, float] = {}
+
+        # Prefer computing signed per-category totals from the raw transactions when available
+        if transactions:
+            for t in transactions:
+                cat = t.category or "Uncategorised"
+                amt = t.amount if t.amount is not None else 0.0
+                vat = t.vat_amount if t.vat_amount is not None else 0.0
+
+                # Signed gross amount per category
+                all_categories[cat] = all_categories.get(cat, 0.0) + amt
+
+                # Classify VAT: income (amt >= 0) -> output VAT, expense (amt < 0) -> input VAT
+                if amt >= 0:
+                    cat_output_vat[cat] = cat_output_vat.get(cat, 0.0) + abs(vat)
+                else:
+                    cat_input_vat[cat] = cat_input_vat.get(cat, 0.0) + abs(vat)
+
+                # Amount excluding VAT (signed)
+                cat_excl[cat] = cat_excl.get(cat, 0.0) + (amt - vat)
+        else:
+            # Fallback to month-aggregated values (these are absolute amounts)
+            for month in months:
+                for category, amount in month.get("categories", {}).items():
+                    all_categories[category] = all_categories.get(category, 0) + amount
+
+        # Sort categories by absolute total (largest contributors first)
+        sorted_cats = sorted(all_categories.items(), key=lambda x: abs(x[1]), reverse=True)
+
+        for i, (category, amount) in enumerate(sorted_cats):
+            r = C_HEADER + 1 + i
+            ws_c.cell(row=r, column=1, value=category)
+            # Amount (signed gross). Prefer transaction-sourced amount when available
+            if transactions:
+                display_amount = all_categories.get(category, 0.0)
+            else:
+                display_amount = amount
+            c = ws_c.cell(row=r, column=2, value=display_amount)
+            c.number_format = ExcelExporter.CURRENCY_FMT
+            if include_vat:
+                cv_out = ws_c.cell(row=r, column=3, value=cat_output_vat.get(category, 0.0))
+                cv_out.number_format = ExcelExporter.CURRENCY_FMT
+                cv_in = ws_c.cell(row=r, column=4, value=cat_input_vat.get(category, 0.0))
+                cv_in.number_format = ExcelExporter.CURRENCY_FMT
+                ce = ws_c.cell(row=r, column=5, value=cat_excl.get(category, 0.0))
+                ce.number_format = ExcelExporter.CURRENCY_FMT
+            ExcelExporter._style_data_row(ws_c, r, NUM_C, is_stripe=(i % 2 == 1))
+
         if all_categories:
-            total_row = len(all_categories) + 2
-            ws_categories.cell(row=total_row, column=1).value = "TOTAL"
-            ws_categories.cell(row=total_row, column=1).font = ExcelExporter.TOTAL_FONT
-            ws_categories.cell(row=total_row, column=1).fill = ExcelExporter.TOTAL_FILL
-            
-            total_formula = f"=SUM(B2:B{total_row-1})"
-            ws_categories.cell(row=total_row, column=2).value = total_formula
-            ws_categories.cell(row=total_row, column=2).font = ExcelExporter.TOTAL_FONT
-            ws_categories.cell(row=total_row, column=2).fill = ExcelExporter.TOTAL_FILL
-            ws_categories.cell(row=total_row, column=2).number_format = '#,##0.00'
-            
-            for col in range(1, 3):
-                ws_categories.cell(row=total_row, column=col).border = ExcelExporter.BORDER
-        
-        # Save to bytes
+            total_r = C_HEADER + 1 + len(all_categories)
+            ws_c.cell(row=total_r, column=1, value="TOTAL")
+            ws_c.cell(row=total_r, column=2, value=f"=SUM(B{C_HEADER+1}:B{total_r-1})")
+            ws_c.cell(row=total_r, column=2).number_format = ExcelExporter.CURRENCY_FMT
+            if include_vat:
+                ws_c.cell(row=total_r, column=3, value=f"=SUM(C{C_HEADER+1}:C{total_r-1})")
+                ws_c.cell(row=total_r, column=3).number_format = ExcelExporter.CURRENCY_FMT
+                ws_c.cell(row=total_r, column=4, value=f"=SUM(D{C_HEADER+1}:D{total_r-1})")
+                ws_c.cell(row=total_r, column=4).number_format = ExcelExporter.CURRENCY_FMT
+                ws_c.cell(row=total_r, column=5, value=f"=SUM(E{C_HEADER+1}:E{total_r-1})")
+                ws_c.cell(row=total_r, column=5).number_format = ExcelExporter.CURRENCY_FMT
+            ExcelExporter._style_total_row(ws_c, total_r, NUM_C)
+
+        ExcelExporter._freeze_and_filter(ws_c, C_HEADER, NUM_C)
+        ExcelExporter._set_print_setup(ws_c)
+
         output = BytesIO()
         wb.save(output)
         output.seek(0)

@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { X, FileSpreadsheet, AlertCircle } from 'lucide-react'
-import axios from 'axios'
+import { X, FileSpreadsheet, AlertCircle, Calendar, Loader2, BarChart3, ArrowDownUp, ArrowDown, ArrowUp } from 'lucide-react'
+import axios from '@/lib/axiosClient'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -10,285 +10,181 @@ interface VATExportModalProps {
   isOpen: boolean
   onClose: () => void
   sessionId: string | null
+  clientId?: number | null
 }
 
-export default function VATExportModal({
-  isOpen,
-  onClose,
-  sessionId
-}: VATExportModalProps) {
-  const [dateFrom, setDateFrom] = useState<string>('')
-  const [dateTo, setDateTo] = useState<string>('')
-  const [useFullPeriod, setUseFullPeriod] = useState<boolean>(true)
+const EXPORT_TYPES = [
+  { value: 'both'        as const, icon: <ArrowDownUp className="w-4 h-4" />, label: 'Both Input & Output', desc: 'Full report with Net VAT calculation' },
+  { value: 'input_only'  as const, icon: <ArrowDown className="w-4 h-4" />,   label: 'VAT Input Only',      desc: 'Expenses and claimable VAT' },
+  { value: 'output_only' as const, icon: <ArrowUp className="w-4 h-4" />,     label: 'VAT Output Only',     desc: 'Sales/Income and payable VAT' },
+] as const
+
+export default function VATExportModal({ isOpen, onClose, sessionId, clientId }: VATExportModalProps) {
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [useFullPeriod, setUseFullPeriod] = useState(true)
   const [exportType, setExportType] = useState<'both' | 'input_only' | 'output_only'>('both')
   const [exporting, setExporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [warning, setWarning] = useState<string | null>(null)
-  
-  // Transaction date range from session
+
   const [sessionDateFrom, setSessionDateFrom] = useState<string | null>(null)
   const [sessionDateTo, setSessionDateTo] = useState<string | null>(null)
 
+  /* ── fetch session dates ───────────────────────────────────────── */
   useEffect(() => {
     if (!isOpen || !sessionId) return
-
-    const fetchSessionInfo = async () => {
+    ;(async () => {
       try {
-        const response = await axios.get(`${API_BASE_URL}/sessions`)
-        const sessions = response.data.sessions || []
-        const currentSession = sessions.find((s: any) => s.session_id === sessionId)
-        
-        if (currentSession) {
-          setSessionDateFrom(currentSession.date_from)
-          setSessionDateTo(currentSession.date_to)
-          setDateFrom(currentSession.date_from || '')
-          setDateTo(currentSession.date_to || '')
+        const res = await axios.get(`${API_BASE_URL}/sessions`)
+        const cur = (res.data.sessions || []).find((s: any) => s.session_id === sessionId)
+        if (cur) {
+          setSessionDateFrom(cur.date_from); setSessionDateTo(cur.date_to)
+          setDateFrom(cur.date_from || ''); setDateTo(cur.date_to || '')
         }
-      } catch (error) {
-        console.error('Failed to fetch session info:', error)
-      }
-    }
-
-    fetchSessionInfo()
+      } catch { /* ignore */ }
+    })()
   }, [isOpen, sessionId])
 
   useEffect(() => {
-    // Reset to full period when checkbox is toggled
     if (useFullPeriod && sessionDateFrom && sessionDateTo) {
-      setDateFrom(sessionDateFrom)
-      setDateTo(sessionDateTo)
-      setWarning(null)
+      setDateFrom(sessionDateFrom); setDateTo(sessionDateTo); setWarning(null)
     }
   }, [useFullPeriod, sessionDateFrom, sessionDateTo])
 
   useEffect(() => {
-    // Validate date range when dates change
-    if (!dateFrom || !dateTo || !sessionDateFrom || !sessionDateTo) {
-      setWarning(null)
-      return
-    }
-
-    const fromDate = new Date(dateFrom)
-    const toDate = new Date(dateTo)
-    const sessionFromDate = new Date(sessionDateFrom)
-    const sessionToDate = new Date(sessionDateTo)
-
-    if (fromDate < sessionFromDate || toDate > sessionToDate) {
-      const actualFrom = fromDate < sessionFromDate ? sessionDateFrom : dateFrom
-      const actualTo = toDate > sessionToDate ? sessionDateTo : dateTo
-      setWarning(
-        `Selected range extends beyond transaction dates. Export will include data from ${actualFrom} to ${actualTo}.`
-      )
-    } else {
-      setWarning(null)
-    }
+    if (!dateFrom || !dateTo || !sessionDateFrom || !sessionDateTo) { setWarning(null); return }
+    const [f, t, sf, st] = [new Date(dateFrom), new Date(dateTo), new Date(sessionDateFrom), new Date(sessionDateTo)]
+    if (f < sf || t > st) {
+      setWarning(`Range extends beyond statement dates. Export will cover ${f < sf ? sessionDateFrom : dateFrom} to ${t > st ? sessionDateTo : dateTo}.`)
+    } else setWarning(null)
   }, [dateFrom, dateTo, sessionDateFrom, sessionDateTo])
 
+  /* ── export ────────────────────────────────────────────────────── */
   const handleExport = async () => {
-    if (!sessionId) return
-
-    setExporting(true)
-    setError(null)
-
+    if (!sessionId && !clientId) return
+    setExporting(true); setError(null)
     try {
-      const params: any = {
-        session_id: sessionId,
-        format: 'excel',
-        export_type: exportType
-      }
-
-      // Add date range if not using full period
-      if (!useFullPeriod && dateFrom && dateTo) {
-        params.date_from = dateFrom
-        params.date_to = dateTo
-      }
-
-      const response = await axios.get(`${API_BASE_URL}/vat/export`, {
-        params,
-        responseType: 'blob',
-      })
-
-      // Generate filename based on export type and date range
-      const dateRangeStr = dateFrom && dateTo ? `${dateFrom}_to_${dateTo}` : (sessionId?.substring(0, 8) || 'export')
-      const typeStr = exportType === 'both' ? 'report' : exportType.replace('_', '_')
-      const filename = `vat_${typeStr}_${dateRangeStr}.xlsx`
-
-      const url = window.URL.createObjectURL(response.data)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = filename
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
-
+      const params: any = clientId
+        ? { client_id: clientId, format: 'excel', export_type: exportType }
+        : { session_id: sessionId, format: 'excel', export_type: exportType }
+      if (!useFullPeriod && dateFrom && dateTo) { params.date_from = dateFrom; params.date_to = dateTo }
+      const res = await axios.get(`${API_BASE_URL}/vat/export`, { params, responseType: 'blob' })
+      const range = dateFrom && dateTo ? `${dateFrom}_to_${dateTo}` : (sessionId?.substring(0, 8) || 'export')
+      const fn = `vat_${exportType === 'both' ? 'report' : exportType}_${range}.xlsx`
+      const url = window.URL.createObjectURL(res.data)
+      const a = document.createElement('a'); a.href = url; a.download = fn
+      document.body.appendChild(a); a.click(); document.body.removeChild(a); window.URL.revokeObjectURL(url)
       onClose()
-    } catch (error: any) {
-      console.error('VAT export failed:', error)
-      setError(error.response?.data?.detail || 'Export failed. Please try again.')
-    } finally {
-      setExporting(false)
-    }
+    } catch (err: any) { setError(err.response?.data?.detail || 'Export failed. Please try again.') }
+    finally { setExporting(false) }
   }
 
   if (!isOpen) return null
 
+  /* ── render ────────────────────────────────────────────────────── */
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-neutral-200 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <FileSpreadsheet className="w-5 h-5 text-blue-600" />
-            <h2 className="text-xl font-bold text-neutral-900">Export VAT Report</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl ring-1 ring-neutral-200 overflow-hidden" onClick={e => e.stopPropagation()}>
+
+        {/* ── Header ───────────────────────────────────────────── */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100">
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-100">
+              <FileSpreadsheet className="w-4 h-4 text-indigo-600" />
+            </div>
+            <h2 className="text-base font-bold text-neutral-900">Export VAT Report</h2>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5 text-neutral-600" />
+          <button onClick={onClose} className="rounded-lg p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors">
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="px-6 py-4 space-y-5">
-          {/* Date Range Section */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">📅</span>
-              <h3 className="font-semibold text-neutral-900">Date Range</h3>
+        {/* ── Body ─────────────────────────────────────────────── */}
+        <div className="px-6 py-5 space-y-6">
+
+          {/* Date Range */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Calendar className="w-4 h-4 text-neutral-400" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500">Date Range</h3>
             </div>
 
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={useFullPeriod}
-                onChange={(e) => setUseFullPeriod(e.target.checked)}
-                className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-              />
+            <label className="flex items-center gap-2.5 cursor-pointer mb-3">
+              <input type="checkbox" checked={useFullPeriod} onChange={e => setUseFullPeriod(e.target.checked)}
+                className="w-4 h-4 rounded border-neutral-300 text-indigo-600 focus:ring-indigo-300" />
               <span className="text-sm text-neutral-700">Use full statement period</span>
             </label>
 
             {!useFullPeriod && (
-              <div className="grid grid-cols-2 gap-3 pl-6">
-                <div>
-                  <label className="block text-xs font-medium text-neutral-600 mb-1">From Date</label>
-                  <input
-                    type="date"
-                    value={dateFrom}
-                    onChange={(e) => setDateFrom(e.target.value)}
-                    className="w-full text-sm px-3 py-2 border border-neutral-200 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-600 mb-1">To Date</label>
-                  <input
-                    type="date"
-                    value={dateTo}
-                    onChange={(e) => setDateTo(e.target.value)}
-                    className="w-full text-sm px-3 py-2 border border-neutral-200 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+              <div className="grid grid-cols-2 gap-3 ml-6">
+                {[{ label: 'From', val: dateFrom, set: setDateFrom }, { label: 'To', val: dateTo, set: setDateTo }].map(f => (
+                  <div key={f.label}>
+                    <label className="block text-[11px] font-semibold text-neutral-500 mb-1">{f.label}</label>
+                    <input type="date" value={f.val} onChange={e => f.set(e.target.value)}
+                      className="w-full rounded-lg border border-neutral-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300" />
+                  </div>
+                ))}
               </div>
             )}
 
             {warning && (
-              <div className="flex gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                <AlertCircle className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-yellow-800">{warning}</p>
+              <div className="mt-3 flex gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
+                <p className="text-[11px] text-amber-700">{warning}</p>
               </div>
             )}
           </div>
 
-          {/* Export Type Section */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">📊</span>
-              <h3 className="font-semibold text-neutral-900">Export Type</h3>
+          {/* Export Type */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <BarChart3 className="w-4 h-4 text-neutral-400" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500">Export Type</h3>
             </div>
-
             <div className="space-y-2">
-              <label className="flex items-start gap-3 cursor-pointer p-3 rounded-md hover:bg-neutral-50 transition-colors">
-                <input
-                  type="radio"
-                  name="exportType"
-                  value="both"
-                  checked={exportType === 'both'}
-                  onChange={(e) => setExportType('both')}
-                  className="w-4 h-4 text-blue-600 mt-0.5 focus:ring-2 focus:ring-blue-500"
-                />
-                <div>
-                  <div className="text-sm font-medium text-neutral-900">Both Input & Output</div>
-                  <div className="text-xs text-neutral-600">Full report with Net VAT calculation</div>
-                </div>
-              </label>
-
-              <label className="flex items-start gap-3 cursor-pointer p-3 rounded-md hover:bg-neutral-50 transition-colors">
-                <input
-                  type="radio"
-                  name="exportType"
-                  value="input_only"
-                  checked={exportType === 'input_only'}
-                  onChange={(e) => setExportType('input_only')}
-                  className="w-4 h-4 text-blue-600 mt-0.5 focus:ring-2 focus:ring-blue-500"
-                />
-                <div>
-                  <div className="text-sm font-medium text-neutral-900">VAT Input Only</div>
-                  <div className="text-xs text-neutral-600">Expenses and claimable VAT</div>
-                </div>
-              </label>
-
-              <label className="flex items-start gap-3 cursor-pointer p-3 rounded-md hover:bg-neutral-50 transition-colors">
-                <input
-                  type="radio"
-                  name="exportType"
-                  value="output_only"
-                  checked={exportType === 'output_only'}
-                  onChange={(e) => setExportType('output_only')}
-                  className="w-4 h-4 text-blue-600 mt-0.5 focus:ring-2 focus:ring-blue-500"
-                />
-                <div>
-                  <div className="text-sm font-medium text-neutral-900">VAT Output Only</div>
-                  <div className="text-xs text-neutral-600">Sales/Income and payable VAT</div>
-                </div>
-              </label>
+              {EXPORT_TYPES.map(t => (
+                <label key={t.value}
+                  className={`flex items-start gap-3 cursor-pointer rounded-xl border-2 px-4 py-3 transition-colors ${
+                    exportType === t.value
+                      ? 'border-indigo-500 bg-indigo-50/60'
+                      : 'border-neutral-100 hover:border-neutral-200 hover:bg-neutral-50'
+                  }`}>
+                  <input type="radio" name="exportType" value={t.value} checked={exportType === t.value}
+                    onChange={() => setExportType(t.value)}
+                    className="mt-0.5 w-4 h-4 border-neutral-300 text-indigo-600 focus:ring-indigo-300" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className={exportType === t.value ? 'text-indigo-600' : 'text-neutral-400'}>{t.icon}</span>
+                      <span className="text-sm font-semibold text-neutral-800">{t.label}</span>
+                    </div>
+                    <p className="text-[11px] text-neutral-500 mt-0.5">{t.desc}</p>
+                  </div>
+                </label>
+              ))}
             </div>
           </div>
 
-          {/* Error Message */}
+          {/* Error */}
           {error && (
-            <div className="flex gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
-              <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-red-800">{error}</p>
+            <div className="flex gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+              <AlertCircle className="w-3.5 h-3.5 text-red-500 mt-0.5 shrink-0" />
+              <p className="text-xs text-red-700">{error}</p>
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-neutral-200 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            disabled={exporting}
-            className="px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 rounded-md transition-colors disabled:opacity-50"
-          >
+        {/* ── Footer ───────────────────────────────────────────── */}
+        <div className="flex justify-end gap-2.5 px-6 py-4 border-t border-neutral-100 bg-neutral-50/50">
+          <button onClick={onClose} disabled={exporting}
+            className="rounded-lg border border-neutral-200 bg-white px-4 py-2 text-xs font-medium text-neutral-600 hover:bg-neutral-50 transition-colors disabled:opacity-40">
             Cancel
           </button>
-          <button
-            onClick={handleExport}
-            disabled={exporting || !dateFrom || !dateTo}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            {exporting ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Exporting...
-              </>
-            ) : (
-              <>
-                <FileSpreadsheet className="w-4 h-4" />
-                Export Report
-              </>
-            )}
+          <button onClick={handleExport} disabled={exporting || !dateFrom || !dateTo}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+            {exporting
+              ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Exporting...</>
+              : <><FileSpreadsheet className="w-3.5 h-3.5" /> Export Report</>}
           </button>
         </div>
       </div>

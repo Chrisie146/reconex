@@ -36,22 +36,14 @@ export function ClientProvider({ children }: { children: ReactNode }) {
     if (isAuthenticated()) {
       refreshClients()
     }
+
+    // Re-fetch when user logs in (token is set in the same tab)
+    const handleLogin = () => refreshClients()
+    window.addEventListener('auth:login', handleLogin)
+    return () => window.removeEventListener('auth:login', handleLogin)
   }, [])
 
-  // Load saved current client from localStorage
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const saved = localStorage.getItem('selected_client')
-    if (saved) {
-      try {
-        setCurrentClient(JSON.parse(saved))
-      } catch (e) {
-        // Invalid JSON, ignore
-      }
-    }
-  }, [])
-
-  // Save current client to localStorage
+  // Save current client to localStorage whenever it changes
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (currentClient) {
@@ -68,14 +60,29 @@ export function ClientProvider({ children }: { children: ReactNode }) {
       console.log('[ClientContext] Fetching clients')
       const data = await apiFetch('/clients')
       console.log('[ClientContext] Clients loaded:', data)
-      setClients(data.clients || [])
-      // If we had a current client but it's no longer in the list, clear it
-      if (currentClient && !data.clients.find((c: Client) => c.id === currentClient.id)) {
-        setCurrentClient(null)
+      const fetchedClients: Client[] = data.clients || []
+      setClients(fetchedClients)
+
+      // Read the saved client from localStorage to avoid stale closure issues
+      let savedClient: Client | null = null
+      if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('selected_client')
+        if (saved) {
+          try { savedClient = JSON.parse(saved) } catch { /* ignore */ }
+        }
       }
-      // If no current client is selected and we have clients, select the first one
-      if (!currentClient && data.clients && data.clients.length > 0) {
-        setCurrentClient(data.clients[0])
+
+      // If saved client exists in fetched list, restore it
+      if (savedClient && fetchedClients.find((c: Client) => c.id === savedClient!.id)) {
+        setCurrentClient(savedClient)
+        return
+      }
+
+      // If no saved client but we have clients, select the first one
+      if (fetchedClients.length > 0) {
+        setCurrentClient(fetchedClients[0])
+      } else {
+        setCurrentClient(null)
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch clients'

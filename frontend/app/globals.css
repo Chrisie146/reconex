@@ -27,7 +27,7 @@ body {
 }
 
 .btn-primary {
-  @apply btn bg-neutral-900 text-white hover:bg-neutral-800;
+  @apply btn bg-blue-600 text-white hover:bg-blue-700;
 }
 
 .btn-secondary {

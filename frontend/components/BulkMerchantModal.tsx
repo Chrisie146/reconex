@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import axios from '@/lib/axiosClient'
+import { toast } from 'sonner'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -10,10 +11,11 @@ interface Props {
   onClose: () => void
   transactions: any[]
   sessionId: string
+  clientId?: number | null
   onApplied?: (message: string, count: number) => void
 }
 
-export default function BulkMerchantModal({ isOpen, onClose, transactions, sessionId, onApplied }: Props) {
+export default function BulkMerchantModal({ isOpen, onClose, transactions, sessionId, clientId, onApplied }: Props) {
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [merchant, setMerchant] = useState('')
   const [keyword, setKeyword] = useState('')
@@ -72,21 +74,23 @@ export default function BulkMerchantModal({ isOpen, onClose, transactions, sessi
           <button className="px-3 py-1 border rounded" onClick={onClose}>Cancel</button>
           <button className="px-3 py-1 bg-neutral-900 text-white rounded" onClick={async () => {
             try {
-              const res = await axios.post(`${API_BASE_URL}/bulk-merchant/ids`, { ids: selectedIds, merchant }, { params: { session_id: sessionId } })
+              const params: any = clientId ? { client_id: clientId } : { session_id: sessionId }
+              const res = await axios.post(`${API_BASE_URL}/bulk-merchant/ids`, { ids: selectedIds, merchant }, { params })
               onApplied?.(res.data.message || 'Applied', res.data.updated_count || 0)
             } catch (e) {
-              alert('Failed to apply merchant')
+              toast.error('Failed to apply merchant')
             }
           }}>Apply to selected</button>
 
           <button className="px-3 py-1 border rounded" onClick={async () => {
-            // Apply by keyword across session (uses POST /bulk-merchant)
+            // Apply by keyword across session/client
             try {
               const payload = { keyword: (keyword || '').trim(), merchant, only_unassigned: !!onlyUnassigned }
-              const res = await axios.post(`${API_BASE_URL}/bulk-merchant`, payload, { params: { session_id: sessionId } })
+              const params: any = clientId ? { client_id: clientId } : { session_id: sessionId }
+              const res = await axios.post(`${API_BASE_URL}/bulk-merchant`, payload, { params })
               onApplied?.(res.data.message || 'Applied', res.data.updated_count || 0)
             } catch (e) {
-              alert('Failed to apply by keyword')
+              toast.error('Failed to apply by keyword')
             }
           }}>Apply by keyword</button>
         </div>

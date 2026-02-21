@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { ClientProvider } from '@/lib/clientContext'
+import { Toaster } from 'sonner'
 
 export const metadata: Metadata = {
   title: 'Bank Statement Analyzer',
@@ -14,8 +15,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-white text-neutral-900">
+      <body className="bg-white text-neutral-900" suppressHydrationWarning>
         <ClientProvider>
+          <Toaster richColors position="top-right" />
           <div className="min-h-screen">
             {children}
           </div>

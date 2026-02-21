@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { Plus, Trash2, Edit2, Search, Clock, FileText, Users } from 'lucide-react'
 import axios from '@/lib/axiosClient'
+import { toast } from 'sonner'
 import Header from '@/components/Header'
 import Sidebar from '@/components/Sidebar'
 
@@ -66,7 +67,7 @@ export default function ClientsPage() {
       setShowCreateModal(false)
     } catch (error) {
       console.error('Failed to create client:', error)
-      alert('Failed to create client. Please try again.')
+      toast.error('Failed to create client. Please try again.')
     } finally {
       setIsCreating(false)
     }
@@ -91,7 +92,7 @@ export default function ClientsPage() {
       setEditName('')
     } catch (error) {
       console.error('Failed to update client:', error)
-      alert('Failed to update client. Please try again.')
+      toast.error('Failed to update client. Please try again.')
     } finally {
       setIsUpdating(false)
     }
@@ -107,7 +108,7 @@ export default function ClientsPage() {
       setSelectedClient(null)
     } catch (error) {
       console.error('Failed to delete client:', error)
-      alert('Failed to delete client. Please try again.')
+      toast.error('Failed to delete client. Please try again.')
     }
   }
 

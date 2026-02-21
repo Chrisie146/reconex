@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { apiFetch } from '@/lib/apiFetch'
+import { toast } from 'sonner'
 import RuleEditor from './RuleEditor'
 import PreviewModal from './PreviewModal'
 
@@ -34,7 +35,7 @@ export default function RulesTable() {
       await apiFetch(`${API_BASE}/rules/${id}`, { method: 'DELETE' })
       await load()
     } catch (e) {
-      alert('Delete failed')
+      toast.error('Delete failed')
     }
   }
 
@@ -46,7 +47,7 @@ export default function RulesTable() {
       setPreviewData({ matches: j.matches || [], count: j.count || 0, ruleId: id, sessionId: sid })
       setPreviewOpen(true)
     } catch (e: any) {
-      alert('Preview failed: ' + (e.message || e))
+      toast.error('Preview failed: ' + (e.message || e))
     }
   }
 
@@ -58,11 +59,11 @@ export default function RulesTable() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id: sessionId })
       })
-      alert(j.message || `Updated ${j.updated_count || 0}`)
+      toast.success(j.message || `Updated ${j.updated_count || 0}`)
       setPreviewOpen(false)
       await load()
     } catch (e: any) {
-      alert('Apply failed: ' + (e.message || e))
+      toast.error('Apply failed: ' + (e.message || e))
     }
   }
 

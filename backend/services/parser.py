@@ -280,11 +280,21 @@ def normalize_csv(file_content: bytes, statement_year: int = None, forced_bank: 
                         detailed_errors.append({"row": idx + 2, "reason": msg, "raw": dict(row)})
                         continue
                     
+                    # Convert amount to float and sanitize NaN/infinity
+                    import math
+                    try:
+                        amount_float = float(amount)
+                        # Sanitize NaN and infinity values
+                        if math.isnan(amount_float) or math.isinf(amount_float):
+                            amount_float = 0.0
+                    except (ValueError, TypeError):
+                        amount_float = 0.0
+                    
                     transactions.append({
                         "date": date_obj,
                         "description": description,
-                        "amount": float(amount),
-                        "debit_flag": float(amount) < 0  # Expenses are negative
+                        "amount": amount_float,
+                        "debit_flag": amount_float < 0  # Expenses are negative
                     })
                 
                 except Exception as e:

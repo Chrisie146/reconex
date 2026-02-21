@@ -3,13 +3,15 @@
 import { useEffect, useState } from 'react'
 import { ChevronDown, ChevronUp, X } from 'lucide-react'
 import axios from '@/lib/axiosClient'
+import type { Client } from '@/lib/clientContext'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 interface Props {
   isOpen: boolean
   onClose: () => void
-  sessionId: string
+  sessionId: string | null
+  currentClient?: Client | null
   category: string
 }
 
@@ -27,7 +29,7 @@ interface MonthGroup {
   total: number
 }
 
-export default function CategoryTransactionsModal({ isOpen, onClose, sessionId, category }: Props) {
+export default function CategoryTransactionsModal({ isOpen, onClose, sessionId, currentClient, category }: Props) {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [series, setSeries] = useState<{ month: string; amount: number }[]>([])
   const [loadingTx, setLoadingTx] = useState(false)
@@ -41,8 +43,20 @@ export default function CategoryTransactionsModal({ isOpen, onClose, sessionId, 
     const fetchTransactions = async () => {
       setLoadingTx(true)
       try {
-        const resp = await axios.get(`${API_BASE_URL}/categories/${encodeURIComponent(category)}/transactions`, {
-          params: { session_id: sessionId }
+        // Priority: if currentClient selected, use client_id; otherwise use sessionId
+        const params: any = { category }
+        if (currentClient?.id) {
+          params.client_id = currentClient.id
+        } else if (sessionId) {
+          params.session_id = sessionId
+        } else {
+          setLoadingTx(false)
+          return
+        }
+
+        // Use /transactions endpoint with category query param (avoids URL encoding issues with path params)
+        const resp = await axios.get(`${API_BASE_URL}/transactions`, {
+          params
         })
         const txns = resp.data.transactions || []
         setTransactions(txns)
@@ -61,8 +75,19 @@ export default function CategoryTransactionsModal({ isOpen, onClose, sessionId, 
     const fetchSeries = async () => {
       setLoadingSeries(true)
       try {
+        // Priority: if currentClient selected, use client_id; otherwise use sessionId
+        const params: any = { category }
+        if (currentClient?.id) {
+          params.client_id = currentClient.id
+        } else if (sessionId) {
+          params.session_id = sessionId
+        } else {
+          setLoadingSeries(false)
+          return
+        }
+
         const resp = await axios.get(`${API_BASE_URL}/category-monthly`, {
-          params: { session_id: sessionId, category }
+          params
         })
         setSeries(resp.data.series || [])
       } catch (e) {
@@ -76,7 +101,7 @@ export default function CategoryTransactionsModal({ isOpen, onClose, sessionId, 
     fetchTransactions()
     fetchSeries()
     setSelectedMonth(null) // Reset filter when modal opens
-  }, [isOpen, sessionId, category])
+  }, [isOpen, sessionId, currentClient?.id, category])
 
   if (!isOpen) return null
 

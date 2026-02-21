@@ -189,13 +189,14 @@ class InvoiceMatch(Base):
 
 class UserCategorizationRule(Base):
     """
-    Stores learned categorization rules per user.
+    Stores learned categorization rules per user, scoped to a specific client.
     When a user assigns a category to a transaction, we learn patterns to auto-categorize future transactions.
     """
     __tablename__ = "user_categorization_rules"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(String, index=True)  # Persistent user identifier across sessions
+    client_id = Column(Integer, ForeignKey("clients.id", ondelete="CASCADE"), index=True, nullable=True)
     session_id = Column(String, index=True, nullable=True)  # Optional: track which session created the rule
     category = Column(String, nullable=False)
     
@@ -217,11 +218,17 @@ class CustomCategory(Base):
     """
     Stores custom categories created by users.
     These persist across sessions so users can reuse categories across different bank statements.
+    Scoped per client so each client can have its own set of categories.
     """
     __tablename__ = "custom_categories"
+    __table_args__ = (
+        # Unique category name per client (replaces old global unique on name)
+        # client_id=NULL entries are legacy/global and still allowed
+    )
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False, unique=True, index=True)  # Category name
+    client_id = Column(Integer, ForeignKey("clients.id", ondelete="CASCADE"), index=True, nullable=True)
+    name = Column(String, nullable=False, index=True)  # Category name (unique per client, not globally)
     is_income = Column(Integer, default=0)  # 1 = Income/Sales (VAT Output), 0 = Expense (VAT Input)
     vat_applicable = Column(Integer, default=0)  # 1 = VAT applies, 0 = no VAT
     vat_rate = Column(Float, default=15.0)  # Default South African VAT rate (15%)

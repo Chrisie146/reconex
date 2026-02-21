@@ -2,8 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import axios from '@/lib/axiosClient'
 import { setToken, setAuthUser } from '@/lib/auth'
+import { Landmark, Loader2 } from 'lucide-react'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -18,7 +20,6 @@ export default function RegisterPage() {
     setError(null)
     setLoading(true)
 
-    // Client-side validation
     if (password.length < 8) {
       setError('Password must be at least 8 characters')
       setLoading(false)
@@ -26,17 +27,19 @@ export default function RegisterPage() {
     }
 
     try {
-      const payload: any = {
-        email,
-        password,
-      }
-      if (fullName.trim()) {
-        payload.full_name = fullName.trim()
-      }
+      const payload: any = { email, password }
+      if (fullName.trim()) payload.full_name = fullName.trim()
+
       const response = await axios.post('/auth/register', payload)
       const data = response.data
       setToken(data.access_token)
       setAuthUser({ user_id: data.user_id, email: data.email, full_name: data.full_name })
+
+      // Mark as new user so dashboard shows onboarding
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('statementbur_onboarding', 'pending')
+      }
+
       router.push('/dashboard')
     } catch (err: any) {
       const message = err?.response?.data?.detail || 'Registration failed'
@@ -48,56 +51,89 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-neutral-50 px-4">
-      <div className="w-full max-w-md rounded-xl border bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold">Create account</h1>
-        <p className="text-sm text-neutral-500 mt-1">Start analyzing bank statements securely.</p>
-
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          <div>
-            <label className="text-sm font-medium">Email</label>
-            <input
-              type="email"
-              className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+      <div className="w-full max-w-sm">
+        {/* Brand */}
+        <Link href="/" className="flex items-center justify-center gap-2.5 mb-8">
+          <div className="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center">
+            <Landmark className="w-[18px] h-[18px] text-white" />
           </div>
-          <div>
-            <label className="text-sm font-medium">Full name</label>
-            <input
-              type="text"
-              className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium">Password</label>
-            <input
-              type="password"
-              className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
+          <span className="text-lg font-bold text-neutral-900 tracking-tight">StatementBur</span>
+        </Link>
 
-          {error && <div className="text-sm text-red-600">{error}</div>}
+        {/* Card */}
+        <div className="rounded-2xl bg-white ring-1 ring-neutral-200 shadow-sm p-6">
+          <h1 className="text-xl font-bold text-neutral-900">Create account</h1>
+          <p className="text-sm text-neutral-500 mt-1">Start analyzing bank statements securely.</p>
 
-          <button
-            type="submit"
-            className="w-full rounded-md bg-blue-600 py-2 text-white text-sm font-medium hover:bg-blue-700"
-            disabled={loading}
-          >
-            {loading ? 'Creating...' : 'Create account'}
-          </button>
-        </form>
+          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-widest text-neutral-500">
+                Email
+              </label>
+              <input
+                type="email"
+                className="mt-1.5 w-full rounded-lg ring-1 ring-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
+                placeholder="you@company.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-widest text-neutral-500">
+                Full name
+              </label>
+              <input
+                type="text"
+                className="mt-1.5 w-full rounded-lg ring-1 ring-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
+                placeholder="Jane Doe"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-widest text-neutral-500">
+                Password
+              </label>
+              <input
+                type="password"
+                className="mt-1.5 w-full rounded-lg ring-1 ring-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
+                placeholder="Min 8 characters"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
 
-        <div className="mt-4 text-sm">
-          <span className="text-neutral-500">Already have an account?</span>{' '}
-          <a className="text-blue-600 hover:underline" href="/login">Sign in</a>
+            {error && (
+              <div className="rounded-lg bg-red-50 ring-1 ring-red-200 px-3 py-2 text-sm text-red-600">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 py-2.5 text-sm font-semibold text-white transition-colors"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                'Create account'
+              )}
+            </button>
+          </form>
         </div>
+
+        <p className="mt-5 text-center text-sm text-neutral-500">
+          Already have an account?{' '}
+          <Link href="/login" className="font-medium text-indigo-600 hover:text-indigo-700 transition-colors">
+            Sign in
+          </Link>
+        </p>
       </div>
     </div>
   )

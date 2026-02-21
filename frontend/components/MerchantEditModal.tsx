@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import axios from '@/lib/axiosClient'
+import { toast } from 'sonner'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -77,11 +78,11 @@ export default function MerchantEditModal({ isOpen, onClose, transaction, sessio
               const payload = { keyword: useKeyword, merchant, only_unassigned: true }
               const res = await axios.post(`${API_BASE_URL}/bulk-merchant`, payload, { params: { session_id: sessionId } })
               const updated = res.data.updated_count || 0
-              alert(`Applied to ${updated} transaction(s)`)
+              toast.success(`Applied to ${updated} transaction(s)`)
               onSaved?.(merchant)
               onClose()
             } catch (e) {
-              alert('Failed to apply to similar')
+              toast.error('Failed to apply to similar')
             }
           }}>Apply to similar</button>
           <button className="px-3 py-1 bg-neutral-900 text-white rounded" onClick={async () => {
@@ -90,7 +91,7 @@ export default function MerchantEditModal({ isOpen, onClose, transaction, sessio
               onSaved?.(merchant)
               onClose()
             } catch (e) {
-              alert('Failed to save merchant')
+              toast.error('Failed to save merchant')
             }
           }}>Save</button>
         </div>

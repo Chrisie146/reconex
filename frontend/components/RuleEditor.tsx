@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { apiFetch } from '@/lib/apiFetch'
+import { toast } from 'sonner'
 
 type Condition = { field: string; op: string; value: string }
 
@@ -84,7 +85,7 @@ export default function RuleEditor({ rule, onSave, onClose }: any) {
       }
       onSave && onSave()
     } catch (e) {
-      alert('Save failed: ' + e)
+      toast.error('Save failed: ' + e)
     }
   }
 

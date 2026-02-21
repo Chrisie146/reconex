@@ -1273,8 +1273,309 @@ class FNBAdapter(BankAdapter):
         return " ".join(parts).strip()
 
 
-def get_adapter(bank_type_str: str):
-    """Factory function to get appropriate adapter"""
+class NedbankAdapter(BankAdapter):
+    """
+    Adapter for Nedbank statement format.
+
+    Supports multiple Nedbank formats:
+    1. Standard: Date, Description, Debit, Credit, Balance
+    2. Online Banking: Transaction Date, Value Date, Transaction Description,
+       Debit Amount, Credit Amount, Balance
+    3. Simple: Date, Description, Amount
+
+    - Date format: DD/MM/YYYY, YYYY-MM-DD, DD Mon YYYY
+    """
+
+    def normalize(self, df: pd.DataFrame) -> pd.DataFrame:
+        col_map = self._map_columns(df.columns)
+        format_type = self._detect_format(col_map, df)
+        print(f"[NedbankAdapter] Detected format: {format_type}")
+
+        if format_type == "debit_credit":
+            return self._normalize_debit_credit(df, col_map)
+        else:
+            return self._normalize_simple(df, col_map)
+
+    def _detect_format(self, col_map: dict, df: pd.DataFrame) -> str:
+        if col_map.get("debit") or col_map.get("credit"):
+            return "debit_credit"
+        return "simple"
+
+    def _normalize_debit_credit(self, df: pd.DataFrame, col_map: dict) -> pd.DataFrame:
+        normalized_rows = []
+        for _, row in df.iterrows():
+            date_val = row.get(col_map.get("date"))
+            if pd.isna(date_val) or str(date_val).strip() == "":
+                continue
+
+            date_normalized = self.parse_date(
+                str(date_val).strip(),
+                ["%d/%m/%Y", "%Y-%m-%d", "%d %b %Y", "%d-%m-%Y", "%Y/%m/%d"],
+            )
+            desc_val = row.get(col_map.get("description"))
+            description = str(desc_val).strip() if desc_val and pd.notna(desc_val) else "(No description)"
+
+            debit = 0.0
+            credit = 0.0
+            if col_map.get("debit"):
+                dv = row.get(col_map["debit"])
+                if dv is not None and pd.notna(dv):
+                    debit = abs(self.parse_amount(str(dv)))
+            if col_map.get("credit"):
+                cv = row.get(col_map["credit"])
+                if cv is not None and pd.notna(cv):
+                    credit = abs(self.parse_amount(str(cv)))
+
+            amount = credit - debit if (debit or credit) else 0.0
+
+            if date_normalized and amount != 0:
+                normalized_rows.append({"Date": date_normalized, "Description": description, "Amount": amount})
+
+        result = pd.DataFrame(normalized_rows)
+        if result.empty:
+            return pd.DataFrame(columns=["Date", "Description", "Amount"])
+        return result[["Date", "Description", "Amount"]]
+
+    def _normalize_simple(self, df: pd.DataFrame, col_map: dict) -> pd.DataFrame:
+        normalized_rows = []
+        for _, row in df.iterrows():
+            date_val = row.get(col_map.get("date"))
+            if pd.isna(date_val) or str(date_val).strip() == "":
+                continue
+
+            date_normalized = self.parse_date(
+                str(date_val).strip(),
+                ["%d/%m/%Y", "%Y-%m-%d", "%d %b %Y", "%d-%m-%Y", "%Y/%m/%d"],
+            )
+            desc_val = row.get(col_map.get("description"))
+            description = str(desc_val).strip() if desc_val and pd.notna(desc_val) else "(No description)"
+            amount_val = row.get(col_map.get("amount"))
+            amount = self.parse_amount(str(amount_val)) if amount_val and pd.notna(amount_val) else 0.0
+
+            if date_normalized and amount != 0:
+                normalized_rows.append({"Date": date_normalized, "Description": description, "Amount": amount})
+
+        result = pd.DataFrame(normalized_rows)
+        if result.empty:
+            return pd.DataFrame(columns=["Date", "Description", "Amount"])
+        return result[["Date", "Description", "Amount"]]
+
+    def _map_columns(self, columns: pd.Index) -> dict:
+        col_map: dict = {}
+        columns_lower = [str(c).lower() for c in columns]
+        for canonical, patterns in {
+            "date": [r"transaction\s*date", r"posted?\s*date", r"value\s*date", r"date"],
+            "description": [r"transaction\s*description", r"description", r"narration", r"details"],
+            "amount": [r"amount", r"transaction\s*amount"],
+            "debit": [r"debit\s*amount", r"debit"],
+            "credit": [r"credit\s*amount", r"credit"],
+            "balance": [r"balance"],
+            "reference": [r"reference"],
+        }.items():
+            for i, col in enumerate(columns_lower):
+                for pattern in patterns:
+                    if re.search(pattern, col):
+                        col_map[canonical] = columns[i]
+                        break
+                if canonical in col_map:
+                    break
+        return col_map
+
+
+class InvestecAdapter(BankAdapter):
+    """
+    Adapter for Investec Bank statement format.
+
+    Supports multiple Investec formats:
+    1. Standard: Date, Description, Debit, Credit, Balance
+    2. Programmable Banking API: Posted Date, Description, Debit, Credit, Running Balance
+    3. Excel export: Transaction Date, Value Date, Description, Debit, Credit
+
+    - Date format: DD/MM/YYYY, YYYY/MM/DD, DD Mon YYYY
+    """
+
+    def normalize(self, df: pd.DataFrame) -> pd.DataFrame:
+        col_map = self._map_columns(df.columns)
+        format_type = self._detect_format(col_map, df)
+        print(f"[InvestecAdapter] Detected format: {format_type}")
+
+        if format_type == "debit_credit":
+            return self._normalize_debit_credit(df, col_map)
+        else:
+            return self._normalize_simple(df, col_map)
+
+    def _detect_format(self, col_map: dict, df: pd.DataFrame) -> str:
+        if col_map.get("debit") or col_map.get("credit"):
+            return "debit_credit"
+        return "simple"
+
+    def _normalize_debit_credit(self, df: pd.DataFrame, col_map: dict) -> pd.DataFrame:
+        normalized_rows = []
+        for _, row in df.iterrows():
+            date_val = row.get(col_map.get("date"))
+            if pd.isna(date_val) or str(date_val).strip() == "":
+                continue
+
+            date_normalized = self.parse_date(
+                str(date_val).strip(),
+                ["%d/%m/%Y", "%Y/%m/%d", "%d %b %Y", "%Y-%m-%d", "%d-%m-%Y"],
+            )
+            desc_val = row.get(col_map.get("description"))
+            description = str(desc_val).strip() if desc_val and pd.notna(desc_val) else "(No description)"
+
+            debit = 0.0
+            credit = 0.0
+            if col_map.get("debit"):
+                dv = row.get(col_map["debit"])
+                if dv is not None and pd.notna(dv):
+                    debit = abs(self.parse_amount(str(dv)))
+            if col_map.get("credit"):
+                cv = row.get(col_map["credit"])
+                if cv is not None and pd.notna(cv):
+                    credit = abs(self.parse_amount(str(cv)))
+
+            amount = credit - debit if (debit or credit) else 0.0
+
+            if date_normalized and amount != 0:
+                normalized_rows.append({"Date": date_normalized, "Description": description, "Amount": amount})
+
+        result = pd.DataFrame(normalized_rows)
+        if result.empty:
+            return pd.DataFrame(columns=["Date", "Description", "Amount"])
+        return result[["Date", "Description", "Amount"]]
+
+    def _normalize_simple(self, df: pd.DataFrame, col_map: dict) -> pd.DataFrame:
+        normalized_rows = []
+        for _, row in df.iterrows():
+            date_val = row.get(col_map.get("date"))
+            if pd.isna(date_val) or str(date_val).strip() == "":
+                continue
+
+            date_normalized = self.parse_date(
+                str(date_val).strip(),
+                ["%d/%m/%Y", "%Y/%m/%d", "%d %b %Y", "%Y-%m-%d", "%d-%m-%Y"],
+            )
+            desc_val = row.get(col_map.get("description"))
+            description = str(desc_val).strip() if desc_val and pd.notna(desc_val) else "(No description)"
+            amount_val = row.get(col_map.get("amount"))
+            amount = self.parse_amount(str(amount_val)) if amount_val and pd.notna(amount_val) else 0.0
+
+            if date_normalized and amount != 0:
+                normalized_rows.append({"Date": date_normalized, "Description": description, "Amount": amount})
+
+        result = pd.DataFrame(normalized_rows)
+        if result.empty:
+            return pd.DataFrame(columns=["Date", "Description", "Amount"])
+        return result[["Date", "Description", "Amount"]]
+
+    def _map_columns(self, columns: pd.Index) -> dict:
+        col_map: dict = {}
+        columns_lower = [str(c).lower() for c in columns]
+        for canonical, patterns in {
+            "date": [r"posted?\s*date", r"transaction\s*date", r"value\s*date", r"date"],
+            "description": [r"description", r"narrative", r"details"],
+            "amount": [r"amount", r"transaction\s*amount"],
+            "debit": [r"debit"],
+            "credit": [r"credit"],
+            "balance": [r"running\s*balance", r"balance"],
+        }.items():
+            for i, col in enumerate(columns_lower):
+                for pattern in patterns:
+                    if re.search(pattern, col):
+                        col_map[canonical] = columns[i]
+                        break
+                if canonical in col_map:
+                    break
+        return col_map
+
+
+class ColumnMappingAdapter(BankAdapter):
+    """
+    Adapter for user-provided column mappings (manual fallback).
+
+    The user specifies which columns are date, description, amount (or debit/credit).
+    This adapter applies that mapping directly.
+    """
+
+    def __init__(self, column_mapping: dict):
+        """
+        Args:
+            column_mapping: Dict with keys 'date', 'description', and one of:
+                - 'amount' (single amount column, signed)
+                - 'debit' + 'credit' (separate columns)
+                Optional: 'balance', 'date_format'
+        """
+        self._mapping = column_mapping
+
+    def normalize(self, df: pd.DataFrame) -> pd.DataFrame:
+        normalized_rows = []
+        date_col = self._mapping.get("date")
+        desc_col = self._mapping.get("description")
+        amount_col = self._mapping.get("amount")
+        debit_col = self._mapping.get("debit")
+        credit_col = self._mapping.get("credit")
+        date_fmt = self._mapping.get("date_format")
+
+        # Build date format list
+        if date_fmt:
+            date_formats = [date_fmt]
+        else:
+            date_formats = ["%Y-%m-%d", "%d/%m/%Y", "%Y/%m/%d", "%d-%m-%Y", "%Y%m%d", "%d %b %Y"]
+
+        for _, row in df.iterrows():
+            date_val = row.get(date_col)
+            if pd.isna(date_val) or str(date_val).strip() == "":
+                continue
+
+            date_normalized = self.parse_date(str(date_val).strip(), date_formats)
+            desc_val = row.get(desc_col) if desc_col else None
+            description = str(desc_val).strip() if desc_val and pd.notna(desc_val) else "(No description)"
+
+            amount = 0.0
+            if amount_col:
+                av = row.get(amount_col)
+                if av is not None and pd.notna(av):
+                    amount = self.parse_amount(str(av))
+            elif debit_col or credit_col:
+                debit = 0.0
+                credit = 0.0
+                if debit_col:
+                    dv = row.get(debit_col)
+                    if dv is not None and pd.notna(dv):
+                        debit = abs(self.parse_amount(str(dv)))
+                if credit_col:
+                    cv = row.get(credit_col)
+                    if cv is not None and pd.notna(cv):
+                        credit = abs(self.parse_amount(str(cv)))
+                amount = credit - debit if (debit or credit) else 0.0
+
+            if date_normalized:
+                normalized_rows.append({"Date": date_normalized, "Description": description, "Amount": amount})
+
+        result = pd.DataFrame(normalized_rows)
+        if result.empty:
+            return pd.DataFrame(columns=["Date", "Description", "Amount"])
+        return result[["Date", "Description", "Amount"]]
+
+
+def get_adapter(bank_type_str: str, column_mapping: dict = None):
+    """Factory function to get appropriate adapter.
+
+    Delegates to the BankRegistry when available, falls back to direct mapping.
+    Supports manual column-mapping via the ``column_mapping`` parameter.
+    """
+    # Manual column mapping takes priority
+    if column_mapping:
+        return ColumnMappingAdapter(column_mapping)
+
+    # Try the plugin registry first
+    try:
+        from services.bank_plugins.registry import BankRegistry
+        return BankRegistry.get_adapter(bank_type_str)
+    except Exception:
+        pass
+
+    # Legacy fallback
     from .bank_detector import BankType
 
     adapter_map = {
@@ -1283,6 +1584,8 @@ def get_adapter(bank_type_str: str):
         BankType.CAPITEC.value: CapitecAdapter(),
         BankType.FNB.value: FNBAdapter(),
         "fnb": FNBAdapter(),
+        "nedbank": NedbankAdapter(),
+        "investec": InvestecAdapter(),
         "unknown": GenericAdapter(),
         "generic": GenericAdapter(),
     }

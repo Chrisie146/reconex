@@ -74,7 +74,8 @@ class CategorizationLearningService:
         category: str,
         merchant: Optional[str] = None,
         keyword: Optional[str] = None,
-        db: Session = None
+        db: Session = None,
+        client_id: Optional[int] = None
     ) -> List[Dict]:
         """
         Learn categorization patterns from a user's category assignment
@@ -88,6 +89,7 @@ class CategorizationLearningService:
             merchant: Optional merchant name from transaction
             keyword: Optional keyword for contains pattern (takes precedence)
             db: Database session
+            client_id: Optional client ID to scope the learned rules
         
         Returns list of created rules
         """
@@ -105,7 +107,8 @@ class CategorizationLearningService:
                 category=category,
                 pattern_type='contains',
                 pattern_value=keyword_clean,
-                db=db
+                db=db,
+                client_id=client_id
             )
             if contains_rule:
                 created_rules.append(contains_rule)
@@ -124,7 +127,8 @@ class CategorizationLearningService:
                 category=category,
                 pattern_type='merchant',
                 pattern_value=merchant_clean,
-                db=db
+                db=db,
+                client_id=client_id
             )
             if merchant_rule:
                 created_rules.append(merchant_rule)
@@ -138,7 +142,8 @@ class CategorizationLearningService:
                 category=category,
                 pattern_type='exact',
                 pattern_value=normalized_desc,
-                db=db
+                db=db,
+                client_id=client_id
             )
             if exact_rule:
                 created_rules.append(exact_rule)
@@ -154,7 +159,8 @@ class CategorizationLearningService:
                     category=category,
                     pattern_type='merchant',
                     pattern_value=extracted_merchant.upper(),
-                    db=db
+                    db=db,
+                    client_id=client_id
                 )
                 if merchant_rule:
                     created_rules.append(merchant_rule)
@@ -171,7 +177,8 @@ class CategorizationLearningService:
                     category=category,
                     pattern_type='starts_with',
                     pattern_value=prefix,
-                    db=db
+                    db=db,
+                    client_id=client_id
                 )
                 if starts_rule:
                     created_rules.append(starts_rule)
@@ -185,7 +192,8 @@ class CategorizationLearningService:
         category: str,
         pattern_type: str,
         pattern_value: str,
-        db: Session
+        db: Session,
+        client_id: Optional[int] = None
     ) -> Optional[Dict]:
         """
         Create a new rule or update existing one
@@ -193,12 +201,17 @@ class CategorizationLearningService:
         """
         from models import UserCategorizationRule
         
-        # Check if rule already exists
-        existing = db.query(UserCategorizationRule).filter(
+        # Check if rule already exists for this user + client
+        query = db.query(UserCategorizationRule).filter(
             UserCategorizationRule.user_id == user_id,
             UserCategorizationRule.pattern_type == pattern_type,
             UserCategorizationRule.pattern_value == pattern_value
-        ).first()
+        )
+        if client_id is not None:
+            query = query.filter(UserCategorizationRule.client_id == client_id)
+        else:
+            query = query.filter(UserCategorizationRule.client_id.is_(None))
+        existing = query.first()
         
         if existing:
             # Update category if different (user changed their mind)
@@ -219,6 +232,7 @@ class CategorizationLearningService:
         # Create new rule
         new_rule = UserCategorizationRule(
             user_id=user_id,
+            client_id=client_id,
             session_id=session_id,
             category=category,
             pattern_type=pattern_type,
@@ -242,7 +256,8 @@ class CategorizationLearningService:
     def apply_learned_rules(
         user_id: str,
         transactions: List,
-        db: Session
+        db: Session,
+        client_id: Optional[int] = None
     ) -> Dict[int, str]:
         """
         Apply learned rules to a list of transactions
@@ -255,11 +270,14 @@ class CategorizationLearningService:
         """
         from models import UserCategorizationRule
         
-        # Get all enabled rules for this user, ordered by priority
-        rules = db.query(UserCategorizationRule).filter(
+        # Get all enabled rules for this user + client, ordered by priority
+        query = db.query(UserCategorizationRule).filter(
             UserCategorizationRule.user_id == user_id,
             UserCategorizationRule.enabled == 1
-        ).all()
+        )
+        if client_id is not None:
+            query = query.filter(UserCategorizationRule.client_id == client_id)
+        rules = query.all()
         
         # Group rules by pattern type for efficient matching
         exact_rules = {}
@@ -337,13 +355,16 @@ class CategorizationLearningService:
         return suggestions
     
     @staticmethod
-    def get_learned_rules(user_id: str, db: Session) -> List[Dict]:
-        """Get all learned rules for a session"""
+    def get_learned_rules(user_id: str, db: Session, client_id: Optional[int] = None) -> List[Dict]:
+        """Get all learned rules for a user, optionally scoped to a client"""
         from models import UserCategorizationRule
         
-        rules = db.query(UserCategorizationRule).filter(
+        query = db.query(UserCategorizationRule).filter(
             UserCategorizationRule.user_id == user_id
-        ).order_by(
+        )
+        if client_id is not None:
+            query = query.filter(UserCategorizationRule.client_id == client_id)
+        rules = query.order_by(
             UserCategorizationRule.use_count.desc(),
             UserCategorizationRule.created_at.desc()
         ).all()

@@ -2,8 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import axios from '@/lib/axiosClient'
 import { setToken, setAuthUser } from '@/lib/auth'
+import { Landmark, Loader2 } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -21,58 +23,103 @@ export default function LoginPage() {
       const data = response.data
       setToken(data.access_token)
       setAuthUser({ user_id: data.user_id, email: data.email, full_name: data.full_name })
+      // Keep loading true — full-screen overlay will show during navigation
       router.push('/dashboard')
     } catch (err: any) {
       const message = err?.response?.data?.detail || 'Login failed'
       setError(message)
-    } finally {
       setLoading(false)
     }
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-neutral-50 px-4">
-      <div className="w-full max-w-md rounded-xl border bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold">Sign in</h1>
-        <p className="text-sm text-neutral-500 mt-1">Access your statements and reports.</p>
-
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          <div>
-            <label className="text-sm font-medium">Email</label>
-            <input
-              type="email"
-              className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+      {/* Full-screen loading overlay shown after successful login */}
+      {loading && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
+          <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center mb-4 shadow-lg">
+            <Landmark className="w-5 h-5 text-white" />
           </div>
-          <div>
-            <label className="text-sm font-medium">Password</label>
-            <input
-              type="password"
-              className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-
-          {error && <div className="text-sm text-red-600">{error}</div>}
-
-          <button
-            type="submit"
-            className="w-full rounded-md bg-blue-600 py-2 text-white text-sm font-medium hover:bg-blue-700"
-            disabled={loading}
-          >
-            {loading ? 'Signing in...' : 'Sign in'}
-          </button>
-        </form>
-
-        <div className="mt-4 text-sm">
-          <span className="text-neutral-500">No account?</span>{' '}
-          <a className="text-blue-600 hover:underline" href="/register">Create one</a>
+          <Loader2 className="w-6 h-6 animate-spin text-indigo-600 mb-2" />
+          <p className="text-sm text-neutral-500 font-medium">Signing you in…</p>
         </div>
+      )}
+      <div className="w-full max-w-sm">
+        {/* Brand */}
+        <Link href="/" className="flex items-center justify-center gap-2.5 mb-8">
+          <div className="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center">
+            <Landmark className="w-[18px] h-[18px] text-white" />
+          </div>
+          <span className="text-lg font-bold text-neutral-900 tracking-tight">StatementBur</span>
+        </Link>
+
+        {/* Card */}
+        <div className="rounded-2xl bg-white ring-1 ring-neutral-200 shadow-sm p-6">
+          <h1 className="text-xl font-bold text-neutral-900">Sign in</h1>
+          <p className="text-sm text-neutral-500 mt-1">Access your statements and reports.</p>
+
+          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-widest text-neutral-500">
+                Email
+              </label>
+              <input
+                type="email"
+                className="mt-1.5 w-full rounded-lg ring-1 ring-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
+                placeholder="you@company.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold uppercase tracking-widest text-neutral-500">
+                  Password
+                </label>
+                <Link href="/forgot-password" className="text-[11px] font-medium text-indigo-600 hover:text-indigo-700 transition-colors">
+                  Forgot password?
+                </Link>
+              </div>
+              <input
+                type="password"
+                className="mt-1.5 w-full rounded-lg ring-1 ring-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
+                placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+
+            {error && (
+              <div className="rounded-lg bg-red-50 ring-1 ring-red-200 px-3 py-2 text-sm text-red-600">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 py-2.5 text-sm font-semibold text-white transition-colors"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                'Sign in'
+              )}
+            </button>
+          </form>
+        </div>
+
+        <p className="mt-5 text-center text-sm text-neutral-500">
+          No account?{' '}
+          <Link href="/register" className="font-medium text-indigo-600 hover:text-indigo-700 transition-colors">
+            Create one
+          </Link>
+        </p>
       </div>
     </div>
   )

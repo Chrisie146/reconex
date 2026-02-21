@@ -30,12 +30,34 @@ class BulkAction:
 class BulkCategorizer:
     """
     Manages bulk transaction categorization with undo capability
-    Stores one-level undo in memory (per session)
+    Stores one-level undo per user in memory
     """
     
     def __init__(self):
-        self.last_action: Optional[BulkAction] = None
+        self._last_actions: Dict[str, Optional[BulkAction]] = {}  # keyed by user_id
         self.action_count = 0
+    
+    @property
+    def last_action(self) -> Optional[BulkAction]:
+        """Legacy accessor — returns the most recent action (any user). Use get/set_user_action instead."""
+        # Return any action for backward compat; prefer user-scoped methods
+        for v in self._last_actions.values():
+            if v is not None:
+                return v
+        return None
+    
+    @last_action.setter
+    def last_action(self, value: Optional[BulkAction]):
+        """Legacy setter — stores under key '_global'. Use set_user_action instead."""
+        self._last_actions["_global"] = value
+    
+    def set_user_action(self, user_id: str, action: Optional[BulkAction]):
+        """Store last bulk action for a specific user."""
+        self._last_actions[str(user_id)] = action
+    
+    def get_user_action(self, user_id: str) -> Optional[BulkAction]:
+        """Retrieve last bulk action for a specific user."""
+        return self._last_actions.get(str(user_id))
     
     def validate_rule(self, keyword: str, category: str) -> Tuple[bool, str]:
         """

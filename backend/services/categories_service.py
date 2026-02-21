@@ -84,30 +84,50 @@ class CategoriesService:
         """Get a database session"""
         return SessionLocal()
     
-    def get_all_categories(self, session_id: Optional[str] = None) -> List[str]:
-        """Get all available categories (built-in + custom from database)"""
+    def get_all_categories(self, session_id: Optional[str] = None, client_id: Optional[int] = None) -> List[str]:
+        """Get all available categories (built-in + custom from database)
+        
+        Args:
+            session_id: Optional session ID (unused but kept for API compat)
+            client_id: If provided, only load custom categories for this client
+        """
         categories = list(BUILT_IN_CATEGORIES)
         
         # Load custom categories from database
         db = self._get_db()
         try:
-            custom_cats = db.query(CustomCategory).all()
+            query = db.query(CustomCategory)
+            if client_id is not None:
+                query = query.filter(CustomCategory.client_id == client_id)
+            custom_cats = query.all()
             categories.extend([cat.name for cat in custom_cats])
         finally:
             db.close()
         
         return sorted(list(set(categories)))
     
-    def get_all_categories_with_vat(self, session_id: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Get all available categories with VAT settings"""
+    def get_all_categories_with_vat(self, session_id: Optional[str] = None, client_id: Optional[int] = None) -> List[Dict[str, Any]]:
+        """Get all available categories with VAT settings
+        
+        Args:
+            session_id: Optional session ID (unused but kept for API compat)
+            client_id: If provided, only load custom categories for this client
+        """
         categories = []
         custom_category_names = set()
         
         # Load custom categories from database
         db = self._get_db()
         try:
-            custom_cats = db.query(CustomCategory).all()
+            query = db.query(CustomCategory)
+            if client_id is not None:
+                query = query.filter(CustomCategory.client_id == client_id)
+            custom_cats = query.all()
+            seen_names = set()
             for cat in custom_cats:
+                if cat.name in seen_names:
+                    continue
+                seen_names.add(cat.name)
                 categories.append({
                     "name": cat.name,
                     "is_built_in": cat.name in BUILT_IN_CATEGORIES,  # Mark if this is an override of a built-in
@@ -134,13 +154,14 @@ class CategoriesService:
         
         return sorted(categories, key=lambda x: x["name"])
     
-    def create_category(self, session_id: str, category_name: str, is_income: bool = False) -> Tuple[bool, str]:
+    def create_category(self, session_id: str, category_name: str, is_income: bool = False, client_id: Optional[int] = None) -> Tuple[bool, str]:
         """Create a new custom category (persisted in database)
         
         Args:
             session_id: Session ID
             category_name: Name of the category
             is_income: True for Income/Sales (VAT Output), False for Expense (VAT Input)
+            client_id: Client to scope this category to
         """
         if not category_name or not category_name.strip():
             return False, "Category name cannot be empty"
@@ -155,13 +176,14 @@ class CategoriesService:
         
         db = self._get_db()
         try:
-            # Check if already exists (case-insensitive)
-            existing = self.get_all_categories(session_id)
+            # Check if already exists for this client (case-insensitive)
+            existing = self.get_all_categories(session_id, client_id=client_id)
             if category_name.lower() in [c.lower() for c in existing]:
                 return False, f"Category '{category_name}' already exists"
             
-            # Create in database with is_income flag
+            # Create in database with is_income flag, scoped to client
             new_category = CustomCategory(
+                client_id=client_id,
                 name=category_name,
                 is_income=1 if is_income else 0
             )
@@ -176,15 +198,18 @@ class CategoriesService:
         finally:
             db.close()
     
-    def delete_category(self, session_id: str, category_name: str) -> Tuple[bool, str]:
+    def delete_category(self, session_id: str, category_name: str, client_id: Optional[int] = None) -> Tuple[bool, str]:
         """Delete a custom category (cannot delete built-in)"""
         if category_name in BUILT_IN_CATEGORIES:
             return False, "Cannot delete built-in categories"
         
         db = self._get_db()
         try:
-            # Find the category in database
-            category = db.query(CustomCategory).filter(CustomCategory.name == category_name).first()
+            # Find the category in database, scoped to client
+            query = db.query(CustomCategory).filter(CustomCategory.name == category_name)
+            if client_id is not None:
+                query = query.filter(CustomCategory.client_id == client_id)
+            category = query.first()
             
             if not category:
                 return False, "Category not found"

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import axios from '@/lib/axiosClient'
+import { toast } from 'sonner'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -19,11 +20,12 @@ interface Props {
   transactions: Transaction[]
   categories: string[]
   sessionId: string
+  clientId?: number | null
   onApplied?: (message: string, updatedCount: number) => void
   initialSelectAll?: boolean
 }
 
-export default function FilteredCategorizeModal({ isOpen, onClose, transactions, categories, sessionId, onApplied, initialSelectAll }: Props) {
+export default function FilteredCategorizeModal({ isOpen, onClose, transactions, categories, sessionId, clientId, onApplied, initialSelectAll }: Props) {
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [selectAll, setSelectAll] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState('')
@@ -59,20 +61,25 @@ export default function FilteredCategorizeModal({ isOpen, onClose, transactions,
 
   const handleApply = async () => {
     if (!selectedCategory) {
-      alert('Please choose a category')
+      toast.error('Please choose a category')
       return
     }
     if (selectedIds.length === 0) {
-      alert('Select at least one transaction')
+      toast.error('Select at least one transaction')
       return
     }
 
     setLoading(true)
     try {
+      // Use client_id for cross-statement categorization when available
+      const params: any = clientId
+        ? { client_id: clientId }
+        : { session_id: sessionId }
+
       const response = await axios.post(
         `${API_BASE_URL}/bulk-categorise/ids`,
         { ids: selectedIds, category: selectedCategory },
-        { params: { session_id: sessionId } }
+        { params }
       )
 
       if (response.data) {
@@ -81,7 +88,7 @@ export default function FilteredCategorizeModal({ isOpen, onClose, transactions,
       onClose()
     } catch (err) {
       console.error('Apply filtered categorize failed', err)
-      alert('Apply failed')
+      toast.error('Apply failed')
     } finally {
       setLoading(false)
     }

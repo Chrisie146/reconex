@@ -14,6 +14,8 @@ class BankType(Enum):
     ABSA = "absa"
     CAPITEC = "capitec"
     FNB = "fnb"
+    NEDBANK = "nedbank"
+    INVESTEC = "investec"
     UNKNOWN = "unknown"
 
 
@@ -50,7 +52,10 @@ class BankDetector:
     @staticmethod
     def detect(csv_headers: List[str], sample_rows: List[List[str]] = None) -> Tuple[BankType, float]:
         """
-        Detect bank type from CSV headers and optional sample rows
+        Detect bank type from CSV headers and optional sample rows.
+
+        Delegates to the BankRegistry plugin system when available,
+        falls back to legacy scoring if the registry is not initialised.
 
         Args:
             csv_headers: List of column headers
@@ -59,6 +64,23 @@ class BankDetector:
         Returns:
             Tuple of (BankType, confidence_score 0-1.0)
         """
+        # Try plugin registry first
+        try:
+            from services.bank_plugins.registry import BankRegistry
+            # Ensure plugins are loaded
+            import services.bank_plugins  # noqa: F401
+
+            bank_id, confidence = BankRegistry.detect_from_csv(csv_headers, sample_rows)
+            # Convert bank_id string to BankType enum
+            try:
+                bank_type = BankType(bank_id)
+            except ValueError:
+                bank_type = BankType.UNKNOWN
+            return bank_type, confidence
+        except Exception as e:
+            print(f"[BankDetector] Registry detection failed ({e}), falling back to legacy scoring")
+
+        # Legacy scoring (kept as fallback)
         headers_lower = [h.lower() for h in csv_headers]
         headers_str = " ".join(headers_lower)
 
@@ -214,11 +236,22 @@ class BankDetector:
     @staticmethod
     def get_bank_name(bank_type: BankType) -> str:
         """Get human-readable bank name"""
+        # Try plugin registry first
+        try:
+            from services.bank_plugins.registry import BankRegistry
+            name = BankRegistry.get_bank_name(bank_type.value)
+            if name != "Unknown":
+                return name
+        except Exception:
+            pass
+
         mapping = {
             BankType.STANDARD_BANK: "Standard Bank",
             BankType.ABSA: "ABSA Bank",
             BankType.CAPITEC: "Capitec Bank",
             BankType.FNB: "FNB (First National Bank)",
+            BankType.NEDBANK: "Nedbank",
+            BankType.INVESTEC: "Investec Bank",
             BankType.UNKNOWN: "Unknown/Generic",
         }
         return mapping.get(bank_type, "Unknown")

@@ -1,75 +1,67 @@
 import Link from 'next/link'
+import { CheckCircle2, ArrowRight } from 'lucide-react'
 
 export default function Hero() {
   return (
-    <section className="relative bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 text-white">
+    <section className="relative bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 text-white pt-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-32">
         <div className="text-center">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-neutral-700/50 border border-neutral-600 mb-8">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 ring-1 ring-indigo-400/30 mb-8">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
             </span>
-            <span className="text-sm font-medium">Trusted by 500+ businesses</span>
+            <span className="text-[13px] font-medium text-indigo-200">
+              Trusted by 500+ South African businesses
+            </span>
           </div>
 
           {/* Headline */}
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-6">
-            Transform Your Bank Statements
-            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-600 mt-2">
-              Into Actionable Insights
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-6">
+            Bank Statement Analysis
+            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-indigo-300 mt-2">
+              Made Effortless
             </span>
           </h1>
 
-          {/* Subheadline */}
-          <p className="text-xl sm:text-2xl text-neutral-300 max-w-3xl mx-auto mb-12">
-            Professional-grade bank statement analysis for small businesses, bookkeepers, 
-            and accountants. Categorize thousands of transactions in minutes, not hours.
+          {/* Sub-headline */}
+          <p className="text-lg sm:text-xl text-neutral-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+            Upload CSV or PDF statements from any major South African bank.
+            Categorize thousands of transactions in minutes, not hours.
           </p>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Link 
-              href="/dashboard" 
-              className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg transition-all transform hover:scale-105 text-lg"
+          {/* CTA */}
+          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+            <Link
+              href="/register"
+              className="inline-flex items-center gap-2 px-7 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl transition-colors shadow-lg shadow-indigo-600/25 text-[15px]"
             >
-              Get Started Free →
+              Get Started Free
+              <ArrowRight className="w-4 h-4" />
             </Link>
-            <Link 
-              href="#how-it-works" 
-              className="px-8 py-4 bg-neutral-700 hover:bg-neutral-600 text-white font-semibold rounded-lg transition-all text-lg"
+            <Link
+              href="#how-it-works"
+              className="px-7 py-3.5 text-neutral-300 hover:text-white font-medium rounded-xl transition-colors ring-1 ring-neutral-700 hover:ring-neutral-600 text-[15px]"
             >
               See How It Works
             </Link>
           </div>
 
-          {/* Trust Indicators */}
-          <div className="mt-16 flex flex-wrap justify-center items-center gap-8 text-neutral-400 text-sm">
-            <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              <span>No credit card required</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              <span>Setup in 60 seconds</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              <span>Bank-level security</span>
-            </div>
+          {/* Trust row */}
+          <div className="mt-14 flex flex-wrap justify-center items-center gap-6 sm:gap-8 text-neutral-500 text-[13px]">
+            {['No credit card required', 'Setup in 60 seconds', 'Bank-level security'].map((t) => (
+              <div key={t} className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                <span>{t}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Bottom gradient blur */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white to-transparent"></div>
+      {/* Bottom fade to white */}
+      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white to-transparent" />
     </section>
   )
 }

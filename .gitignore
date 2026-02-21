@@ -41,8 +41,15 @@ node_modules/
 .next/
 out/
 dist/
+.env
 .env.local
 .env.*.local
+backend/.env
+backend/.env.local
+
+# Bank statement PDFs (sensitive financial data)
+*.pdf
+!docs/*.pdf
 
 # Exceptions: DO NOT IGNORE frontend lib utilities
 !frontend/lib/

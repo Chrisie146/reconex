@@ -1,166 +1,177 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ChevronLeft, ChevronRight, BarChart3, Upload, MapPin, List, Archive, Settings, Eye, Tag, Zap, Sparkles, Download, FileText, FileSpreadsheet, FolderOpen, ChevronDown, ChevronUp, Receipt, Users } from 'lucide-react'
+import {
+  ChevronLeft, ChevronRight, BarChart3, Upload, MapPin, List,
+  Archive, Eye, Tag, Zap, Sparkles, FileText, FileSpreadsheet,
+  FolderOpen, ChevronDown, Receipt, Users, Download, Landmark,
+  Settings2, PanelLeftClose, PanelLeft, Loader2
+} from 'lucide-react'
 import axios from '@/lib/axiosClient'
+import { toast } from 'sonner'
 import ClientSelector from './ClientSelector'
 import StatementSelector from './StatementSelector'
 import VATExportModal from './VATExportModal'
 import CategoriesExportModal from './CategoriesExportModal'
+import { useClient } from '@/lib/clientContext'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
+/* ── Types ──────────────────────────────────────────────────────────── */
 interface SidebarProps {
   sessionId: string | null
   selectedStatement?: string
   onStatementChange?: (statementId: string) => void
 }
 
+interface NavItem {
+  href: string
+  icon: React.ReactNode
+  label: string
+  matchPrefix: string
+}
+
+/* ── Section collapse helper ────────────────────────────────────────── */
+function SectionHeader({
+  label, open, toggle, collapsed,
+}: { label: string; open: boolean; toggle: () => void; collapsed: boolean }) {
+  if (collapsed) return null
+  return (
+    <button onClick={toggle}
+      className="flex items-center justify-between w-full px-3 pt-4 pb-1 group">
+      <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 group-hover:text-neutral-300 transition-colors">
+        {label}
+      </span>
+      <ChevronDown className={`w-3 h-3 text-neutral-500 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+    </button>
+  )
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   SIDEBAR
+   ══════════════════════════════════════════════════════════════════════ */
 export default function Sidebar({ sessionId, selectedStatement = '', onStatementChange }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
   const [exporting, setExporting] = useState(false)
-  const [exportsExpanded, setExportsExpanded] = useState(false)
-  const [configExpanded, setConfigExpanded] = useState(false)
-  const [generalExpanded, setGeneralExpanded] = useState(false)
-  const [currentBankEmoji, setCurrentBankEmoji] = useState<string>('🏦')
+  const { currentClient } = useClient()
+
+  // collapsible sections
+  const [exportsOpen, setExportsOpen] = useState(false)
+  const [configOpen, setConfigOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
+
+  // modals
   const [showVATModal, setShowVATModal] = useState(false)
   const [showCategoriesModal, setShowCategoriesModal] = useState(false)
+
   const pathname = usePathname()
 
-  // Bank emoji mapping
-  const getBankEmoji = (friendlyName: string): string => {
-    const lower = friendlyName.toLowerCase()
-    if (lower.includes('capitec')) return '🏦'
-    if (lower.includes('absa')) return '🏛️'
-    if (lower.includes('fnb')) return '🏦'
-    if (lower.includes('standard bank')) return '🏦'
-    return '🏦'
-  }
+  useEffect(() => { setIsMounted(true) }, [])
 
-  useEffect(() => {
-    setIsMounted(true)
-  }, [])
+  /* ── export handler ────────────────────────────────────────────── */
+  const handleExport = useCallback(async (type: 'transactions' | 'summary' | 'categories' | 'accountant' | 'vat') => {
+    if (!sessionId && !currentClient?.id) return
+    if (type === 'vat')        { setShowVATModal(true); return }
+    if (type === 'categories') { setShowCategoriesModal(true); return }
 
-  // Fetch and display current statement's bank emoji when selected
-  useEffect(() => {
-    const fetchStatementBank = async () => {
-      if (!selectedStatement) {
-        setCurrentBankEmoji('🏦')
-        return
-      }
-
-      try {
-        const response = await axios.get(`${API_BASE_URL}/sessions`)
-        const sessions = response.data.sessions || []
-        const found = sessions.find((s: any) => s.session_id === selectedStatement)
-        
-        if (found) {
-          setCurrentBankEmoji(getBankEmoji(found.friendly_name))
-        }
-      } catch (error) {
-        console.error('Failed to fetch statement for sidebar:', error)
-        setCurrentBankEmoji('🏦')
-      }
-    }
-
-    fetchStatementBank()
-  }, [selectedStatement])
-
-  const handleExport = async (type: 'transactions' | 'summary' | 'categories' | 'accountant' | 'vat') => {
-    if (!sessionId) return
-    
-    // For VAT export, open modal instead
-    if (type === 'vat') {
-      setShowVATModal(true)
-      return
-    }
-    
-    // For categories export, open modal instead
-    if (type === 'categories') {
-      setShowCategoriesModal(true)
-      return
-    }
-    
     setExporting(true)
     try {
-      let endpoint: string
-      let filename: string
-      
-      endpoint = `${API_BASE_URL}/export/${type}`
-      filename = `${type}_${sessionId?.substring(0, 8) || 'export'}.xlsx`
-      
-      const response = await axios.get(endpoint, {
-        params: { session_id: sessionId, format: 'excel' },
+      const params: any = { format: 'excel' }
+      if (currentClient?.id) { params.client_id = currentClient.id }
+      else if (sessionId) { params.session_id = sessionId }
+      // Always include VAT columns for applicable exports
+      if (['transactions', 'summary', 'accountant'].includes(type)) {
+        params.include_vat = true
+      }
+      const filename = `${type}_${sessionId?.substring(0, 8) || currentClient?.id || 'export'}.xlsx`
+      const response = await axios.get(`${API_BASE_URL}/export/${type}`, {
+        params,
         responseType: 'blob',
       })
-
       const url = window.URL.createObjectURL(response.data)
       const link = document.createElement('a')
-      link.href = url
-      link.download = filename
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
-    } catch (error) {
-      console.error('Export failed:', error)
-      alert('Export failed. Please try again.')
-    } finally {
-      setExporting(false)
-    }
+      link.href = url; link.download = filename
+      document.body.appendChild(link); link.click()
+      document.body.removeChild(link); window.URL.revokeObjectURL(url)
+    } catch { toast.error('Export failed. Please try again.') }
+    finally { setExporting(false) }
+  }, [sessionId, currentClient])
+
+  /* ── active helpers ────────────────────────────────────────────── */
+  const isActive = (prefix: string) => {
+    if (prefix === '/dashboard') return pathname === '/dashboard'
+    return pathname.startsWith(prefix)
   }
 
-  const isActive = (path: string) => {
-    if (path === '/dashboard' && pathname === '/dashboard') return true
-    if (path !== '/dashboard' && pathname.startsWith(path)) return true
-    return false
-  }
+  /* ── nav items ─────────────────────────────────────────────────── */
+  const sessionNav: NavItem[] = sessionId ? [
+    { href: `/dashboard?session_id=${sessionId}`, icon: <BarChart3 className="w-[18px] h-[18px]" />, label: 'Dashboard',        matchPrefix: '/dashboard' },
+    { href: `/transactions?session_id=${sessionId}`, icon: <List className="w-[18px] h-[18px]" />,     label: 'Transactions',     matchPrefix: '/transactions' },
+    { href: `/invoices?session_id=${sessionId}`,     icon: <Eye className="w-[18px] h-[18px]" />,      label: 'Invoices',         matchPrefix: '/invoices' },
+    { href: `/mapping?session_id=${sessionId}`,      icon: <MapPin className="w-[18px] h-[18px]" />,   label: 'Map Transactions', matchPrefix: '/mapping' },
+  ] : []
 
-  const getLinkClass = (path: string) => {
-    const baseClass = "flex items-center space-x-3 p-3 rounded transition-colors"
-    const hoverClass = "hover:bg-gray-700"
-    const activeClass = isActive(path) ? "bg-blue-600 hover:bg-blue-700" : hoverClass
-    return `${baseClass} ${activeClass}`
-  }
+  const exportItems = [
+    { type: 'accountant'   as const, icon: <FileSpreadsheet className="w-[18px] h-[18px]" />, label: 'For Accountant',  title: 'Comprehensive report for accountants' },
+    { type: 'transactions' as const, icon: <FileText className="w-[18px] h-[18px]" />,        label: 'Transactions',    title: 'All transactions' },
+    { type: 'summary'      as const, icon: <BarChart3 className="w-[18px] h-[18px]" />,       label: 'Summary',         title: 'Monthly summary' },
+    { type: 'categories'   as const, icon: <FolderOpen className="w-[18px] h-[18px]" />,      label: 'Categories',      title: 'By category' },
+    { type: 'vat'          as const, icon: <Receipt className="w-[18px] h-[18px]" />,         label: 'VAT Report',      title: 'VAT report with calculations' },
+  ]
 
-  const getExportButtonClass = () => {
-    const baseClass = "flex items-center space-x-3 p-3 rounded transition-colors w-full text-left"
-    const hoverClass = exporting ? "bg-gray-600 cursor-not-allowed" : "hover:bg-gray-700 cursor-pointer"
-    return `${baseClass} ${hoverClass}`
-  }
+  const configItems: NavItem[] = sessionId ? [
+    { href: `/rules?session_id=${sessionId}`,              icon: <Tag className="w-[18px] h-[18px]" />,      label: 'Categories',       matchPrefix: '/rules' },
+    { href: `/rules?session_id=${sessionId}&tab=rules`,    icon: <Zap className="w-[18px] h-[18px]" />,      label: 'Manual Rules',     matchPrefix: '/rules' },
+    { href: `/rules?session_id=${sessionId}&tab=learned`,  icon: <Sparkles className="w-[18px] h-[18px]" />, label: 'Learned Patterns', matchPrefix: '/rules' },
+  ] : []
 
+  /* ══════════════════════════════════════════════════════════════════
+     RENDER
+     ══════════════════════════════════════════════════════════════════ */
   return (
-    <div className={`fixed left-0 top-0 h-full bg-gray-900 text-white transition-all duration-300 ${
-      isCollapsed ? 'w-16' : 'w-64'
-    } z-50 flex flex-col`}>
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-700 flex-shrink-0">
+    <div className={`fixed left-0 top-0 h-full z-50 flex flex-col
+      bg-neutral-900 text-neutral-100 border-r border-neutral-800
+      transition-all duration-300 ease-in-out
+      ${isCollapsed ? 'w-[60px]' : 'w-64'}`}>
+
+      {/* ── Brand header ─────────────────────────────────────────── */}
+      <div className="flex items-center justify-between h-14 px-3 border-b border-neutral-800 shrink-0">
         {!isCollapsed && (
-          <h2 className="text-lg font-semibold">Navigation</h2>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-600">
+              <Landmark className="w-4 h-4 text-white" />
+            </div>
+            <span className="text-sm font-bold tracking-tight truncate">Statement<span className="text-indigo-400">Bur</span></span>
+          </div>
         )}
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-1 rounded hover:bg-gray-700 transition-colors"
-        >
-          {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+        <button onClick={() => setIsCollapsed(!isCollapsed)}
+          className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors shrink-0"
+          title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+          {isCollapsed ? <PanelLeft className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
         </button>
       </div>
 
-      {/* Client & Statements Section - Sticky at top for quick access */}
-      <div className={`sticky top-0 bg-gray-900 border-b border-gray-700 flex-shrink-0 z-40 transition-all duration-300 ${
-        isCollapsed ? 'w-16' : 'w-full'
-      }`}>
-        <div className={`px-4 py-4 border-b border-gray-700 ${isCollapsed ? 'hidden' : ''}`}>
-          <p className="text-xs font-semibold text-gray-400 mb-3">CLIENT</p>
-          {isMounted && <ClientSelector isDarkMode={true} isCollapsed={isCollapsed} />}
-        </div>
-
-        {/* Statements Section - Show full selector when expanded, bank emoji when collapsed */}
+      {/* ── Client & Statement selectors ─────────────────────────── */}
+      <div className="shrink-0 border-b border-neutral-800">
+        {/* Client */}
         {isMounted && !isCollapsed && (
-          <div className="px-0 py-2">
+          <div className="px-3 pt-3 pb-2">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 mb-2 px-0.5">Client</p>
+            <ClientSelector isDarkMode={true} isCollapsed={isCollapsed} />
+          </div>
+        )}
+        {isMounted && isCollapsed && (
+          <div className="flex justify-center py-3">
+            <ClientSelector isDarkMode={true} isCollapsed={isCollapsed} />
+          </div>
+        )}
+
+        {/* Statement */}
+        {isMounted && !isCollapsed && (
+          <div className="px-0 pb-2">
             <StatementSelector
               selectedStatement={selectedStatement}
               onStatementChange={onStatementChange || (() => {})}
@@ -168,228 +179,117 @@ export default function Sidebar({ sessionId, selectedStatement = '', onStatement
             />
           </div>
         )}
-
-        {/* Bank indicator when sidebar is collapsed */}
-        {isMounted && isCollapsed && selectedStatement && (
-          <div className="flex items-center justify-center py-3 border-b border-gray-700">
-            <div title="Current bank" className="text-2xl cursor-help">
-              {currentBankEmoji}
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Navigation Items - Scrollable */}
-      <nav className={`p-4 space-y-2 overflow-y-auto flex-1 overflow-x-hidden ${isCollapsed ? 'px-2' : ''}`}>
-        <Link
-          href="/dashboard"
-          className={getLinkClass("/dashboard")}
-        >
-          <Upload size={20} />
-          {!isCollapsed && <span>Upload Statement</span>}
-        </Link>
+      {/* ── Scrollable Navigation ────────────────────────────────── */}
+      <nav className={`flex-1 overflow-y-auto overflow-x-hidden py-2 space-y-0.5 scrollbar-thin scrollbar-thumb-neutral-700 ${isCollapsed ? 'px-1.5' : 'px-2'}`}>
 
-        {isMounted && sessionId && (
+        {/* Upload */}
+        <NavLink href="/dashboard"
+          icon={<Upload className="w-[18px] h-[18px]" />}
+          label="Upload Statement"
+          active={isActive('/dashboard')}
+          collapsed={isCollapsed} />
+
+        {/* Session links */}
+        {isMounted && sessionId && sessionNav.length > 0 && (
           <>
-            <div className="pt-2 border-t border-gray-700">
-              <p className="px-3 py-2 text-xs font-semibold text-gray-400">{isCollapsed ? '' : 'SESSION'}</p>
-            </div>
-
-            <Link
-              href={`/dashboard?session_id=${sessionId}`}
-              className={getLinkClass("/dashboard")}
-            >
-              <BarChart3 size={20} />
-              {!isCollapsed && <span>Dashboard</span>}
-            </Link>
-
-            <Link
-              href={`/transactions?session_id=${sessionId}`}
-              className={getLinkClass("/transactions")}
-            >
-              <List size={20} />
-              {!isCollapsed && <span>Transactions</span>}
-            </Link>
-
-            <Link
-              href={`/invoices?session_id=${sessionId}`}
-              className={getLinkClass("/invoices")}
-            >
-              <Eye size={20} />
-              {!isCollapsed && <span>Invoices</span>}
-            </Link>
-
-            <Link
-              href={`/mapping?session_id=${sessionId}`}
-              className={getLinkClass("/mapping")}
-            >
-              <MapPin size={20} />
-              {!isCollapsed && <span>Map Transactions</span>}
-            </Link>
-
-            {/* OCR Settings - Hidden for now, will be corrected later
-            <Link
-              href={`/ocr?session_id=${sessionId}`}
-              className={getLinkClass("/ocr")}
-            >
-              <Settings size={20} />
-              {!isCollapsed && <span>OCR Settings</span>}
-            </Link>
-            */}
-
-            <div className="pt-2 border-t border-gray-700">
-              <button
-                onClick={() => setExportsExpanded(!exportsExpanded)}
-                className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-gray-400 hover:text-white transition-colors cursor-pointer"
-              >
-                <span>{isCollapsed ? '' : 'EXPORTS'}</span>
-                {!isCollapsed && (
-                  exportsExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />
-                )}
-              </button>
-            </div>
-
-            {exportsExpanded && (
-              <>
-                <button
-                  onClick={() => handleExport('accountant')}
-                  disabled={exporting}
-                  className={getExportButtonClass()}
-                  title="Comprehensive report for accountants"
-                >
-                  <FileSpreadsheet size={20} className={exporting ? 'opacity-50' : ''} />
-                  {!isCollapsed && <span className={exporting ? 'opacity-50' : ''}>For Accountant</span>}
-                </button>
-
-                <button
-                  onClick={() => handleExport('transactions')}
-                  disabled={exporting}
-                  className={getExportButtonClass()}
-                  title="All transactions"
-                >
-                  <FileText size={20} className={exporting ? 'opacity-50' : ''} />
-                  {!isCollapsed && <span className={exporting ? 'opacity-50' : ''}>Transactions</span>}
-                </button>
-
-                <button
-                  onClick={() => handleExport('summary')}
-                  disabled={exporting}
-                  className={getExportButtonClass()}
-                  title="Monthly summary"
-                >
-                  <BarChart3 size={20} className={exporting ? 'opacity-50' : ''} />
-                  {!isCollapsed && <span className={exporting ? 'opacity-50' : ''}>Summary</span>}
-                </button>
-
-                <button
-                  onClick={() => handleExport('categories')}
-                  disabled={exporting}
-                  className={getExportButtonClass()}
-                  title="By category"
-                >
-                  <FolderOpen size={20} className={exporting ? 'opacity-50' : ''} />
-                  {!isCollapsed && <span className={exporting ? 'opacity-50' : ''}>Categories</span>}
-                </button>
-
-                <button
-                  onClick={() => handleExport('vat')}
-                  disabled={exporting}
-                  className={getExportButtonClass()}
-                  title="VAT report with calculations"
-                >
-                  <Receipt size={20} className={exporting ? 'opacity-50' : ''} />
-                  {!isCollapsed && <span className={exporting ? 'opacity-50' : ''}>VAT Report</span>}
-                </button>
-              </>
+            {!isCollapsed && (
+              <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 px-3 pt-4 pb-1">Session</p>
             )}
+            {isCollapsed && <div className="my-1.5 mx-2 border-t border-neutral-800" />}
+            {sessionNav.map(item => (
+              <NavLink key={item.matchPrefix} href={item.href}
+                icon={item.icon} label={item.label}
+                active={isActive(item.matchPrefix)} collapsed={isCollapsed} />
+            ))}
 
-            <div className="pt-2 border-t border-gray-700">
-              <button
-                onClick={() => setConfigExpanded(!configExpanded)}
-                className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-gray-400 hover:text-white transition-colors cursor-pointer"
-              >
-                <span>{isCollapsed ? '' : 'CONFIGURATION'}</span>
-                {!isCollapsed && (
-                  configExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />
-                )}
-              </button>
-            </div>
+            {/* ── Exports ──────────────────────────────────────────── */}
+            <SectionHeader label="Exports" open={exportsOpen} toggle={() => setExportsOpen(!exportsOpen)} collapsed={isCollapsed} />
+            {isCollapsed && <div className="my-1.5 mx-2 border-t border-neutral-800" />}
+            {(exportsOpen || isCollapsed) && exportItems.map(item => (
+              <ExportButton key={item.type}
+                icon={item.icon} label={item.label} title={item.title}
+                collapsed={isCollapsed} loading={exporting}
+                onClick={() => handleExport(item.type)} />
+            ))}
 
-            {configExpanded && (
-              <>
-                <Link
-                  href={`/rules?session_id=${sessionId}`}
-                  className={getLinkClass("/rules")}
-                >
-                  <Tag size={20} />
-                  {!isCollapsed && <span>Categories</span>}
-                </Link>
-
-                <Link
-                  href={`/rules?session_id=${sessionId}&tab=rules`}
-                  className={getLinkClass("/rules")}
-                >
-                  <Zap size={20} />
-                  {!isCollapsed && <span>Manual Rules</span>}
-                </Link>
-
-                <Link
-                  href={`/rules?session_id=${sessionId}&tab=learned`}
-                  className={getLinkClass("/rules")}
-                >
-                  <Sparkles size={20} />
-                  {!isCollapsed && <span>Learned Patterns</span>}
-                </Link>
-              </>
-            )}
+            {/* ── Configuration ────────────────────────────────────── */}
+            <SectionHeader label="Configuration" open={configOpen} toggle={() => setConfigOpen(!configOpen)} collapsed={isCollapsed} />
+            {isCollapsed && <div className="my-1.5 mx-2 border-t border-neutral-800" />}
+            {(configOpen || isCollapsed) && configItems.map(item => (
+              <NavLink key={item.label} href={item.href}
+                icon={item.icon} label={item.label}
+                active={isActive(item.matchPrefix)} collapsed={isCollapsed} />
+            ))}
           </>
         )}
 
-        <div className="pt-2 border-t border-gray-700">
-          <button
-            onClick={() => setGeneralExpanded(!generalExpanded)}
-            className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-gray-400 hover:text-white transition-colors cursor-pointer"
-          >
-            <span>{isCollapsed ? '' : 'MORE'}</span>
-            {!isCollapsed && (
-              generalExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />
-            )}
-          </button>
-        </div>
-
-        {generalExpanded && (
+        {/* ── More ──────────────────────────────────────────────── */}
+        <SectionHeader label="More" open={moreOpen} toggle={() => setMoreOpen(!moreOpen)} collapsed={isCollapsed} />
+        {isCollapsed && <div className="my-1.5 mx-2 border-t border-neutral-800" />}
+        {(moreOpen || isCollapsed) && (
           <>
-            <Link
-              href="/clients"
-              className={getLinkClass("/clients")}
-            >
-              <Users size={20} />
-              {!isCollapsed && <span>Clients</span>}
-            </Link>
-            <Link
-              href="/sessions"
-              className={getLinkClass("/sessions")}
-            >
-              <Archive size={20} />
-              {!isCollapsed && <span>All Statements</span>}
-            </Link>
+            <NavLink href="/clients" icon={<Users className="w-[18px] h-[18px]" />}
+              label="Clients" active={isActive('/clients')} collapsed={isCollapsed} />
+            <NavLink href="/sessions" icon={<Archive className="w-[18px] h-[18px]" />}
+              label="All Statements" active={isActive('/sessions')} collapsed={isCollapsed} />
           </>
         )}
       </nav>
 
-      {/* VAT Export Modal */}
-      <VATExportModal
-        isOpen={showVATModal}
-        onClose={() => setShowVATModal(false)}
-        sessionId={sessionId}
-      />
+      {/* ── Footer ──────────────────────────────────────────────── */}
+      {!isCollapsed && (
+        <div className="shrink-0 border-t border-neutral-800 px-4 py-3">
+          <p className="text-[10px] text-neutral-600 text-center">Statement Analyzer v2.0</p>
+        </div>
+      )}
 
-      {/* Categories Export Modal */}
-      <CategoriesExportModal
-        isOpen={showCategoriesModal}
-        onClose={() => setShowCategoriesModal(false)}
-        sessionId={sessionId}
-      />
+      {/* ── Modals ──────────────────────────────────────────────── */}
+      <VATExportModal isOpen={showVATModal} onClose={() => setShowVATModal(false)} sessionId={sessionId} clientId={currentClient?.id} />
+      <CategoriesExportModal isOpen={showCategoriesModal} onClose={() => setShowCategoriesModal(false)} sessionId={sessionId} clientId={currentClient?.id} />
     </div>
+  )
+}
+
+/* ╔══════════════════════════════════════════════════════════════════════
+   ║  SUB-COMPONENTS
+   ╚══════════════════════════════════════════════════════════════════════ */
+
+/* ── NavLink ────────────────────────────────────────────────────────── */
+function NavLink({
+  href, icon, label, active, collapsed,
+}: { href: string; icon: React.ReactNode; label: string; active: boolean; collapsed: boolean }) {
+  return (
+    <Link href={href} title={collapsed ? label : undefined}
+      className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors relative
+        ${active
+          ? 'bg-indigo-600/20 text-indigo-300'
+          : 'text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800'
+        }
+        ${collapsed ? 'justify-center px-0' : ''}
+      `}>
+      {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-indigo-500" />}
+      <span className={`shrink-0 ${active ? 'text-indigo-400' : 'text-neutral-500 group-hover:text-neutral-300'}`}>{icon}</span>
+      {!collapsed && <span className="truncate">{label}</span>}
+    </Link>
+  )
+}
+
+/* ── ExportButton ───────────────────────────────────────────────────── */
+function ExportButton({
+  icon, label, title, collapsed, loading, onClick,
+}: { icon: React.ReactNode; label: string; title: string; collapsed: boolean; loading: boolean; onClick: () => void }) {
+  return (
+    <button onClick={onClick} disabled={loading} title={collapsed ? label : title}
+      className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium w-full text-left transition-colors
+        text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed
+        ${collapsed ? 'justify-center px-0' : ''}
+      `}>
+      <span className={`shrink-0 text-neutral-500 group-hover:text-neutral-300 ${loading ? 'animate-pulse' : ''}`}>
+        {loading ? <Loader2 className="w-[18px] h-[18px] animate-spin" /> : icon}
+      </span>
+      {!collapsed && <span className="truncate">{label}</span>}
+    </button>
   )
 }

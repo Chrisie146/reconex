@@ -28,7 +28,7 @@ export default function Page() {
   // Load categories for this session so modals have data
   useEffect(() => {
     if (!clientSessionId) return
-    axios.get(`${API_BASE_URL}/categories`, { params: { session_id: clientSessionId } })
+    axios.get(`${API_BASE_URL}/categories`, { params: { session_id: clientSessionId, ...(currentClient?.id ? { client_id: currentClient.id } : {}) } })
       .then(res => {
         // Extract just the names from the category objects
         const categoryNames = (res.data.categories || []).map((cat: any) => 
@@ -37,7 +37,7 @@ export default function Page() {
         setUploadedCategories(categoryNames)
       })
       .catch(() => {})
-  }, [clientSessionId])
+  }, [clientSessionId, currentClient?.id])
 
   return (
     <>

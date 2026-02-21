@@ -50,7 +50,7 @@ class VATService:
         """Get a database session"""
         return SessionLocal()
     
-    def _is_vat_output(self, category: str) -> bool:
+    def _is_vat_output(self, category: str, client_id: Optional[int] = None) -> bool:
         """Determine if a transaction is VAT Output (income/sales) or Input (expenses)
         
         Uses hybrid approach:
@@ -59,6 +59,7 @@ class VATService:
         
         Args:
             category: Transaction category name
+            client_id: Optional client ID for client-scoped lookup
             
         Returns:
             True if VAT Output (income), False if VAT Input (expense)
@@ -70,9 +71,12 @@ class VATService:
         # Slow path: Check custom categories in database
         db = self._get_db()
         try:
-            custom_cat = db.query(CustomCategory).filter(
+            query = db.query(CustomCategory).filter(
                 CustomCategory.name == category
-            ).first()
+            )
+            if client_id is not None:
+                query = query.filter(CustomCategory.client_id == client_id)
+            custom_cat = query.first()
             
             if custom_cat:
                 return custom_cat.is_income == 1
@@ -166,14 +170,17 @@ class VATService:
         finally:
             db.close()
     
-    def get_category_vat_settings(self, category_name: str) -> Dict[str, any]:
+    def get_category_vat_settings(self, category_name: str, client_id: Optional[int] = None) -> Dict[str, any]:
         """Get VAT settings for a category (built-in or custom)"""
         # Check if it's a custom category first
         db = self._get_db()
         try:
-            custom_cat = db.query(CustomCategory).filter(
+            query = db.query(CustomCategory).filter(
                 CustomCategory.name == category_name
-            ).first()
+            )
+            if client_id is not None:
+                query = query.filter(CustomCategory.client_id == client_id)
+            custom_cat = query.first()
             
             if custom_cat:
                 return {
@@ -195,7 +202,8 @@ class VATService:
         category_name: str,
         vat_applicable: bool,
         vat_rate: float,
-        is_income: Optional[bool] = None
+        is_income: Optional[bool] = None,
+        client_id: Optional[int] = None
     ) -> Tuple[bool, str]:
         """
         Update VAT settings for any category (built-in or custom)
@@ -206,13 +214,17 @@ class VATService:
             vat_applicable: Whether VAT applies to this category
             vat_rate: VAT rate percentage
             is_income: Optional - True for Income/Sales (VAT Output), False for Expense (VAT Input)
+            client_id: Optional - Scope to a specific client
         """
         db = self._get_db()
         try:
-            # Check if custom category already exists
-            custom_cat = db.query(CustomCategory).filter(
+            # Check if custom category already exists for this client
+            query = db.query(CustomCategory).filter(
                 CustomCategory.name == category_name
-            ).first()
+            )
+            if client_id is not None:
+                query = query.filter(CustomCategory.client_id == client_id)
+            custom_cat = query.first()
             
             if custom_cat:
                 # Update existing custom category
@@ -223,6 +235,7 @@ class VATService:
             else:
                 # Create new custom category entry (for built-in category overrides)
                 custom_cat = CustomCategory(
+                    client_id=client_id,
                     name=category_name,
                     vat_applicable=1 if vat_applicable else 0,
                     vat_rate=vat_rate,
@@ -372,6 +385,72 @@ class VATService:
                 "total": len(transactions),
                 "updated": updated_count,
                 "skipped": skipped_count
+            }
+        except Exception as e:
+            db.rollback()
+            return False, f"Failed to recalculate VAT: {str(e)}", {}
+        finally:
+            db.close()
+    
+    def recalculate_all_transactions_for_client(self, client_id: int) -> Tuple[bool, str, Dict]:
+        """Recalculate VAT for all transactions across all statements for a client
+        
+        This is useful when viewing a client with multiple statements, and you want to
+        ensure VAT is calculated for all transactions regardless of when VAT was enabled.
+        """
+        db = self._get_db()
+        try:
+            # Get all transactions for this client
+            transactions = db.query(Transaction).filter(
+                Transaction.client_id == client_id
+            ).all()
+            
+            if not transactions:
+                return False, "No transactions found for this client", {}
+            
+            # Check if VAT is enabled for any session of this client
+            vat_enabled_sessions = db.query(SessionVATConfig).join(
+                Transaction, Transaction.session_id == SessionVATConfig.session_id
+            ).filter(
+                Transaction.client_id == client_id,
+                SessionVATConfig.vat_enabled == 1
+            ).all()
+            
+            if not vat_enabled_sessions:
+                return False, "VAT is not enabled for any statement of this client", {}
+            
+            updated_count = 0
+            skipped_count = 0
+            
+            for transaction in transactions:
+                vat_settings = self.get_category_vat_settings(transaction.category)
+                
+                if not vat_settings["applicable"]:
+                    # Clear VAT fields
+                    transaction.vat_amount = None
+                    transaction.amount_excl_vat = None
+                    transaction.amount_incl_vat = None
+                    skipped_count += 1
+                else:
+                    # Calculate VAT
+                    vat_calc = self.calculate_vat(
+                        transaction.amount,
+                        vat_settings["rate"],
+                        amount_includes_vat=True
+                    )
+                    
+                    transaction.vat_amount = vat_calc["vat_amount"]
+                    transaction.amount_excl_vat = vat_calc["amount_excl_vat"]
+                    transaction.amount_incl_vat = vat_calc["amount_incl_vat"]
+                    updated_count += 1
+            
+            db.commit()
+            
+            return True, "VAT recalculated for all client transactions", {
+                "total": len(transactions),
+                "updated": updated_count,
+                "skipped": skipped_count,
+                "vat_enabled_sessions": len(vat_enabled_sessions)
             }
         except Exception as e:
             db.rollback()

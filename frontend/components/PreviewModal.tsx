@@ -6,9 +6,9 @@ export default function PreviewModal({ data, onClose, onApply }: any) {
   const { matches = [], count = 0, ruleId = null, sessionId = null } = data || {}
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-start md:items-center justify-center p-4">
       <div className="absolute inset-0 bg-black opacity-40" onClick={() => onClose()} />
-      <div className="bg-white rounded shadow-lg w-[90%] max-w-4xl z-50 p-4">
+      <div className="bg-white rounded shadow-lg w-[90%] max-w-4xl z-50 p-4 max-h-[80vh] flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Preview Matches ({count})</h3>
           <div>
@@ -19,7 +19,7 @@ export default function PreviewModal({ data, onClose, onApply }: any) {
           </div>
         </div>
 
-        <div className="max-h-96 overflow-auto">
+        <div className="overflow-auto flex-1">
           {matches.length === 0 ? (
             <div className="text-neutral-600">No matches.</div>
           ) : (

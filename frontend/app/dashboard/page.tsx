@@ -10,10 +10,16 @@ import TransactionsTable from '@/components/TransactionsTable'
 import MonthlySummary from '@/components/MonthlySummary'
 import CategoryBreakdown from '@/components/CategoryBreakdown'
 import ExportButtons from '@/components/ExportButtons'
+import CashFlowChart from '@/components/CashFlowChart'
+import IncomeExpenseTrend from '@/components/IncomeExpenseTrend'
+import MerchantAnalytics from '@/components/MerchantAnalytics'
+import RecurringTransactions from '@/components/RecurringTransactions'
 import BulkCategoryModal from '@/components/BulkCategoryModal'
 import Sidebar from '@/components/Sidebar'
 import StatementInfoBanner from '@/components/StatementInfoBanner'
+import OnboardingWizard from '@/components/OnboardingWizard'
 import { useClient } from '@/lib/clientContext'
+import { getAuthUser } from '@/lib/auth'
 
 interface SelectedTransaction {
   id: number
@@ -32,10 +38,28 @@ export default function Dashboard() {
   const [successMessage, setSuccessMessage] = useState('')
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [showUploadView, setShowUploadView] = useState(true)
+  const [isClient, setIsClient] = useState(false)
+  const [isHydrated, setIsHydrated] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(false)
   const { currentClient } = useClient()
 
   useEffect(() => {
-    const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
+    setIsClient(true)
+    setIsHydrated(true)
+
+    // Check if user should see onboarding
+    if (typeof window !== 'undefined') {
+      const flag = localStorage.getItem('statementbur_onboarding')
+      if (flag === 'pending') {
+        setShowOnboarding(true)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!isClient) return
+
+    const params = new URLSearchParams(window.location.search)
     const sid = params.get('session_id')
     const highlightId = params.get('highlight_txn')
     if (sid) {
@@ -47,12 +71,12 @@ export default function Dashboard() {
       // Clear highlight after 5 seconds
       setTimeout(() => setHighlightTxnId(null), 5000)
     }
-  }, [])
+  }, [isClient])
 
   // If page loaded with an existing session_id in the URL, fetch categories
   useEffect(() => {
     if (!sessionId) return
-    axios.get(`${API_BASE_URL}/categories`, { params: { session_id: sessionId } })
+    axios.get(`${API_BASE_URL}/categories`, { params: { session_id: sessionId, ...(currentClient?.id ? { client_id: currentClient.id } : {}) } })
       .then(res => {
         // Extract just the names from the category objects
         const categoryNames = (res.data.categories || []).map((cat: any) => 
@@ -63,7 +87,7 @@ export default function Dashboard() {
       .catch(() => {
         // ignore errors silently; UI will still function without preloaded categories
       })
-  }, [sessionId])
+  }, [sessionId, currentClient?.id])
 
   const handleUploadSuccess = (newSessionId: string, count: number, categories: string[]) => {
     setSessionId(newSessionId)
@@ -140,8 +164,12 @@ export default function Dashboard() {
       <div className="ml-64 transition-all duration-300">
         <Header />
         
-        <div className="max-w-6xl mx-auto px-4 py-12">
-          {showUploadView ? (
+        <div className="max-w-6xl mx-auto px-4 py-12" suppressHydrationWarning>
+          {!isHydrated ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-gray-500">Loading...</div>
+            </div>
+          ) : showUploadView ? (
             <UploadSection onUploadSuccess={handleUploadSuccess} />
           ) : (
             <div className="space-y-12">
@@ -153,8 +181,20 @@ export default function Dashboard() {
               {/* Summary Cards */}
               <MonthlySummary sessionId={sessionId} currentClient={currentClient} />
 
+              {/* Cash Flow Chart */}
+              <CashFlowChart sessionId={sessionId} currentClient={currentClient} />
+
+              {/* Income / Expense Trend */}
+              <IncomeExpenseTrend sessionId={sessionId} currentClient={currentClient} />
+
               {/* Category Breakdown */}
               <CategoryBreakdown sessionId={sessionId} currentClient={currentClient} />
+
+              {/* Merchant Analytics */}
+              <MerchantAnalytics sessionId={sessionId} currentClient={currentClient} />
+
+              {/* Recurring Transactions */}
+              <RecurringTransactions sessionId={sessionId} currentClient={currentClient} />
 
               {/* Transactions Preview (5 rows) */}
               <div className="card bg-white border border-neutral-200">
@@ -198,7 +238,7 @@ export default function Dashboard() {
                             <td className="px-4 py-3 text-neutral-600">{new Date(t.date).toLocaleDateString('en-ZA')}</td>
                             <td className="px-4 py-3 text-neutral-900 truncate max-w-[40ch]">{t.description || <span className="text-neutral-400 italic">[No description]</span>}</td>
                             <td className="px-4 py-3 text-neutral-700">{t.category || <span className="text-neutral-400 italic">Uncategorized</span>}</td>
-                            <td className="px-4 py-3 text-right font-medium {t.amount>=0? 'text-green-600' : 'text-red-600'}">{t.amount >= 0 ? '+' : ''}R{Math.abs(t.amount).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
+                            <td className={`px-4 py-3 text-right font-medium ${t.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>{t.amount >= 0 ? '+' : ''}R{Math.abs(t.amount).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -241,9 +281,22 @@ export default function Dashboard() {
         onCategoryCreated={handleCategoryCreated}
       />
 
+      {/* Onboarding Wizard for new users */}
+      {showOnboarding && (
+        <OnboardingWizard
+          userName={getAuthUser()?.full_name}
+          onComplete={() => {
+            setShowOnboarding(false)
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('statementbur_onboarding')
+            }
+          }}
+        />
+      )}
+
       <footer className="border-t border-neutral-200 bg-neutral-50 mt-16">
         <div className="max-w-6xl mx-auto px-4 py-6 text-center text-sm text-neutral-600">
-          <p>Bank Statement Analyzer v1.0 | © 2024 All Rights Reserved</p>
+          <p>Bank Statement Analyzer v1.0 | © {new Date().getFullYear()} All Rights Reserved</p>
         </div>
       </footer>
     </main>

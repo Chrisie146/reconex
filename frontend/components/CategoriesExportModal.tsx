@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { X, FileSpreadsheet, AlertCircle } from 'lucide-react'
+import { X, FileSpreadsheet, AlertCircle, Calendar, Loader2, FolderOpen, BarChart3, CheckSquare, Square } from 'lucide-react'
 import axios from '@/lib/axiosClient'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -10,410 +10,239 @@ interface CategoriesExportModalProps {
   isOpen: boolean
   onClose: () => void
   sessionId: string | null
+  clientId?: number | null
 }
+interface Category { name: string; transaction_count: number }
 
-interface Category {
-  name: string
-  transaction_count: number
-}
-
-export default function CategoriesExportModal({
-  isOpen,
-  onClose,
-  sessionId
-}: CategoriesExportModalProps) {
-  const [dateFrom, setDateFrom] = useState<string>('')
-  const [dateTo, setDateTo] = useState<string>('')
-  const [useFullPeriod, setUseFullPeriod] = useState<boolean>(true)
-  const [includeVAT, setIncludeVAT] = useState<boolean>(false)
+export default function CategoriesExportModal({ isOpen, onClose, sessionId, clientId }: CategoriesExportModalProps) {
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [useFullPeriod, setUseFullPeriod] = useState(true)
+  const [includeVAT, setIncludeVAT] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [warning, setWarning] = useState<string | null>(null)
-  
-  // Transaction date range from session
+
   const [sessionDateFrom, setSessionDateFrom] = useState<string | null>(null)
   const [sessionDateTo, setSessionDateTo] = useState<string | null>(null)
-  
-  // Categories
+
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [loadingCategories, setLoadingCategories] = useState(false)
 
+  /* ── fetch data ────────────────────────────────────────────────── */
   useEffect(() => {
     if (!isOpen || !sessionId) return
 
-    const fetchSessionInfo = async () => {
+    ;(async () => {
       try {
-        const response = await axios.get(`${API_BASE_URL}/sessions`)
-        const sessions = response.data.sessions || []
-        const currentSession = sessions.find((s: any) => s.session_id === sessionId)
-        
-        if (currentSession) {
-          setSessionDateFrom(currentSession.date_from)
-          setSessionDateTo(currentSession.date_to)
-          setDateFrom(currentSession.date_from || '')
-          setDateTo(currentSession.date_to || '')
+        const res = await axios.get(`${API_BASE_URL}/sessions`)
+        const cur = (res.data.sessions || []).find((s: any) => s.session_id === sessionId)
+        if (cur) {
+          setSessionDateFrom(cur.date_from); setSessionDateTo(cur.date_to)
+          setDateFrom(cur.date_from || ''); setDateTo(cur.date_to || '')
         }
-      } catch (error) {
-        console.error('Failed to fetch session info:', error)
-      }
-    }
+      } catch { /* ignore */ }
+    })()
 
-    const fetchCategories = async () => {
+    ;(async () => {
       setLoadingCategories(true)
       try {
-        const response = await axios.get(`${API_BASE_URL}/categories`, {
-          params: { session_id: sessionId }
-        })
-        // API returns { categories: [...] }
-        const cats: Category[] = Array.isArray(response.data?.categories) 
-          ? response.data.categories 
-          : []
-        setCategories(cats)
-        // Select all by default
-        setSelectedCategories(cats.map(c => c.name))
-      } catch (error) {
-        console.error('Failed to fetch categories:', error)
-        setCategories([])
-        setSelectedCategories([])
-      } finally {
-        setLoadingCategories(false)
-      }
-    }
-
-    fetchSessionInfo()
-    fetchCategories()
-  }, [isOpen, sessionId])
+        const catParams: any = clientId ? { client_id: clientId } : { session_id: sessionId }
+        const res = await axios.get(`${API_BASE_URL}/categories`, { params: catParams })
+        const cats: Category[] = Array.isArray(res.data?.categories) ? res.data.categories : []
+        setCategories(cats); setSelectedCategories(cats.map(c => c.name))
+      } catch { setCategories([]); setSelectedCategories([]) }
+      finally { setLoadingCategories(false) }
+    })()
+  }, [isOpen, sessionId, clientId])
 
   useEffect(() => {
-    // Reset to full period when checkbox is toggled
     if (useFullPeriod && sessionDateFrom && sessionDateTo) {
-      setDateFrom(sessionDateFrom)
-      setDateTo(sessionDateTo)
-      setWarning(null)
+      setDateFrom(sessionDateFrom); setDateTo(sessionDateTo); setWarning(null)
     }
   }, [useFullPeriod, sessionDateFrom, sessionDateTo])
 
   useEffect(() => {
-    // Validate date range when dates change
-    if (!dateFrom || !dateTo || !sessionDateFrom || !sessionDateTo) {
-      setWarning(null)
-      return
-    }
-
-    const fromDate = new Date(dateFrom)
-    const toDate = new Date(dateTo)
-    const sessionFromDate = new Date(sessionDateFrom)
-    const sessionToDate = new Date(sessionDateTo)
-
-    if (fromDate < sessionFromDate || toDate > sessionToDate) {
-      const actualFrom = fromDate < sessionFromDate ? sessionDateFrom : dateFrom
-      const actualTo = toDate > sessionToDate ? sessionDateTo : dateTo
-      setWarning(
-        `Selected range extends beyond transaction dates. Export will include data from ${actualFrom} to ${actualTo}.`
-      )
-    } else {
-      setWarning(null)
-    }
+    if (!dateFrom || !dateTo || !sessionDateFrom || !sessionDateTo) { setWarning(null); return }
+    const [f, t, sf, st] = [new Date(dateFrom), new Date(dateTo), new Date(sessionDateFrom), new Date(sessionDateTo)]
+    if (f < sf || t > st) {
+      setWarning(`Range extends beyond statement dates. Export will cover ${f < sf ? sessionDateFrom : dateFrom} to ${t > st ? sessionDateTo : dateTo}.`)
+    } else setWarning(null)
   }, [dateFrom, dateTo, sessionDateFrom, sessionDateTo])
 
-  const handleCategoryToggle = (categoryName: string) => {
-    setSelectedCategories(prev => {
-      if (prev.includes(categoryName)) {
-        return prev.filter(c => c !== categoryName)
-      } else {
-        return [...prev, categoryName]
-      }
-    })
-  }
+  /* ── helpers ───────────────────────────────────────────────────── */
+  const handleCategoryToggle = (name: string) =>
+    setSelectedCategories(prev => prev.includes(name) ? prev.filter(c => c !== name) : [...prev, name])
+  const handleSelectAll = () => setSelectedCategories(categories.map(c => c.name))
+  const handleDeselectAll = () => setSelectedCategories([])
 
-  const handleSelectAll = () => {
-    if (Array.isArray(categories)) {
-      setSelectedCategories(categories.map(c => c.name))
-    }
-  }
-
-  const handleDeselectAll = () => {
-    setSelectedCategories([])
-  }
-
+  /* ── export ────────────────────────────────────────────────────── */
   const handleExport = async () => {
-    if (!sessionId) return
-    
-    if (selectedCategories.length === 0) {
-      setError('Please select at least one category to export.')
-      return
-    }
-
-    setExporting(true)
-    setError(null)
-
+    if (!sessionId && !clientId) return
+    if (selectedCategories.length === 0) { setError('Select at least one category.'); return }
+    setExporting(true); setError(null)
     try {
-      const params: any = {
-        session_id: sessionId,
-        include_vat: includeVAT
-      }
-
-      console.log('[EXPORT DEBUG] Export params:', {
-        session_id: sessionId,
-        include_vat: includeVAT,
-        includeVAT_type: typeof includeVAT,
-        dateFrom,
-        dateTo,
-        useFullPeriod,
-        totalCategories: categories.length,
-        selectedCategories: selectedCategories,
-        selectedCount: selectedCategories.length
-      })
-
-      // Add date range if not using full period
-      if (!useFullPeriod && dateFrom && dateTo) {
-        params.date_from = dateFrom
-        params.date_to = dateTo
-      }
-
-      // Add selected categories
+      const params: any = clientId
+        ? { client_id: clientId, include_vat: includeVAT }
+        : { session_id: sessionId, include_vat: includeVAT }
+      if (!useFullPeriod && dateFrom && dateTo) { params.date_from = dateFrom; params.date_to = dateTo }
       if (Array.isArray(categories) && selectedCategories.length < categories.length) {
         params.categories = selectedCategories.join(',')
-        console.log('[EXPORT DEBUG] Sending filtered categories:', params.categories)
-      } else {
-        console.log('[EXPORT DEBUG] Sending ALL categories (no filter)')
       }
-
-      console.log('[EXPORT DEBUG] Final request params:', params)
-
-      const response = await axios.get(`${API_BASE_URL}/export/categories`, {
-        params,
-        responseType: 'blob',
-      })
-
-      // Generate filename
-      const dateRangeStr = dateFrom && dateTo ? `${dateFrom}_to_${dateTo}` : (sessionId?.substring(0, 8) || 'export')
-      const vatStr = includeVAT ? '_with_vat' : ''
-      const filename = `categories${vatStr}_${dateRangeStr}.xlsx`
-
-      const url = window.URL.createObjectURL(response.data)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = filename
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
-
+      const res = await axios.get(`${API_BASE_URL}/export/categories`, { params, responseType: 'blob' })
+      const range = dateFrom && dateTo ? `${dateFrom}_to_${dateTo}` : (sessionId?.substring(0, 8) || 'export')
+      const fn = `categories${includeVAT ? '_with_vat' : ''}_${range}.xlsx`
+      const url = window.URL.createObjectURL(res.data)
+      const a = document.createElement('a'); a.href = url; a.download = fn
+      document.body.appendChild(a); a.click(); document.body.removeChild(a); window.URL.revokeObjectURL(url)
       onClose()
-    } catch (error: any) {
-      console.error('Categories export failed:', error)
-      setError(error.response?.data?.detail || 'Export failed. Please try again.')
-    } finally {
-      setExporting(false)
-    }
+    } catch (err: any) { setError(err.response?.data?.detail || 'Export failed. Please try again.') }
+    finally { setExporting(false) }
   }
 
   if (!isOpen) return null
 
+  const allSelected = categories.length > 0 && selectedCategories.length === categories.length
+
+  /* ── render ────────────────────────────────────────────────────── */
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-neutral-200 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <FileSpreadsheet className="w-5 h-5 text-blue-600" />
-            <h2 className="text-xl font-bold text-neutral-900">Export Categories Report</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl ring-1 ring-neutral-200 max-h-[90vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+
+        {/* ── Header ───────────────────────────────────────────── */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-100">
+              <FileSpreadsheet className="w-4 h-4 text-indigo-600" />
+            </div>
+            <h2 className="text-base font-bold text-neutral-900">Export Categories</h2>
             {includeVAT && (
-              <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
-                VAT ENABLED
-              </span>
+              <span className="rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">VAT</span>
             )}
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5 text-neutral-600" />
+          <button onClick={onClose} className="rounded-lg p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors">
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Content - Scrollable */}
-        <div className="px-6 py-4 space-y-5 overflow-y-auto flex-1">
-          {/* Date Range Section */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">📅</span>
-              <h3 className="font-semibold text-neutral-900">Date Range</h3>
-            </div>
+        {/* ── Body (scrollable) ────────────────────────────────── */}
+        <div className="px-6 py-5 space-y-6 overflow-y-auto flex-1">
 
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={useFullPeriod}
-                onChange={(e) => setUseFullPeriod(e.target.checked)}
-                className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-              />
+          {/* Date Range */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Calendar className="w-4 h-4 text-neutral-400" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500">Date Range</h3>
+            </div>
+            <label className="flex items-center gap-2.5 cursor-pointer mb-3">
+              <input type="checkbox" checked={useFullPeriod} onChange={e => setUseFullPeriod(e.target.checked)}
+                className="w-4 h-4 rounded border-neutral-300 text-indigo-600 focus:ring-indigo-300" />
               <span className="text-sm text-neutral-700">Use full statement period</span>
             </label>
-
             {!useFullPeriod && (
-              <div className="grid grid-cols-2 gap-3 pl-6">
-                <div>
-                  <label className="block text-xs font-medium text-neutral-600 mb-1">From Date</label>
-                  <input
-                    type="date"
-                    value={dateFrom}
-                    onChange={(e) => setDateFrom(e.target.value)}
-                    className="w-full text-sm px-3 py-2 border border-neutral-200 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-600 mb-1">To Date</label>
-                  <input
-                    type="date"
-                    value={dateTo}
-                    onChange={(e) => setDateTo(e.target.value)}
-                    className="w-full text-sm px-3 py-2 border border-neutral-200 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+              <div className="grid grid-cols-2 gap-3 ml-6">
+                {[{ label: 'From', val: dateFrom, set: setDateFrom }, { label: 'To', val: dateTo, set: setDateTo }].map(f => (
+                  <div key={f.label}>
+                    <label className="block text-[11px] font-semibold text-neutral-500 mb-1">{f.label}</label>
+                    <input type="date" value={f.val} onChange={e => f.set(e.target.value)}
+                      className="w-full rounded-lg border border-neutral-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300" />
+                  </div>
+                ))}
               </div>
             )}
-
             {warning && (
-              <div className="flex gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                <AlertCircle className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-yellow-800">{warning}</p>
+              <div className="mt-3 flex gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
+                <p className="text-[11px] text-amber-700">{warning}</p>
               </div>
             )}
           </div>
 
-          {/* Categories Selection */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
+          {/* Category Selection */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <span className="text-lg">📁</span>
-                <h3 className="font-semibold text-neutral-900">Select Categories</h3>
+                <FolderOpen className="w-4 h-4 text-neutral-400" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500">Categories</h3>
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleSelectAll}
-                  className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-                >
-                  Select All
-                </button>
-                <span className="text-xs text-neutral-400">|</span>
-                <button
-                  onClick={handleDeselectAll}
-                  className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-                >
-                  Deselect All
-                </button>
+              <div className="flex items-center gap-2">
+                <button onClick={handleSelectAll} className="text-[11px] font-medium text-indigo-600 hover:text-indigo-800">All</button>
+                <span className="text-neutral-300">|</span>
+                <button onClick={handleDeselectAll} className="text-[11px] font-medium text-indigo-600 hover:text-indigo-800">None</button>
               </div>
             </div>
 
             {loadingCategories ? (
               <div className="flex items-center justify-center py-8">
-                <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                <Loader2 className="w-5 h-5 text-indigo-500 animate-spin" />
+              </div>
+            ) : !Array.isArray(categories) || categories.length === 0 ? (
+              <div className="py-6 rounded-xl border border-dashed border-neutral-200 text-center text-sm text-neutral-400">
+                No categories found
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border border-neutral-200 rounded-md p-3">
-                {!Array.isArray(categories) || categories.length === 0 ? (
-                  <div className="col-span-2 text-center py-4 text-sm text-neutral-500">
-                    No categories found
-                  </div>
-                ) : (
-                  categories.map((cat, index) => (
-                    <label
-                      key={`${cat.name}-${index}`}
-                      className="flex items-center gap-2 p-2 hover:bg-neutral-50 rounded cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedCategories.includes(cat.name)}
-                        onChange={() => handleCategoryToggle(cat.name)}
-                        className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                      />
-                      <span className="text-sm text-neutral-700 flex-1 truncate">
-                        {cat.name}
-                      </span>
-                      <span className="text-xs text-neutral-500">
-                        ({cat.transaction_count})
-                      </span>
+              <div className="rounded-xl border border-neutral-200 overflow-hidden max-h-44 overflow-y-auto divide-y divide-neutral-100">
+                {categories.map(cat => {
+                  const checked = selectedCategories.includes(cat.name)
+                  return (
+                    <label key={cat.name}
+                      className={`flex items-center gap-3 px-3.5 py-2.5 cursor-pointer transition-colors ${checked ? 'bg-indigo-50/40' : 'hover:bg-neutral-50'}`}>
+                      <input type="checkbox" checked={checked} onChange={() => handleCategoryToggle(cat.name)}
+                        className="w-4 h-4 rounded border-neutral-300 text-indigo-600 focus:ring-indigo-300" />
+                      <span className="text-sm text-neutral-700 flex-1 truncate">{cat.name}</span>
+                      <span className="text-[11px] text-neutral-400 tabular-nums">{cat.transaction_count}</span>
                     </label>
-                  ))
-                )}
+                  )
+                })}
               </div>
             )}
-
-            <div className="text-xs text-neutral-600">
-              {selectedCategories.length} of {Array.isArray(categories) ? categories.length : 0} categories selected
-            </div>
+            <p className="mt-2 text-[11px] text-neutral-400">
+              {selectedCategories.length} of {Array.isArray(categories) ? categories.length : 0} selected
+            </p>
           </div>
 
-          {/* VAT Columns Option */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">📊</span>
-              <h3 className="font-semibold text-neutral-900">Display Options</h3>
+          {/* VAT Toggle */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <BarChart3 className="w-4 h-4 text-neutral-400" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500">Display Options</h3>
             </div>
-
-            <label className={`flex items-start gap-3 cursor-pointer p-3 rounded-md transition-colors border-2 ${
-              includeVAT 
-                ? 'bg-blue-50 border-blue-500 hover:bg-blue-100' 
-                : 'border-neutral-200 hover:bg-neutral-50'
+            <label className={`flex items-start gap-3 cursor-pointer rounded-xl border-2 px-4 py-3 transition-colors ${
+              includeVAT ? 'border-emerald-400 bg-emerald-50/50' : 'border-neutral-100 hover:border-neutral-200 hover:bg-neutral-50'
             }`}>
-              <input
-                type="checkbox"
-                checked={includeVAT}
-                onChange={(e) => {
-                  const newValue = e.target.checked
-                  setIncludeVAT(newValue)
-                  console.log('[VAT CHECKBOX] Changed to:', newValue)
-                }}
-                className="w-4 h-4 text-blue-600 mt-0.5 rounded focus:ring-2 focus:ring-blue-500"
-              />
+              <input type="checkbox" checked={includeVAT} onChange={e => setIncludeVAT(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-neutral-300 text-emerald-600 focus:ring-emerald-300" />
               <div>
-                <div className="text-sm font-medium text-neutral-900">
-                  Include VAT columns {includeVAT && <span className="text-blue-600">✓ ENABLED</span>}
-                </div>
-                <div className="text-xs text-neutral-600">
-                  Adds VAT Amount, Amount (Incl VAT), and Amount (Excl VAT) columns
-                </div>
+                <p className="text-sm font-semibold text-neutral-800">
+                  Include VAT columns
+                  {includeVAT && <span className="ml-1.5 text-emerald-600 text-[11px]">Enabled</span>}
+                </p>
+                <p className="text-[11px] text-neutral-500 mt-0.5">Adds VAT Amount, Incl VAT, and Excl VAT columns</p>
               </div>
             </label>
           </div>
 
-          {/* Error Message */}
+          {/* Error */}
           {error && (
-            <div className="flex gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
-              <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-red-800">{error}</p>
+            <div className="flex gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+              <AlertCircle className="w-3.5 h-3.5 text-red-500 mt-0.5 shrink-0" />
+              <p className="text-xs text-red-700">{error}</p>
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-neutral-200 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            disabled={exporting}
-            className="px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 rounded-md transition-colors disabled:opacity-50"
-          >
+        {/* ── Footer ───────────────────────────────────────────── */}
+        <div className="flex justify-end gap-2.5 px-6 py-4 border-t border-neutral-100 bg-neutral-50/50 shrink-0">
+          <button onClick={onClose} disabled={exporting}
+            className="rounded-lg border border-neutral-200 bg-white px-4 py-2 text-xs font-medium text-neutral-600 hover:bg-neutral-50 transition-colors disabled:opacity-40">
             Cancel
           </button>
-          <button
-            onClick={handleExport}
-            disabled={exporting || !dateFrom || !dateTo || selectedCategories.length === 0}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            {exporting ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Exporting...
-              </>
-            ) : (
-              <>
-                <FileSpreadsheet className="w-4 h-4" />
-                Export Report
-              </>
-            )}
+          <button onClick={handleExport} disabled={exporting || !dateFrom || !dateTo || selectedCategories.length === 0}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+            {exporting
+              ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Exporting...</>
+              : <><FileSpreadsheet className="w-3.5 h-3.5" /> Export Report</>}
           </button>
         </div>
       </div>

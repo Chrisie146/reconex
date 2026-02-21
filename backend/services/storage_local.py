@@ -25,13 +25,22 @@ class LocalStorage(StorageBackend):
         if base_path is None:
             base_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads')
         
-        self.base_path = os.path.abspath(base_path)
+        self.base_path = os.path.realpath(os.path.abspath(base_path))
         os.makedirs(self.base_path, exist_ok=True)
+    
+    def _safe_path(self, object_key: str) -> str:
+        """Resolve object_key to a full path, rejecting any path traversal attempts."""
+        # Strip dangerous characters and normalize
+        sanitized_key = object_key.replace("\x00", "")
+        full_path = os.path.realpath(os.path.join(self.base_path, sanitized_key))
+        if not full_path.startswith(self.base_path + os.sep) and full_path != self.base_path:
+            raise ValueError(f"Path traversal detected: {object_key}")
+        return full_path
     
     def upload_file(self, file_content: bytes, object_key: str, content_type: str = "application/pdf") -> str:
         """Upload file to local filesystem"""
         # Ensure subdirectories exist
-        full_path = os.path.join(self.base_path, object_key)
+        full_path = self._safe_path(object_key)
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
         
         # Write file
@@ -42,7 +51,7 @@ class LocalStorage(StorageBackend):
     
     def download_file(self, object_key: str) -> bytes:
         """Download file from local filesystem"""
-        full_path = os.path.join(self.base_path, object_key)
+        full_path = self._safe_path(object_key)
         
         if not os.path.exists(full_path):
             raise FileNotFoundError(f"File not found: {object_key}")
@@ -57,7 +66,7 @@ class LocalStorage(StorageBackend):
         Note: In development, this returns a path that can be used with FileResponse.
         For production, use cloud storage with real signed URLs.
         """
-        full_path = os.path.join(self.base_path, object_key)
+        full_path = self._safe_path(object_key)
         
         if not os.path.exists(full_path):
             raise FileNotFoundError(f"File not found: {object_key}")
@@ -68,7 +77,7 @@ class LocalStorage(StorageBackend):
     
     def delete_file(self, object_key: str) -> bool:
         """Delete file from local filesystem"""
-        full_path = os.path.join(self.base_path, object_key)
+        full_path = self._safe_path(object_key)
         
         try:
             if os.path.exists(full_path):
@@ -80,12 +89,12 @@ class LocalStorage(StorageBackend):
     
     def file_exists(self, object_key: str) -> bool:
         """Check if file exists on local filesystem"""
-        full_path = os.path.join(self.base_path, object_key)
+        full_path = self._safe_path(object_key)
         return os.path.exists(full_path)
     
     def get_file_metadata(self, object_key: str) -> dict:
         """Get file metadata from local filesystem"""
-        full_path = os.path.join(self.base_path, object_key)
+        full_path = self._safe_path(object_key)
         
         if not os.path.exists(full_path):
             raise FileNotFoundError(f"File not found: {object_key}")

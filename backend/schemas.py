@@ -63,6 +63,18 @@ class ChangePasswordRequest(BaseModel):
     new_password_confirm: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    """Forgot password request schema"""
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    """Reset password request schema"""
+    token: str
+    new_password: str
+    new_password_confirm: str
+
+
 # ==================== Client Schemas ====================
 
 class ClientCreate(BaseModel):

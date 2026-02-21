@@ -27,6 +27,32 @@ try:
 except Exception:
     pytesseract = None
 
+# ── Afrikaans month abbreviation support ──
+# Map Afrikaans month abbreviations to English equivalents
+AFRIKAANS_MONTH_MAP = {
+    'jan': 'Jan', 'feb': 'Feb', 'mrt': 'Mar', 'maa': 'Mar',
+    'apr': 'Apr', 'mei': 'May', 'jun': 'Jun', 'jul': 'Jul',
+    'aug': 'Aug', 'sep': 'Sep', 'okt': 'Oct', 'nov': 'Nov', 'des': 'Dec',
+    # Also include English ones so we can normalise uniformly
+    'mar': 'Mar', 'may': 'May', 'oct': 'Oct', 'dec': 'Dec',
+}
+
+# Regex fragment matching any 3-letter English OR Afrikaans month abbreviation
+_MONTH_ABBRS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+_MONTH_ABBRS_AF = ['Mrt', 'Maa', 'Mei', 'Okt', 'Des']  # only those that differ
+_ALL_MONTH_ABBRS = _MONTH_ABBRS_EN + _MONTH_ABBRS_AF
+MONTH_ABBR_RE = '|'.join(_ALL_MONTH_ABBRS)  # e.g. 'Jan|Feb|...|Okt|Des'
+
+def _normalise_afrikaans_month(date_str: str) -> str:
+    """Replace Afrikaans month abbreviations with English equivalents.
+    
+    E.g. '01 Okt' -> '01 Oct', '14Des' -> '14Dec'
+    """
+    def _repl(m):
+        return AFRIKAANS_MONTH_MAP.get(m.group(0).lower(), m.group(0))
+    return re.sub(r'(?i)\b(' + MONTH_ABBR_RE + r')\b', _repl, date_str)
+
+
 # Date pattern for matching dates in OCR text
 # Matches: DD/MM/YYYY, DD-MM-YYYY, YYYY-MM-DD, DD MMM, DD MMM YYYY, etc.
 DATE_REGEX = r"(\d{1,2}\s*[\/\-]\s*\d{1,2}\s*[\/\-]\s*\d{2,4}|\d{4}\s*[\/\-]\s*\d{1,2}\s*[\/\-]\s*\d{1,2}|\d{1,2}\s+[A-Za-z]{3,}(?:\s+\d{4})?)"
@@ -503,19 +529,25 @@ def _parse_capitec_table(table: List[List]) -> List[List[str]]:
 def _parse_fnb_table(table: List[List], statement_year: Optional[int] = None, statement_end_year: Optional[int] = None) -> List[List[str]]:
     """Parse FNB bank statement table format.
     
-    FNB uses a unique format where:
-    - Row 0: Header with columns like Date, Description, Amount, Balance (in English or Afrikaans)
-    - Row 1: Contains ALL amounts and balances in merged cells (newline-separated)
+    FNB uses two table layouts:
+    
+    Format A (merged): 
+    - Row 0: Header
+    - Row 1: ALL amounts/balances merged in cells (newline-separated)
     - Rows 2+: Individual transaction dates and descriptions
+    
+    Format B (direct / row-per-transaction):
+    - Row 0: Header with columns: Date, Description, [Ref], Amount, [Cr/Dr], Balance, [Cr], [BankCharges]
+    - Rows 1+: Each row contains date, description, amount, balance directly
     
     Args:
         table: The table to parse
         statement_year: Starting year of statement (e.g., 2025 for "Dec 2025 to Jan 2026")
         statement_end_year: Optional ending year if statement spans years
     
-    Returns a list of [date, description, amount] rows.
+    Returns a list of [date, description, amount, balance] rows.
     """
-    if len(table) < 3:
+    if len(table) < 2:
         return []
     
     header = table[0]
@@ -523,16 +555,15 @@ def _parse_fnb_table(table: List[List], statement_year: Optional[int] = None, st
     try:
         header_strs = [str(h).strip() if h else "" for h in header]
         column_map = multilingual.normalize_headers(header_strs)
-        # Successfully mapped headers! Extract columns
         date_idx = column_map.get("date")
         desc_idx = column_map.get("description")
         amount_idx = column_map.get("amount")
+        balance_idx = column_map.get("balance")
     except Exception:
-        # Fallback to multilingual keyword detection (English + Afrikaans)
         date_idx = None
         desc_idx = None
         amount_idx = None
-        # Try simple multilingual column detection
+        balance_idx = None
         for i, h in enumerate(header):
             h_str = str(h).lower() if h else ""
             if 'date' in h_str or 'datum' in h_str:
@@ -541,68 +572,163 @@ def _parse_fnb_table(table: List[List], statement_year: Optional[int] = None, st
                 desc_idx = i
             elif 'amount' in h_str or 'bedrag' in h_str:
                 amount_idx = i
+            elif 'balance' in h_str or 'saldo' in h_str:
+                balance_idx = i
         
-        # If columns not found, return empty
         if date_idx is None or desc_idx is None or amount_idx is None:
             return []
     
-    # Row 1 typically contains merged amounts/balances
+    # ── Detect table format ──
+    # Check if Row 1 has newline-separated amounts (Format A / merged) or is a data row (Format B / direct)
     merged_row = table[1] if len(table) > 1 else None
-    
-    # Find the amounts column
+    is_merged_format = False
     amounts_list = []
-    if merged_row and len(merged_row) > amount_idx and merged_row[amount_idx]:
+    if merged_row and amount_idx is not None and len(merged_row) > amount_idx and merged_row[amount_idx]:
         amounts_text = str(merged_row[amount_idx])
         if '\n' in amounts_text:
-            # Split by newline and clean
+            is_merged_format = True
             amounts_list = [amt.strip() for amt in amounts_text.split('\n') if amt.strip()]
     
-    # Extract date/description rows (starting from row 2)
-    # Keep them as-is - blank descriptions indicate non-text elements (images, icons, etc.)
-    date_desc_rows = []
-    for row in table[2:]:
-        if not row or len(row) < 2:
-            continue
-        date_val = str(row[0]).strip() if row[0] else ""
-        desc_val = str(row[1]).strip() if row[1] else ""
-        date_desc_rows.append([date_val, desc_val])
-    
-    # Match dates/descriptions with amounts
-    result_rows = []
     months_list = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
     last_month_num = 0
     year_has_transitioned = False
     
-    for idx, (date_val, desc_val) in enumerate(date_desc_rows):
-        if idx < len(amounts_list):
-            amount_val = amounts_list[idx]
+    def _add_year_to_date(date_val: str) -> str:
+        """Insert a space between day and month if needed, then append the year."""
+        nonlocal last_month_num, year_has_transitioned
+        # Normalise Afrikaans month abbreviations to English (Okt->Oct, Des->Dec, etc.)
+        date_val = _normalise_afrikaans_month(date_val)
+        # FNB often smooshes day+month: '03Jun' -> '03 Jun'
+        date_val = re.sub(r'(\d)(' + MONTH_ABBR_RE + r')', r'\1 \2', date_val, flags=re.IGNORECASE)
+        # Re-normalise after inserting the space (in case smoosh hid the word boundary)
+        date_val = _normalise_afrikaans_month(date_val)
+        
+        month_match = re.search(r'(' + MONTH_ABBR_RE + r')', date_val, re.IGNORECASE)
+        if not month_match:
+            return date_val
+        month_str = month_match.group(1).lower()
+        # Map Afrikaans to English before lookup
+        month_str = AFRIKAANS_MONTH_MAP.get(month_str, month_str).lower()
+        try:
+            month_num = months_list.index(month_str) + 1
+        except ValueError:
+            return date_val
+        
+        transaction_year = statement_year
+        if statement_year and statement_end_year and statement_end_year > statement_year:
+            if year_has_transitioned:
+                transaction_year = statement_end_year
+            elif last_month_num > 0 and month_num < last_month_num:
+                year_has_transitioned = True
+                transaction_year = statement_end_year
+            elif last_month_num == 0 and month_num == 1:
+                year_has_transitioned = True
+                transaction_year = statement_end_year
+        
+        last_month_num = month_num
+        if transaction_year:
+            return f"{date_val} {transaction_year}"
+        return date_val
+    
+    result_rows = []
+    
+    if is_merged_format:
+        # ── Format A: merged amounts in Row 1, dates/descriptions in rows 2+ ──
+        if len(table) < 3:
+            return []
+        date_desc_rows = []
+        for row in table[2:]:
+            if not row or len(row) < 2:
+                continue
+            date_val = str(row[0]).strip() if row[0] else ""
+            desc_val = str(row[1]).strip() if row[1] else ""
+            date_desc_rows.append([date_val, desc_val])
+        
+        for idx, (date_val, desc_val) in enumerate(date_desc_rows):
+            if idx < len(amounts_list):
+                amount_val = amounts_list[idx]
+                date_with_year = _add_year_to_date(date_val)
+                result_rows.append([date_with_year, desc_val, amount_val])
+    else:
+        # ── Format B: direct row-per-transaction (each row has date, desc, amount, balance) ──
+        # Detect Cr/Dr indicator columns (column right after amount, and right after balance)
+        # Header may have None for those columns
+        # Typical layout: [Date, Description, Ref?, Amount, Cr/Dr?, Balance, Cr?, BankCharges?]
+        
+        # Find the Cr/Dr indicator column for amounts (column immediately after amount_idx)
+        amount_sign_idx = None
+        if amount_idx is not None and amount_idx + 1 < len(header):
+            h_after_amount = str(header[amount_idx + 1]).strip().lower() if header[amount_idx + 1] else ""
+            if h_after_amount in ("", "none", "cr", "dr"):
+                amount_sign_idx = amount_idx + 1
+        
+        # Find any reference/code column between description and amount
+        ref_idx = None
+        if desc_idx is not None and amount_idx is not None and amount_idx - desc_idx > 1:
+            candidate = desc_idx + 1
+            h_candidate = str(header[candidate]).strip().lower() if header[candidate] else ""
+            if h_candidate in ("", "none", "ref", "reference"):
+                ref_idx = candidate
+        
+        for row in table[1:]:
+            if not row or len(row) <= amount_idx:
+                continue
             
-            # Add year to date if statement spans multiple years
-            date_with_year = date_val
-            if statement_year and statement_end_year and statement_end_year > statement_year:
-                # Extract month from date_val
-                month_match = re.search(r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)', date_val, re.IGNORECASE)
-                if month_match:
-                    month_str = month_match.group(1).lower()
-                    month_num = months_list.index(month_str) + 1
-                    
-                    transaction_year = statement_year
-                    if year_has_transitioned:
-                        transaction_year = statement_end_year
-                    elif last_month_num > 0 and month_num < last_month_num:
-                        year_has_transitioned = True
-                        transaction_year = statement_end_year
-                    elif last_month_num == 0 and month_num == 1:
-                        year_has_transitioned = True
-                        transaction_year = statement_end_year
-                    
-                    last_month_num = month_num
-                    date_with_year = f"{date_val} {transaction_year}"
-            elif statement_year:
-                # No year boundary, just add the year
-                date_with_year = f"{date_val} {statement_year}"
+            date_val = str(row[date_idx]).strip() if row[date_idx] else ""
+            if not date_val:
+                continue
+            # Must look like a date (digits + month abbreviation)
+            if not re.search(r'\d', date_val):
+                continue
             
-            result_rows.append([date_with_year, desc_val, amount_val])
+            desc_val = str(row[desc_idx]).strip() if row[desc_idx] else ""
+            
+            # Append reference/code to description if present
+            if ref_idx is not None and len(row) > ref_idx and row[ref_idx]:
+                ref_val = str(row[ref_idx]).strip()
+                if ref_val:
+                    desc_val = f"{desc_val} {ref_val}"
+            
+            amount_raw = str(row[amount_idx]).strip() if row[amount_idx] else ""
+            if not amount_raw:
+                continue
+            
+            # Parse the numeric amount
+            amount_clean = amount_raw.replace(',', '').replace(' ', '')
+            try:
+                amount_num = float(amount_clean)
+            except (ValueError, TypeError):
+                continue
+            
+            # Check the Cr/Dr sign indicator
+            # In FNB statements: 'Cr' next to amount means credit (inflow), no indicator = debit (outflow)
+            is_credit = False
+            if amount_sign_idx is not None and len(row) > amount_sign_idx:
+                sign_val = str(row[amount_sign_idx]).strip().lower() if row[amount_sign_idx] else ""
+                if sign_val in ('cr', 'credit'):
+                    is_credit = True
+            
+            # Debits are negative (outflows), credits are positive (inflows)
+            if is_credit:
+                amount_str = f"{amount_num:.2f}"
+            else:
+                amount_str = f"-{amount_num:.2f}"
+            
+            # Handle zero amounts (fees that show 0.00 debit)
+            if amount_num == 0.0:
+                amount_str = "0.00"
+            
+            # Extract balance if available
+            balance_str = ""
+            if balance_idx is not None and len(row) > balance_idx and row[balance_idx]:
+                balance_str = str(row[balance_idx]).strip()
+            
+            date_with_year = _add_year_to_date(date_val)
+            
+            if balance_str:
+                result_rows.append([date_with_year, desc_val, amount_str, balance_str])
+            else:
+                result_rows.append([date_with_year, desc_val, amount_str])
     
     return result_rows
 
@@ -807,6 +933,9 @@ def _parse_fnb_ocr_text(text: str, statement_year: Optional[int] = None, stateme
     last_month_num = 0
     year_has_transitioned = False  # Track if we've already crossed from Dec to Jan
     
+    # Normalise Afrikaans months in entire OCR text upfront
+    text = _normalise_afrikaans_month(text)
+    
     for line in text.split('\n'):
         line = line.strip()
         if not line:
@@ -963,9 +1092,9 @@ def _parse_fnb_ocr_text(text: str, statement_year: Optional[int] = None, stateme
         
         if statement_end_year and statement_end_year > statement_year:
             # Extract month from date_str to determine if we should use end year
-            month_match = re.search(r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)', date_str, re.IGNORECASE)
+            month_match = re.search(r'(' + MONTH_ABBR_RE + r')', date_str, re.IGNORECASE)
             if month_match:
-                month_str = month_match.group(1).lower()
+                month_str = AFRIKAANS_MONTH_MAP.get(month_match.group(1).lower(), month_match.group(1)).lower()
                 month_num = months_list.index(month_str) + 1
                 
                 # Track year transitions: if we go from Dec (12) to Jan (1), we've crossed a year boundary
@@ -1177,9 +1306,9 @@ def _parse_fnb_ocr_text(text: str, statement_year: Optional[int] = None, stateme
         if statement_end_year and statement_end_year > statement_year:
             # Statement spans years
             # Extract month from date_str to determine if we should use end year
-            month_match = re.search(r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)', date_str, re.IGNORECASE)
+            month_match = re.search(r'(' + MONTH_ABBR_RE + r')', date_str, re.IGNORECASE)
             if month_match:
-                month_str = month_match.group(1).lower()
+                month_str = AFRIKAANS_MONTH_MAP.get(month_match.group(1).lower(), month_match.group(1)).lower()
                 # Map month string to month number
                 months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
                 month_num = months.index(month_str) + 1
@@ -1833,17 +1962,32 @@ def pdf_to_csv_bytes(file_content: bytes, explain_amounts: Optional[List[float]]
         
         # Detect bank from OCR text
         full_ocr_text = '\n'.join(ocr_texts).lower()
-        if 'standard bank' in full_ocr_text or 'sbsa' in full_ocr_text:
-            detected_bank = 'standard_bank'
-        elif 'absa' in full_ocr_text or 'absacapital' in full_ocr_text:
-            detected_bank = 'absa'
-        elif 'fnb' in full_ocr_text or 'first national' in full_ocr_text:
-            detected_bank = 'fnb'
-        elif 'capitec' in full_ocr_text:
-            detected_bank = 'capitec'
-        else:
-            # Default to capitec processing for unknown image PDFs
-            detected_bank = 'capitec'
+
+        # Use plugin registry for detection
+        try:
+            from services.bank_plugins.registry import BankRegistry
+            import services.bank_plugins  # noqa: F401 – ensure plugins loaded
+            detected_bank = BankRegistry.detect_from_pdf_text(full_ocr_text)
+        except Exception:
+            detected_bank = None
+
+        # Fallback to legacy keyword detection if registry fails
+        if not detected_bank:
+            if 'standard bank' in full_ocr_text or 'sbsa' in full_ocr_text:
+                detected_bank = 'standard_bank'
+            elif 'absa' in full_ocr_text or 'absacapital' in full_ocr_text:
+                detected_bank = 'absa'
+            elif 'fnb' in full_ocr_text or 'first national' in full_ocr_text:
+                detected_bank = 'fnb'
+            elif 'capitec' in full_ocr_text:
+                detected_bank = 'capitec'
+            elif 'nedbank' in full_ocr_text or 'nedgroup' in full_ocr_text:
+                detected_bank = 'nedbank'
+            elif 'investec' in full_ocr_text:
+                detected_bank = 'investec'
+            else:
+                # Unknown image PDF – return unknown so column-mapping fallback can trigger
+                detected_bank = 'unknown'
         
         ocr_text = '\n'.join(ocr_texts)
         
@@ -1903,8 +2047,9 @@ def pdf_to_csv_bytes(file_content: bytes, explain_amounts: Optional[List[float]]
             statement_start_year = None
             try:
                 # Look for Statement Period: DD Month YYYY to DD Month YYYY
+                # Also support Afrikaans: "Staat Periode : DD Month YYYY tot DD Month YYYY"
                 period_match = re.search(
-                    r'Statement\s+Period\s*:\s*(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})\s+to\s+(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})',
+                    r'(?:Statement\s+Period|Staat\s*Periode)\s*:\s*(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})\s+(?:to|tot)\s+(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})',
                     ocr_text,
                     re.IGNORECASE
                 )
@@ -2072,6 +2217,35 @@ def pdf_to_csv_bytes(file_content: bytes, explain_amounts: Optional[List[float]]
                 if fee_amt is not None and fee_amt != 0:
                     rows.append([date_str, f"{desc} (Fee)", f"{fee_amt:.2f}"])
 
+        elif detected_bank in ('nedbank', 'investec'):
+            # Use plugin registry PDF parser for Nedbank/Investec
+            try:
+                from services.bank_plugins.registry import BankRegistry
+                import services.bank_plugins  # noqa: F401
+                plugin = BankRegistry.get_plugin(detected_bank)
+                if plugin:
+                    parsed = plugin.parse_pdf(ocr_text, pdf_obj)
+                    if parsed:
+                        rows.extend(parsed)
+                        print(f"[OCR-{detected_bank.upper()}] Extracted {len(parsed)} transactions via plugin")
+            except Exception as e:
+                print(f"[OCR] Failed to parse {detected_bank} via plugin: {e}")
+
+        elif detected_bank == 'unknown':
+            # Unknown bank – try generic table extraction via pdfplumber if available
+            if pdf_obj:
+                for page_num, page in enumerate(pdf_obj.pages):
+                    try:
+                        tables = page.extract_tables()
+                        if tables:
+                            for table in tables:
+                                if table and len(table) > 1:
+                                    for row_data in table[1:]:
+                                        if len(row_data) >= 3 and row_data[0] and row_data[1] and row_data[2]:
+                                            rows.append([str(row_data[0]), str(row_data[1]), str(row_data[2])])
+                    except Exception:
+                        pass
+
         # If no rows found, return header-only CSV
         if not rows:
             if pdf_obj:
@@ -2105,13 +2279,13 @@ def pdf_to_csv_bytes(file_content: bytes, explain_amounts: Optional[List[float]]
             statement_year = None
             statement_end_year = None
             try:
-                years = re.findall(r"\b(20[0-2][0-9])\b", full_text)  # 2000-2029 only
+                # FNB often smooshes text together (no spaces/word boundaries), so also
+                # match years that are NOT surrounded by word boundaries.
+                years = re.findall(r"(20[0-2][0-9])", full_text)
                 if years:
-                    # Pick the most frequent year mention
                     from collections import Counter
                     cnt = Counter(years)
                     most_common_year = int(cnt.most_common(1)[0][0])
-                    # Sanity check: year should be reasonable (2010-2030)
                     if 2010 <= most_common_year <= 2030:
                         statement_year = most_common_year
             except Exception:
@@ -2121,9 +2295,11 @@ def pdf_to_csv_bytes(file_content: bytes, explain_amounts: Optional[List[float]]
             if 'fnb' in text_lower or 'first national' in text_lower:
                 detected_bank = 'fnb'
                 # Extract year from statement period if available
+                # FNB may smoosh text: "StatementPeriod:31May2024to30June2024"
+                # Also handle Afrikaans: "StaatPeriode:14September2024tot14Oktober2024"
                 try:
                     period_match = re.search(
-                        r'Statement\s+Period\s*:\s*(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})\s+to\s+(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})',
+                        r'(?:Statement\s*Period|Staat\s*Periode)\s*:?\s*(\d{1,2})\s*([A-Za-z]+)\s*(\d{4})\s*(?:to|tot)\s*(\d{1,2})\s*([A-Za-z]+)\s*(\d{4})',
                         full_text,
                         re.IGNORECASE
                     )
@@ -2175,6 +2351,23 @@ def pdf_to_csv_bytes(file_content: bytes, explain_amounts: Optional[List[float]]
                 except Exception as e:
                     print(f"[PDF] Failed to parse ABSA text: {e}")
                     pass
+
+            # Check for Nedbank / Investec via plugin registry
+            else:
+                try:
+                    from services.bank_plugins.registry import BankRegistry
+                    import services.bank_plugins  # noqa: F401
+                    registry_bank = BankRegistry.detect_from_pdf_text(text_lower)
+                    if registry_bank:
+                        detected_bank = registry_bank
+                        plugin = BankRegistry.get_plugin(registry_bank)
+                        if plugin:
+                            parsed = plugin.parse_pdf(full_text, pdf_obj, statement_year)
+                            if parsed:
+                                rows.extend(parsed)
+                                print(f"[PDF] Plugin {registry_bank} extracted {len(parsed)} rows")
+                except Exception as e:
+                    print(f"[PDF] Plugin registry detection/parsing failed: {e}")
             
             # Fallback: try generic table extraction if no rows yet
             if not rows:

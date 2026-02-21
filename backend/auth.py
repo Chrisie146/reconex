@@ -51,6 +51,43 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return encoded_jwt
 
 
+PASSWORD_RESET_EXPIRE_MINUTES = 15
+
+
+def create_password_reset_token(email: str, pwd_hash_hint: str) -> str:
+    """
+    Create a short-lived JWT for password reset.
+
+    The pwd_hash_hint (first 16 chars of the user's current bcrypt hash) is
+    embedded in the token so that it becomes invalid the moment the password
+    is changed — providing stateless single-use semantics without a DB table.
+    """
+    payload = {
+        "sub": email,
+        "purpose": "password_reset",
+        "hint": pwd_hash_hint[:16],
+        "exp": datetime.utcnow() + timedelta(minutes=PASSWORD_RESET_EXPIRE_MINUTES),
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def verify_password_reset_token(token: str) -> Optional[dict]:
+    """
+    Decode and validate a password reset token.
+
+    Returns the payload dict if valid, or None if expired / tampered / wrong purpose.
+    """
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("purpose") != "password_reset":
+            return None
+        if not payload.get("sub"):
+            return None
+        return payload
+    except JWTError:
+        return None
+
+
 def decode_access_token(token: str) -> Optional[dict]:
     """
     Decode and verify a JWT token

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { TrendingUp, TrendingDown } from 'lucide-react'
 import Link from 'next/link'
 import axios from '@/lib/axiosClient'
+import { toast } from 'sonner'
 import type { Client } from '@/lib/clientContext'
 import MonthlyTransactionsModal from './MonthlyTransactionsModal'
 
@@ -91,44 +92,8 @@ export default function MonthlySummary({ sessionId, currentClient }: MonthlySumm
   return (
     <div className="space-y-6">
       {/* Overall Stats */}
+      {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="card p-4">
-          <div>
-            <p className="text-xs font-medium text-neutral-600">Reconciliation Overview</p>
-            <p className="text-xs text-neutral-500 mt-1">System closing = opening + txns</p>
-            <div className="mt-2 space-y-2">
-              <div>
-                <label className="text-xs text-neutral-500">System Opening</label>
-                <input value={openOverallInput ?? ''} onChange={(e) => setOpenOverallInput(e.target.value)} className="mt-0.5 w-full px-2 py-1 text-sm border rounded" />
-              </div>
-              <div>
-                <label className="text-xs text-neutral-500">Bank Closing</label>
-                <input value={bankCloseInput ?? ''} onChange={(e) => setBankCloseInput(e.target.value)} className="mt-0.5 w-full px-2 py-1 text-sm border rounded" />
-              </div>
-              <button className="w-full px-2 py-1 text-xs bg-neutral-900 text-white rounded" onClick={async () => {
-                try {
-                  const o = openOverallInput ? parseFloat(openOverallInput) : null
-                  const b = bankCloseInput ? parseFloat(bankCloseInput) : null
-                  await axios.post(`${API_BASE_URL}/reconciliation/overview`, { system_opening_balance: o, bank_closing_balance: b }, { params: { session_id: sessionId } })
-                  const overviewResp = await axios.get(`${API_BASE_URL}/reconciliation/overview`, { params: { session_id: sessionId } })
-                  setOverallRecon(overviewResp.data)
-                  alert('Saved')
-                } catch (e) {
-                  console.error('Failed to save overall reconciliation', e)
-                  alert('Failed to save')
-                }
-              }}>Save</button>
-              <div className="text-xs text-neutral-600 space-y-1 pt-1 border-t">
-                <div>System closing: <span className="font-medium">R{overallRecon?.system_closing_balance?.toLocaleString('en-ZA', { minimumFractionDigits: 2 }) ?? '0'}</span></div>
-                {overallRecon?.difference != null && (
-                  <div className={Math.abs(Number(overallRecon.difference)) < 0.005 ? 'text-green-600' : 'text-red-600'}>
-                    Diff: R{overallRecon.difference.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
         <div className="card p-6">
           <div className="flex items-center justify-between">
             <Link href={currentClient?.id ? `/transactions?client_id=${currentClient.id}&txn_filter=income` : `/transactions?session_id=${sessionId}&txn_filter=income`} className="flex-1">
@@ -173,7 +138,47 @@ export default function MonthlySummary({ sessionId, currentClient }: MonthlySumm
                 </p>
               </div>
             </Link>
-            
+          </div>
+        </div>
+      </div>
+
+      {/* Reconciliation Overview */}
+      <div className="card p-4">
+        <div className="flex items-start gap-6">
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-neutral-900">Reconciliation Overview</p>
+            <p className="text-xs text-neutral-500 mt-0.5">System closing = opening balance + transactions total</p>
+          </div>
+          <div className="flex items-end gap-4">
+            <div>
+              <label className="text-xs text-neutral-500 block">System Opening</label>
+              <input value={openOverallInput ?? ''} onChange={(e) => setOpenOverallInput(e.target.value)} className="mt-0.5 w-36 px-2 py-1 text-sm border rounded" placeholder="0.00" />
+            </div>
+            <div>
+              <label className="text-xs text-neutral-500 block">Bank Closing</label>
+              <input value={bankCloseInput ?? ''} onChange={(e) => setBankCloseInput(e.target.value)} className="mt-0.5 w-36 px-2 py-1 text-sm border rounded" placeholder="0.00" />
+            </div>
+            <button className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors" onClick={async () => {
+              try {
+                const o = openOverallInput ? parseFloat(openOverallInput) : null
+                const b = bankCloseInput ? parseFloat(bankCloseInput) : null
+                await axios.post(`${API_BASE_URL}/reconciliation/overview`, { system_opening_balance: o, bank_closing_balance: b }, { params: { session_id: sessionId } })
+                const overviewResp = await axios.get(`${API_BASE_URL}/reconciliation/overview`, { params: { session_id: sessionId } })
+                setOverallRecon(overviewResp.data)
+                toast.success('Reconciliation saved')
+              } catch (e) {
+                console.error('Failed to save overall reconciliation', e)
+                toast.error('Failed to save reconciliation')
+              }
+            }}>Save</button>
+          </div>
+          <div className="text-xs text-neutral-600 space-y-1 border-l pl-4 min-w-[160px]">
+            <div>System closing: <span className="font-semibold">R{overallRecon?.system_closing_balance?.toLocaleString('en-ZA', { minimumFractionDigits: 2 }) ?? '0'}</span></div>
+            {overallRecon?.difference != null && (
+              <div className={`font-medium ${Math.abs(Number(overallRecon.difference)) < 0.005 ? 'text-green-600' : 'text-red-600'}`}>
+                Diff: R{overallRecon.difference.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -184,19 +189,19 @@ export default function MonthlySummary({ sessionId, currentClient }: MonthlySumm
           <div className="px-6 py-4 border-b border-neutral-200 bg-neutral-50">
             <h3 className="font-bold text-neutral-900">Monthly Breakdown</h3>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
+          <div className="overflow-x-auto overflow-y-auto max-h-[60vh]">
+            <table className="w-full text-sm min-w-[900px]">
+              <thead className="sticky top-0 z-10">
                 <tr className="border-b border-neutral-200 bg-neutral-50">
-                  <th className="text-left px-4 py-3 font-medium text-neutral-700">Month</th>
-                  <th className="text-right px-4 py-3 font-medium text-neutral-700">Opening</th>
-                  <th className="text-right px-4 py-3 font-medium text-neutral-700">Income</th>
-                  <th className="text-right px-4 py-3 font-medium text-neutral-700">Expenses</th>
-                  <th className="text-right px-4 py-3 font-medium text-neutral-700">Net</th>
-                  <th className="text-right px-4 py-3 font-medium text-neutral-700">Expected Closing</th>
-                  <th className="text-right px-4 py-3 font-medium text-neutral-700">Actual Closing</th>
-                  <th className="text-center px-4 py-3 font-medium text-neutral-700">Status</th>
-                  <th className="text-center px-4 py-3 font-medium text-neutral-700">Action</th>
+                  <th className="text-left px-3 py-2 sm:px-4 sm:py-3 font-medium text-neutral-700">Month</th>
+                  <th className="text-right px-3 py-2 sm:px-4 sm:py-3 font-medium text-neutral-700">Opening</th>
+                  <th className="text-right px-3 py-2 sm:px-4 sm:py-3 font-medium text-neutral-700">Income</th>
+                  <th className="text-right px-3 py-2 sm:px-4 sm:py-3 font-medium text-neutral-700">Expenses</th>
+                  <th className="text-right px-3 py-2 sm:px-4 sm:py-3 font-medium text-neutral-700">Net</th>
+                  <th className="text-right px-3 py-2 sm:px-4 sm:py-3 font-medium text-neutral-700">Expected Closing</th>
+                  <th className="text-right px-3 py-2 sm:px-4 sm:py-3 font-medium text-neutral-700">Actual Closing</th>
+                  <th className="text-center px-3 py-2 sm:px-4 sm:py-3 font-medium text-neutral-700">Status</th>
+                  <th className="text-center px-3 py-2 sm:px-4 sm:py-3 font-medium text-neutral-700">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -240,7 +245,7 @@ export default function MonthlySummary({ sessionId, currentClient }: MonthlySumm
                   
                   return (
                     <tr key={month.month} className="border-b border-neutral-100 hover:bg-neutral-50">
-                      <td className="px-4 py-3 text-neutral-900 font-medium">
+                      <td className="px-3 py-2 sm:px-4 sm:py-3 text-neutral-900 font-medium">
                         <button
                           onClick={handleOpenMonthModal}
                           className="hover:text-blue-600 hover:underline cursor-pointer text-left"
@@ -249,7 +254,7 @@ export default function MonthlySummary({ sessionId, currentClient }: MonthlySumm
                         </button>
                       </td>
 
-                      <td className="text-right px-4 py-3 text-neutral-700">
+                      <td className="text-right px-3 py-2 sm:px-4 sm:py-3 text-neutral-700">
                         {editingMonth === month.month ? (
                           <input 
                             className="px-2 py-1 border rounded w-full text-right" 
@@ -262,7 +267,7 @@ export default function MonthlySummary({ sessionId, currentClient }: MonthlySumm
                         )}
                       </td>
 
-                      <td className="text-right px-4 py-3 text-green-600 font-medium">
+                      <td className="text-right px-3 py-2 sm:px-4 sm:py-3 text-green-600 font-medium">
                         <button
                           onClick={handleOpenMonthModal}
                           className="hover:underline"
@@ -271,7 +276,7 @@ export default function MonthlySummary({ sessionId, currentClient }: MonthlySumm
                         </button>
                       </td>
                       
-                      <td className="text-right px-4 py-3 text-red-600 font-medium">
+                      <td className="text-right px-3 py-2 sm:px-4 sm:py-3 text-red-600 font-medium">
                         <button
                           onClick={handleOpenMonthModal}
                           className="hover:underline"
@@ -280,7 +285,7 @@ export default function MonthlySummary({ sessionId, currentClient }: MonthlySumm
                         </button>
                       </td>
                       
-                      <td className={`text-right px-4 py-3 font-medium ${
+                      <td className={`text-right px-3 py-2 sm:px-4 sm:py-3 font-medium ${
                         month.net_balance >= 0 ? 'text-green-600' : 'text-red-600'
                       }`}>
                         <button
@@ -291,11 +296,11 @@ export default function MonthlySummary({ sessionId, currentClient }: MonthlySumm
                         </button>
                       </td>
 
-                      <td className="text-right px-4 py-3 text-neutral-700 font-medium bg-blue-50">
+                      <td className="text-right px-3 py-2 sm:px-4 sm:py-3 text-neutral-700 font-medium bg-blue-50">
                         R{expectedClosing.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
                       </td>
 
-                      <td className="text-right px-4 py-3 text-neutral-900">
+                      <td className="text-right px-3 py-2 sm:px-4 sm:py-3 text-neutral-900">
                         {editingMonth === month.month ? (
                           <input 
                             className="px-2 py-1 border rounded w-full text-right" 
@@ -312,7 +317,7 @@ export default function MonthlySummary({ sessionId, currentClient }: MonthlySumm
                         )}
                       </td>
 
-                      <td className={`text-center px-4 py-3 font-medium ${statusColor}`}>
+                      <td className={`text-center px-3 py-2 sm:px-4 sm:py-3 font-medium ${statusColor}`}>
                         <div className="flex items-center justify-center gap-1">
                           <span className="text-base">{statusIcon}</span>
                           <span className="text-xs">{statusText}</span>
@@ -324,7 +329,7 @@ export default function MonthlySummary({ sessionId, currentClient }: MonthlySumm
                         )}
                       </td>
 
-                      <td className="text-center px-4 py-3">
+                      <td className="text-center px-3 py-2 sm:px-4 sm:py-3">
                         {editingMonth === month.month ? (
                           <div className="flex items-center justify-center gap-2">
                             <button 
@@ -346,7 +351,7 @@ export default function MonthlySummary({ sessionId, currentClient }: MonthlySumm
                                   setReconciliations(prev => ({...prev, [month.month]: { opening_balance: o, closing_balance: c }}))
                                   setEditingMonth(null)
                                 } catch (e) {
-                                  alert('Failed to save reconciliation')
+                                  toast.error('Failed to save reconciliation')
                                 }
                               }}
                             >

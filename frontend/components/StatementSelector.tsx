@@ -18,6 +18,9 @@ interface Statement {
   session_id: string
   friendly_name: string
   transaction_count: number
+  date_from?: string
+  date_to?: string
+  locked?: boolean
 }
 
 export default function StatementSelector({ selectedStatement, onStatementChange, isCollapsed }: StatementSelectorProps) {
@@ -43,7 +46,13 @@ export default function StatementSelector({ selectedStatement, onStatementChange
           params: { client_id: currentClient.id }
         })
         console.log('[StatementSelector] Fetched statements:', response.data.sessions)
-        setStatements(response.data.sessions || [])
+        const loadedStatements = response.data.sessions || []
+        setStatements(loadedStatements)
+        
+        // Auto-select if only 1 statement
+        if (loadedStatements.length === 1) {
+          onStatementChange(loadedStatements[0].session_id)
+        }
       } catch (error) {
         console.error('[StatementSelector] Failed to fetch statements:', error)
         setStatements([])
@@ -59,14 +68,21 @@ export default function StatementSelector({ selectedStatement, onStatementChange
     return null
   }
 
-  const getDisplayName = (statement: Statement) => {
-    return `${statement.friendly_name} (${statement.transaction_count} txns)`
+  const getDisplayName = (statement?: Statement | null) => {
+    if (!statement) return 'No Statement'
+    const name = statement.friendly_name || 'Unknown'
+    const count = statement.transaction_count || 0
+    return `${name} (${count} txns)`
   }
 
   const selectedStatementObj = statements.find(s => s.session_id === selectedStatement)
-  const displayText = selectedStatement 
-    ? getDisplayName(selectedStatementObj || statements[0])
-    : `All Statements (${statements.reduce((sum, s) => sum + s.transaction_count, 0)} txns)`
+  // If only 1 statement, auto-select it
+  const effectiveSelectedStatement = selectedStatement || (statements.length === 1 ? statements[0]?.session_id : '')
+  const displayText = statements.length === 1
+    ? getDisplayName(statements[0])
+    : effectiveSelectedStatement
+      ? getDisplayName(selectedStatementObj || statements[0])
+      : `All Statements (${statements.reduce((sum, s) => sum + (s.transaction_count || 0), 0)} txns)`
 
   return (
     <div className="space-y-2">
@@ -83,10 +99,10 @@ export default function StatementSelector({ selectedStatement, onStatementChange
 
       <div className="px-3">
         <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          disabled={loadingStatements || statements.length <= 1}
+          onClick={() => statements.length > 1 && setIsExpanded(!isExpanded)}
+          disabled={loadingStatements || statements.length === 0}
           className={`w-full text-sm px-3 py-2 border border-gray-700 rounded-md bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
-            loadingStatements || statements.length <= 1
+            loadingStatements || statements.length === 0
               ? 'opacity-50 cursor-not-allowed'
               : 'hover:bg-gray-700 cursor-pointer'
           }`}

@@ -26,7 +26,7 @@ class Config:
     # Security - JWT Authentication
     SECRET_KEY = os.getenv("SECRET_KEY", "")
     ALGORITHM = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "10080"))  # 7 days default
+    ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))  # 1 hour default
     
     # Database
     DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./statement_analyzer.db")
@@ -39,6 +39,9 @@ class Config:
     API_HOST = os.getenv("API_HOST", "0.0.0.0")
     API_PORT = int(os.getenv("API_PORT", "8000"))
     
+    # Frontend URL (used for password reset links)
+    FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
     # Logging
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO" if ENVIRONMENT == "production" else "DEBUG")
     
@@ -109,7 +112,7 @@ class Config:
             else:
                 # Generate a secure key for development
                 cls.SECRET_KEY = secrets.token_urlsafe(32)
-                warnings.append(f"SECRET_KEY not set - generated temporary key for development: {cls.SECRET_KEY[:20]}...")
+                warnings.append("SECRET_KEY not set - generated temporary key for development")
         elif cls.SECRET_KEY in [
             "your-secret-key-change-this-in-production",
             "your-secret-key-here-generate-with-openssl-rand-hex-32",
@@ -178,7 +181,10 @@ class Config:
         logger.info(f"✅ Configuration validated successfully")
         logger.info(f"   Environment: {cls.ENVIRONMENT}")
         logger.info(f"   Debug: {cls.DEBUG}")
-        logger.info(f"   Database: {cls.DATABASE_URL}")
+        # Mask credentials in DATABASE_URL for safe logging
+        import re as _re
+        _safe_db_url = _re.sub(r'://([^:]+):([^@]+)@', r'://\1:***@', cls.DATABASE_URL)
+        logger.info(f"   Database: {_safe_db_url}")
         logger.info(f"   CORS Origins: {len(cls.ALLOWED_ORIGINS)} origin(s)")
         logger.info(f"   Log Level: {cls.LOG_LEVEL}")
         logger.info(f"   Max Upload Size: {cls.MAX_UPLOAD_SIZE_MB}MB")
@@ -209,6 +215,7 @@ DATABASE_URL = Config.DATABASE_URL
 ALLOWED_ORIGINS = Config.ALLOWED_ORIGINS
 DEBUG = Config.DEBUG
 ENVIRONMENT = Config.ENVIRONMENT
+FRONTEND_URL = Config.FRONTEND_URL
 
 # Legacy pydantic-style settings object for compatibility
 class settings:
