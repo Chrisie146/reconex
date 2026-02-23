@@ -1939,7 +1939,7 @@ def pdf_to_csv_bytes(file_content: bytes, explain_amounts: Optional[List[float]]
 
     if use_ocr:
         if convert_from_bytes is None or pytesseract is None:
-            raise ParserError('OCR dependencies missing; cannot parse image-based PDF.')
+            raise ParserError('This PDF appears to be a scanned image and cannot be processed automatically. Please download a digital PDF from your bank\'s online portal, or export your statement as a CSV file instead.')
 
         # First, OCR all pages to detect bank
         ocr_texts = []
@@ -1955,10 +1955,10 @@ def pdf_to_csv_bytes(file_content: bytes, explain_amounts: Optional[List[float]]
                 except Exception as e:
                     print(f"[OCR] Failed to OCR page {idx}: {e}")
         except Exception as e:
-            raise ParserError(f'OCR conversion failed: {e}')
+            raise ParserError('Failed to process this scanned PDF. Please download a digital PDF from your bank\'s online portal, or export your statement as a CSV file instead.')
         
         if not ocr_texts:
-            raise ParserError('No OCR text extracted from PDF')
+            raise ParserError('No text could be extracted from this PDF. It may be a scanned image or corrupted — please download a fresh digital PDF from your bank, or export your statement as a CSV file instead.')
         
         # Detect bank from OCR text
         full_ocr_text = '\n'.join(ocr_texts).lower()
@@ -2391,7 +2391,7 @@ def pdf_to_csv_bytes(file_content: bytes, explain_amounts: Optional[List[float]]
                         pass
             
             if not rows:
-                raise ParserError('Could not extract transactions from PDF - no tables found')
+                raise ParserError('No transaction data was found in this PDF. The bank format may not be supported yet — supported banks are Standard Bank, ABSA, FNB, Capitec, Nedbank, and Investec. Try exporting your statement as a CSV file from your bank\'s online portal.')
             
             if pdf_obj:
                 pdf_obj.close()
@@ -2403,7 +2403,9 @@ def pdf_to_csv_bytes(file_content: bytes, explain_amounts: Optional[List[float]]
                     pdf_obj.close()
                 except:
                     pass
-            raise ParserError(f'PDF parsing failed: {str(e)}')
+            if isinstance(e, ParserError):
+                raise
+            raise ParserError('Could not read this PDF statement. The file may be password-protected, corrupted, or from an unsupported bank. Try exporting your statement as a CSV file from your bank\'s online portal.')
 
     # If not using OCR and not Capitec, return empty header for now
     return _rows_to_csv([]), None, detected_bank

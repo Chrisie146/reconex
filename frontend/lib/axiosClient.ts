@@ -29,9 +29,10 @@ client.interceptors.response.use(
       }
     }
     
-    // Improve error message extraction
-    const errorMessage = 
+    // Improve error message extraction — backend returns {"error": {"message": "..."}} via http_exception_handler
+    const errorMessage =
       error?.response?.data?.detail ||
+      error?.response?.data?.error?.message ||
       error?.response?.data?.message ||
       error?.message ||
       'Request failed'

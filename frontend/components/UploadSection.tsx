@@ -27,6 +27,15 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
 
   const { currentClient } = useClient()
 
+  const getUploadErrorHint = (errorMsg: string): string | null => {
+    const e = errorMsg.toLowerCase()
+    // Don't add a hint if the message already contains a suggestion
+    if (e.includes('export') || e.includes('csv') || e.includes('online portal')) return null
+    const isPdf = selectedFile?.name.toLowerCase().endsWith('.pdf') ?? false
+    if (isPdf) return "Try exporting your statement as a CSV file from your bank's online portal instead."
+    return null
+  }
+
   const handleFileSelect = async (file: File) => {
     if (!file) return
 
@@ -260,9 +269,16 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
       {error && (
         <div className="flex items-start gap-3 rounded-xl bg-red-50 ring-1 ring-red-200 px-4 py-3">
           <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
-          <p className="text-sm text-red-800">
-            <span className="font-medium">Error:</span> {error}
-          </p>
+          <div>
+            <p className="text-sm text-red-800">
+              <span className="font-medium">Error:</span> {error}
+            </p>
+            {getUploadErrorHint(error) && (
+              <p className="text-sm text-red-700 mt-1.5">
+                <span className="font-medium">Tip:</span> {getUploadErrorHint(error)}
+              </p>
+            )}
+          </div>
         </div>
       )}
     </div>

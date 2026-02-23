@@ -1343,7 +1343,14 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
                     onClick={async () => {
                       try {
                         const response = await axios.get(`${API_BASE_URL}/invoice/download`, { params: { session_id: sessionId, invoice_id: selectedInvoice.id }, responseType: 'blob' })
-                        const url = window.URL.createObjectURL(new Blob([response.data]))
+                        // S3 backend returns JSON { download_url } instead of a binary blob
+                        try {
+                          const text = await (response.data as Blob).text()
+                          const json = JSON.parse(text)
+                          if (json.download_url) { window.open(json.download_url, '_blank'); return }
+                        } catch {}
+                        // Local storage: response is the actual PDF binary
+                        const url = window.URL.createObjectURL(response.data as Blob)
                         const link = document.createElement('a')
                         link.href = url; link.download = `invoice_${selectedInvoice.id}.pdf`
                         document.body.appendChild(link); link.click(); link.remove()

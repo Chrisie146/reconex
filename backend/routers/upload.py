@@ -293,7 +293,7 @@ async def upload_pdf_statement(
             csv_bytes, statement_year, detected_bank = pdf_to_csv_bytes(content)
             logger.info(f"[PDF_UPLOAD] PDF parsed successfully, detected year: {statement_year}, bank: {detected_bank}")
         except PDFParserError as pe:
-            raise HTTPException(status_code=400, detail=f"PDF parse error: {str(pe)}")
+            raise HTTPException(status_code=400, detail=str(pe))
 
         is_valid, error_msg = validate_csv(csv_bytes)
         if not is_valid:
@@ -303,7 +303,7 @@ async def upload_pdf_statement(
             csv_bytes, statement_year, detected_bank if "detected_bank" in locals() else None
         )
         if not normalized_transactions:
-            raise HTTPException(status_code=400, detail="No valid transactions found in PDF")
+            raise HTTPException(status_code=400, detail="No transactions could be read from this statement. The file may use an unsupported format — try exporting as CSV from your bank's online portal instead.")
 
         logger.info(f"[PDF_UPLOAD] Detected bank source: {bank_source}")
 

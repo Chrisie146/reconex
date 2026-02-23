@@ -213,7 +213,7 @@ export default function MerchantAnalytics({ sessionId, currentClient }: Merchant
                 width={50}
               />
               <Tooltip
-                formatter={(v: number) => [fmtCurrency(v), 'Amount']}
+                formatter={(v?: number | string) => [fmtCurrency(Number(v ?? 0)), 'Amount']}
                 contentStyle={{ fontSize: 11, borderRadius: 8 }}
               />
               <Bar dataKey="amount" fill="#4F46E5" radius={[4, 4, 0, 0]} barSize={28} />

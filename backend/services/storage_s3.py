@@ -115,8 +115,13 @@ class S3Storage(StorageBackend):
                 Key=object_key
             )
             return True
-        except ClientError:
-            return False
+        except ClientError as e:
+            error_code = e.response['Error']['Code']
+            if error_code in ('404', 'NoSuchKey'):
+                return False
+            # Re-raise for auth errors (403), server errors, etc. so callers
+            # can surface the real problem rather than a misleading 404.
+            raise
     
     def get_file_metadata(self, object_key: str) -> dict:
         """Get file metadata from S3"""
