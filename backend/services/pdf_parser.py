@@ -1951,9 +1951,19 @@ def pdf_to_csv_bytes(file_content: bytes, explain_amounts: Optional[List[float]]
             except Exception:
                 first_page_text = ''
 
-        if first_page_text and 'capitec' not in first_page_text.lower():
-            # Not Capitec - try FNB/ABSA/Standard Bank with pdfplumber first
-            use_ocr = False
+        if first_page_text:
+            # Detect Capitec by its bank branding/header, not just any mention of "capitec"
+            # (FNB statements can contain "Capitec" in transaction descriptions like "Debiet Order Capitec")
+            text_lower = first_page_text.lower()
+            is_capitec_statement = (
+                'capitec bank' in text_lower or
+                'capitec bank ltd' in text_lower or
+                'www.capitecbank.co.za' in text_lower or
+                text_lower.strip().startswith('capitec')
+            )
+            if not is_capitec_statement:
+                # Not a Capitec statement - try FNB/ABSA/Standard Bank with pdfplumber first
+                use_ocr = False
     except Exception as e:
         # pdfplumber not available or failed; fall back to OCR
         use_ocr = True
