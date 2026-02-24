@@ -643,12 +643,33 @@ def _parse_fnb_table(table: List[List], statement_year: Optional[int] = None, st
             date_val = str(row[0]).strip() if row[0] else ""
             desc_val = str(row[1]).strip() if row[1] else ""
             date_desc_rows.append([date_val, desc_val])
-        
-        for idx, (date_val, desc_val) in enumerate(date_desc_rows):
-            if idx < len(amounts_list):
-                amount_val = amounts_list[idx]
-                date_with_year = _add_year_to_date(date_val)
-                result_rows.append([date_with_year, desc_val, amount_val])
+
+        # Check if we have more date/desc rows than amounts - may indicate incomplete amount extraction
+        if len(date_desc_rows) > len(amounts_list) and len(date_desc_rows) > len(amounts_list) * 1.5:
+            # More than 50% more transactions than amounts - likely format mismatch
+            # Fall back to Format B (direct row-per-transaction)
+            is_merged_format = False
+
+        if is_merged_format:
+            # If we have fewer amounts than transactions, try to extract more amounts from
+            # balance column or other cells in rows 2+
+            if len(amounts_list) < len(date_desc_rows):
+                for row_idx, row in enumerate(table[2:], start=2):
+                    if row_idx - 2 >= len(amounts_list):  # Only try if we need more amounts
+                        # Check if this row has an amount column
+                        if len(row) > amount_idx and row[amount_idx]:
+                            extra_amount = str(row[amount_idx]).strip()
+                            if extra_amount and extra_amount not in amounts_list:
+                                amounts_list.append(extra_amount)
+
+            for idx, (date_val, desc_val) in enumerate(date_desc_rows):
+                if idx < len(amounts_list):
+                    amount_val = amounts_list[idx]
+                    date_with_year = _add_year_to_date(date_val)
+                    result_rows.append([date_with_year, desc_val, amount_val])
+                else:
+                    # Log warning: more transactions than amounts found
+                    print(f"[FNB_TABLE] Warning: Transaction at row {idx + 2} has no matching amount. Date: {date_val}, Desc: {desc_val}")
     else:
         # ── Format B: direct row-per-transaction (each row has date, desc, amount, balance) ──
         # Detect Cr/Dr indicator columns (column right after amount, and right after balance)
