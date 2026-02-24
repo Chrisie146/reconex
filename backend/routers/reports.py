@@ -3,14 +3,16 @@ Reports routes: summary, category-summary, category-monthly, all exports.
 Includes PDF exports, CSV exports, cash flow, merchant analytics, and recurring detection.
 """
 
-from typing import Optional
+import re
+from datetime import timedelta
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from auth import get_current_user
-from models import Client, Transaction, User, get_db
+from models import Client, Transaction, TransactionMerchant, User, get_db
 from routers.dependencies import ensure_session_access, ensure_session_access_lenient
 from services.cache import cached
 from services.summary import ExcelExporter, calculate_monthly_summary, get_category_summary
@@ -164,9 +166,15 @@ def export_transactions(
             raise HTTPException(status_code=400, detail="Either session_id or client_id must be provided")
         if session_id:
             ensure_session_access_lenient(session_id, current_user, db)
+        client = None
+        if client_id is not None:
+            client = db.query(Client).filter(Client.id == client_id, Client.user_id == current_user.id).first()
+            if not client:
+                raise HTTPException(status_code=404, detail="Client not found")
+        client_name = client.name if client else None
         include_vat_bool = include_vat if isinstance(include_vat, bool) else str(include_vat).lower() in ("true", "1", "yes")
-        output = ExcelExporter.export_transactions(session_id, db, client_id, include_vat=include_vat_bool)
-        filename_part = session_id[:8] if session_id else f"client_{client_id}"
+        output = ExcelExporter.export_transactions(session_id, db, client_id, include_vat=include_vat_bool, client_name=client_name)
+        filename_part = re.sub(r'[^\w-]', '_', client.name.strip())[:24] if client else (session_id[:8] if session_id else f"client_{client_id}")
         vat_suffix = "_with_vat" if include_vat_bool else ""
         headers = {"Content-Disposition": f'attachment; filename="transactions{vat_suffix}_{filename_part}.xlsx"'}
         return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers=headers)
@@ -188,6 +196,12 @@ def export_summary(
             raise HTTPException(status_code=400, detail="Either session_id or client_id must be provided")
         if session_id:
             ensure_session_access_lenient(session_id, current_user, db)
+        client = None
+        if client_id is not None:
+            client = db.query(Client).filter(Client.id == client_id, Client.user_id == current_user.id).first()
+            if not client:
+                raise HTTPException(status_code=404, detail="Client not found")
+        client_name = client.name if client else None
         include_vat_bool = include_vat if isinstance(include_vat, bool) else str(include_vat).lower() in ("true", "1", "yes")
         summary = calculate_monthly_summary(session_id, db, client_id)
 
@@ -199,8 +213,8 @@ def export_summary(
             query = query.filter(Transaction.client_id == client_id)
         transactions_list = query.order_by(Transaction.date).all()
 
-        output = ExcelExporter.export_monthly_summary(summary, include_vat=include_vat_bool, transactions=transactions_list)
-        filename_part = session_id[:8] if session_id else f"client_{client_id}"
+        output = ExcelExporter.export_monthly_summary(summary, include_vat=include_vat_bool, transactions=transactions_list, client_name=client_name)
+        filename_part = re.sub(r'[^\w-]', '_', client.name.strip())[:24] if client else (session_id[:8] if session_id else f"client_{client_id}")
         vat_suffix = "_with_vat" if include_vat_bool else ""
         headers = {"Content-Disposition": f'attachment; filename="summary{vat_suffix}_{filename_part}.xlsx"'}
         return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers=headers)
@@ -222,12 +236,14 @@ def export_category(
             raise HTTPException(status_code=400, detail="Either session_id or client_id must be provided")
         if session_id:
             ensure_session_access_lenient(session_id, current_user, db)
+        client = None
         if client_id is not None:
             client = db.query(Client).filter(Client.id == client_id, Client.user_id == current_user.id).first()
             if not client:
                 raise HTTPException(status_code=404, detail="Client not found")
-        output = ExcelExporter.export_category_monthly(session_id, category, db, client_id)
-        filename_part = session_id[:8] if session_id else f"client_{client_id}"
+        client_name = client.name if client else None
+        output = ExcelExporter.export_category_monthly(session_id, category, db, client_id, client_name=client_name)
+        filename_part = re.sub(r'[^\w-]', '_', client.name.strip())[:24] if client else (session_id[:8] if session_id else f"client_{client_id}")
         headers = {"Content-Disposition": f'attachment; filename="category_{category[:16]}_{filename_part}.xlsx"'}
         return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers=headers)
     except HTTPException:
@@ -253,10 +269,12 @@ def export_all_categories(
             raise HTTPException(status_code=400, detail="Either session_id or client_id must be provided")
         if session_id:
             ensure_session_access_lenient(session_id, current_user, db)
+        client = None
         if client_id is not None:
             client = db.query(Client).filter(Client.id == client_id, Client.user_id == current_user.id).first()
             if not client:
                 raise HTTPException(status_code=404, detail="Client not found")
+        client_name = client.name if client else None
 
         if isinstance(include_vat, str):
             include_vat_bool = include_vat.lower() in ("true", "1", "yes")
@@ -275,9 +293,11 @@ def export_all_categories(
             date_to=date_to,
             include_vat=include_vat_bool,
             selected_categories=selected_categories,
+            client_name=client_name,
         )
 
-        date_suffix = f"{date_from}_to_{date_to}" if date_from and date_to else (session_id[:8] if session_id else f"client_{client_id}")
+        client_slug = re.sub(r'[^\w-]', '_', client.name.strip())[:24] if client else None
+        date_suffix = f"{date_from}_to_{date_to}" if date_from and date_to else (f"{client_slug}" if client_slug else (session_id[:8] if session_id else f"client_{client_id}"))
         vat_suffix = "_with_vat" if include_vat_bool else ""
         filename = f"categories{vat_suffix}_{date_suffix}.xlsx"
 
@@ -301,13 +321,15 @@ def export_for_accountant(
             raise HTTPException(status_code=400, detail="Either session_id or client_id must be provided")
         if session_id:
             ensure_session_access_lenient(session_id, current_user, db)
+        client = None
         if client_id is not None:
             client = db.query(Client).filter(Client.id == client_id, Client.user_id == current_user.id).first()
             if not client:
                 raise HTTPException(status_code=404, detail="Client not found")
+        client_name = client.name if client else None
         include_vat_bool = include_vat if isinstance(include_vat, bool) else str(include_vat).lower() in ("true", "1", "yes")
-        output = ExcelExporter.export_for_accountant(session_id, db, client_id, include_vat=include_vat_bool)
-        filename_part = session_id[:8] if session_id else f"client_{client_id}"
+        output = ExcelExporter.export_for_accountant(session_id, db, client_id, include_vat=include_vat_bool, client_name=client_name)
+        filename_part = re.sub(r'[^\w-]', '_', client.name.strip())[:24] if client else (session_id[:8] if session_id else f"client_{client_id}")
         vat_suffix = "_with_vat" if include_vat_bool else ""
         headers = {"Content-Disposition": f'attachment; filename="statement_report{vat_suffix}_{filename_part}.xlsx"'}
         return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers=headers)
@@ -336,14 +358,16 @@ def export_pdf_summary(
             raise HTTPException(status_code=400, detail="Either session_id or client_id must be provided")
         if session_id:
             ensure_session_access_lenient(session_id, current_user, db)
+        client = None
         if client_id is not None:
             client = db.query(Client).filter(Client.id == client_id, Client.user_id == current_user.id).first()
             if not client:
                 raise HTTPException(status_code=404, detail="Client not found")
+        client_name = client.name if client else None
         include_vat_raw = include_vat if isinstance(include_vat, bool) else str(include_vat).lower() in ("true", "1", "yes")
         include_vat_bool = _resolve_include_vat(include_vat_raw, session_id, client_id, db)
-        output = export_executive_summary_pdf(session_id, db, client_id, include_vat=include_vat_bool)
-        filename_part = session_id[:8] if session_id else f"client_{client_id}"
+        output = export_executive_summary_pdf(session_id, db, client_id, include_vat=include_vat_bool, client_name=client_name)
+        filename_part = re.sub(r'[^\w-]', '_', client.name.strip())[:24] if client else (session_id[:8] if session_id else f"client_{client_id}")
         vat_suffix = "_with_vat" if include_vat_bool else ""
         headers = {"Content-Disposition": f'attachment; filename="summary{vat_suffix}_{filename_part}.pdf"'}
         return StreamingResponse(output, media_type="application/pdf", headers=headers)
@@ -367,14 +391,16 @@ def export_pdf_transactions(
             raise HTTPException(status_code=400, detail="Either session_id or client_id must be provided")
         if session_id:
             ensure_session_access_lenient(session_id, current_user, db)
+        client = None
         if client_id is not None:
             client = db.query(Client).filter(Client.id == client_id, Client.user_id == current_user.id).first()
             if not client:
                 raise HTTPException(status_code=404, detail="Client not found")
+        client_name = client.name if client else None
         include_vat_raw = include_vat if isinstance(include_vat, bool) else str(include_vat).lower() in ("true", "1", "yes")
         include_vat_bool = _resolve_include_vat(include_vat_raw, session_id, client_id, db)
-        output = export_transactions_pdf(session_id, db, client_id, include_vat=include_vat_bool)
-        filename_part = session_id[:8] if session_id else f"client_{client_id}"
+        output = export_transactions_pdf(session_id, db, client_id, include_vat=include_vat_bool, client_name=client_name)
+        filename_part = re.sub(r'[^\w-]', '_', client.name.strip())[:24] if client else (session_id[:8] if session_id else f"client_{client_id}")
         vat_suffix = "_with_vat" if include_vat_bool else ""
         headers = {"Content-Disposition": f'attachment; filename="transactions{vat_suffix}_{filename_part}.pdf"'}
         return StreamingResponse(output, media_type="application/pdf", headers=headers)
@@ -399,15 +425,17 @@ def export_pdf_categories(
             raise HTTPException(status_code=400, detail="Either session_id or client_id must be provided")
         if session_id:
             ensure_session_access_lenient(session_id, current_user, db)
+        client = None
         if client_id is not None:
             client = db.query(Client).filter(Client.id == client_id, Client.user_id == current_user.id).first()
             if not client:
                 raise HTTPException(status_code=404, detail="Client not found")
+        client_name = client.name if client else None
         selected = [c.strip() for c in categories.split(",") if c.strip()] if categories else None
         include_vat_raw = include_vat if isinstance(include_vat, bool) else str(include_vat).lower() in ("true", "1", "yes")
         include_vat_bool = _resolve_include_vat(include_vat_raw, session_id, client_id, db)
-        output = export_category_pdf(session_id, db, client_id, selected, include_vat=include_vat_bool)
-        filename_part = session_id[:8] if session_id else f"client_{client_id}"
+        output = export_category_pdf(session_id, db, client_id, selected, include_vat=include_vat_bool, client_name=client_name)
+        filename_part = re.sub(r'[^\w-]', '_', client.name.strip())[:24] if client else (session_id[:8] if session_id else f"client_{client_id}")
         vat_suffix = "_with_vat" if include_vat_bool else ""
         headers = {"Content-Disposition": f'attachment; filename="categories{vat_suffix}_{filename_part}.pdf"'}
         return StreamingResponse(output, media_type="application/pdf", headers=headers)
@@ -436,13 +464,14 @@ def export_csv_transactions(
             raise HTTPException(status_code=400, detail="Either session_id or client_id must be provided")
         if session_id:
             ensure_session_access_lenient(session_id, current_user, db)
+        client = None
         if client_id is not None:
             client = db.query(Client).filter(Client.id == client_id, Client.user_id == current_user.id).first()
             if not client:
                 raise HTTPException(status_code=404, detail="Client not found")
         include_vat_bool = include_vat if isinstance(include_vat, bool) else str(include_vat).lower() in ("true", "1", "yes")
         output = export_transactions_csv(db, session_id, client_id, include_vat=include_vat_bool)
-        filename_part = session_id[:8] if session_id else f"client_{client_id}"
+        filename_part = re.sub(r'[^\w-]', '_', client.name.strip())[:24] if client else (session_id[:8] if session_id else f"client_{client_id}")
         vat_suffix = "_with_vat" if include_vat_bool else ""
         headers = {"Content-Disposition": f'attachment; filename="transactions{vat_suffix}_{filename_part}.csv"'}
         return StreamingResponse(output, media_type="text/csv", headers=headers)
@@ -466,13 +495,14 @@ def export_csv_summary(
             raise HTTPException(status_code=400, detail="Either session_id or client_id must be provided")
         if session_id:
             ensure_session_access_lenient(session_id, current_user, db)
+        client = None
         if client_id is not None:
             client = db.query(Client).filter(Client.id == client_id, Client.user_id == current_user.id).first()
             if not client:
                 raise HTTPException(status_code=404, detail="Client not found")
         include_vat_bool = include_vat if isinstance(include_vat, bool) else str(include_vat).lower() in ("true", "1", "yes")
         output = export_summary_csv(db, session_id, client_id, include_vat=include_vat_bool)
-        filename_part = session_id[:8] if session_id else f"client_{client_id}"
+        filename_part = re.sub(r'[^\w-]', '_', client.name.strip())[:24] if client else (session_id[:8] if session_id else f"client_{client_id}")
         vat_suffix = "_with_vat" if include_vat_bool else ""
         headers = {"Content-Disposition": f'attachment; filename="summary{vat_suffix}_{filename_part}.csv"'}
         return StreamingResponse(output, media_type="text/csv", headers=headers)
@@ -559,3 +589,128 @@ def get_recurring(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Recurring detection failed: {str(e)}")
+
+
+# =============================================================================
+# UNUSUAL / IRREGULAR TRANSACTIONS REPORT
+# =============================================================================
+
+@router.get("/unusual")
+def get_unusual_transactions(
+    session_id: Optional[str] = Query(default=None),
+    client_id: Optional[int] = Query(default=None),
+    above_amount: Optional[float] = Query(default=None),
+    below_amount: Optional[float] = Query(default=None),
+    round_amount: bool = Query(default=False),
+    round_multiple: int = Query(default=100, ge=1),
+    recurring: bool = Query(default=False),
+    recurring_min_count: int = Query(default=3, ge=2),
+    duplicates: bool = Query(default=False),
+    duplicate_window_days: int = Query(default=3, ge=1),
+    weekend: bool = Query(default=False),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return transactions flagged as unusual/irregular based on the selected criteria."""
+    try:
+        if not session_id and not client_id:
+            raise HTTPException(status_code=400, detail="Either session_id or client_id must be provided")
+        if not any([above_amount is not None, below_amount is not None, round_amount, recurring, duplicates, weekend]):
+            raise HTTPException(status_code=400, detail="At least one filter criterion must be enabled")
+
+        if session_id:
+            ensure_session_access_lenient(session_id, current_user, db)
+        if client_id is not None:
+            client = db.query(Client).filter(Client.id == client_id, Client.user_id == current_user.id).first()
+            if not client:
+                raise HTTPException(status_code=404, detail="Client not found")
+
+        # ── Fetch transactions ─────────────────────────────────────
+        q = db.query(Transaction)
+        if session_id:
+            q = q.filter(Transaction.session_id == session_id)
+        elif client_id is not None:
+            q = q.filter(Transaction.client_id == client_id)
+        txns = q.order_by(Transaction.date).all()
+
+        # ── Merchant lookup map ────────────────────────────────────
+        txn_ids = [t.id for t in txns]
+        merchant_map: dict = {}
+        if txn_ids:
+            merchants = db.query(TransactionMerchant).filter(TransactionMerchant.transaction_id.in_(txn_ids)).all()
+            for m in merchants:
+                merchant_map[m.transaction_id] = m.merchant or ""
+
+        # ── Pre-compute for recurring check ────────────────────────
+        # Key: (normalised description, rounded amount) → list of transaction ids
+        from collections import defaultdict
+        recur_groups: dict = defaultdict(list)
+        if recurring:
+            for t in txns:
+                key = (t.description.strip().lower(), round(abs(t.amount), 2))
+                recur_groups[key].append(t.id)
+            recurring_ids = {
+                tid
+                for ids in recur_groups.values()
+                if len(ids) >= recurring_min_count
+                for tid in ids
+            }
+        else:
+            recurring_ids = set()
+
+        # ── Pre-compute for duplicates check ───────────────────────
+        duplicate_ids: set = set()
+        if duplicates:
+            for i, t in enumerate(txns):
+                for j, other in enumerate(txns):
+                    if i == j:
+                        continue
+                    same_desc = t.description.strip().lower() == other.description.strip().lower()
+                    same_amt = round(abs(t.amount), 2) == round(abs(other.amount), 2)
+                    within_window = abs((t.date - other.date).days) <= duplicate_window_days
+                    if same_desc and same_amt and within_window:
+                        duplicate_ids.add(t.id)
+
+        # ── Evaluate each transaction ──────────────────────────────
+        results = []
+        for t in txns:
+            flags: List[str] = []
+            abs_amt = abs(t.amount)
+
+            if above_amount is not None and abs_amt > above_amount:
+                flags.append("above_threshold")
+
+            if below_amount is not None and abs_amt < below_amount and abs_amt > 0:
+                flags.append("below_threshold")
+
+            if round_amount and abs_amt > 0 and abs_amt % round_multiple == 0:
+                flags.append("round_amount")
+
+            if t.id in recurring_ids:
+                flags.append("recurring")
+
+            if t.id in duplicate_ids:
+                flags.append("duplicate")
+
+            if weekend and t.date.weekday() >= 5:
+                flags.append("weekend")
+
+            if flags:
+                results.append({
+                    "id": t.id,
+                    "date": t.date.isoformat(),
+                    "description": t.description,
+                    "amount": t.amount,
+                    "category": t.category,
+                    "merchant": merchant_map.get(t.id, ""),
+                    "flags": flags,
+                })
+
+        return {
+            "total": len(results),
+            "transactions": results,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unusual transactions report failed: {str(e)}")

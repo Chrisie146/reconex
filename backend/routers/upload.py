@@ -27,6 +27,7 @@ from services.pdf_parser import ParserError as PDFParserError
 from services.pdf_parser import pdf_to_csv_bytes
 from rate_limiter import upload_limiter
 from validators import validate_csv_upload, validate_pdf_upload
+from services import posthog_tracker
 
 router = APIRouter(tags=["Uploads"])
 
@@ -252,6 +253,16 @@ async def upload_statement(
         filename = file.filename or "Statement"
         _create_friendly_session(filename, session_id, db)
 
+        posthog_tracker.capture(
+            str(current_user.id),
+            "statement_parsed_success",
+            {
+                "file_type": "csv",
+                "bank_source": bank_source,
+                "transaction_count": len(normalized_transactions),
+            },
+        )
+
         return sanitize_response_data({
             "session_id": session_id,
             "transaction_count": len(normalized_transactions),
@@ -266,6 +277,11 @@ async def upload_statement(
         import traceback
         print(f"Upload error: {str(e)}")
         traceback.print_exc()
+        posthog_tracker.capture(
+            str(current_user.id),
+            "statement_parsed_failed",
+            {"file_type": "csv", "error": str(e)},
+        )
         raise HTTPException(status_code=400, detail=f"Upload failed: {str(e)}")
 
 
@@ -343,6 +359,16 @@ async def upload_pdf_statement(
         filename = file.filename or "Statement"
         _create_friendly_session(filename, session_id, db)
 
+        posthog_tracker.capture(
+            str(current_user.id),
+            "statement_parsed_success",
+            {
+                "file_type": "pdf",
+                "bank_source": bank_source,
+                "transaction_count": len(normalized_transactions),
+            },
+        )
+
         return sanitize_response_data({
             "session_id": session_id,
             "transaction_count": len(normalized_transactions),
@@ -357,6 +383,11 @@ async def upload_pdf_statement(
         import traceback
         logger.error(f"[PDF_UPLOAD] Unexpected error: {str(e)}")
         logger.error(f"[PDF_UPLOAD] Traceback: {traceback.format_exc()}")
+        posthog_tracker.capture(
+            str(current_user.id),
+            "statement_parsed_failed",
+            {"file_type": "pdf", "error": str(e)},
+        )
         raise HTTPException(status_code=400, detail=f"Upload failed: {str(e)}")
 
 

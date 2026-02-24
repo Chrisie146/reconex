@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Landmark, Menu, X } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
 
 export default function LandingNav() {
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -15,16 +15,13 @@ export default function LandingNav() {
   ]
 
   return (
-    <nav className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md border-b border-neutral-200/80 z-50">
+    <nav className="fixed top-0 left-0 right-0 bg-neutral-950/80 backdrop-blur-xl border-b border-neutral-800/50 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Brand */}
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center">
-              <Landmark className="w-[18px] h-[18px] text-white" />
-            </div>
-            <span className="text-lg font-bold text-neutral-900 hidden sm:block tracking-tight">
-              Recon<span className="text-blue-600">ex</span>
+            <span className="text-lg font-bold text-white hidden sm:block tracking-tight">
+              recon<span className="text-blue-400">ex</span>
             </span>
           </Link>
 
@@ -34,7 +31,7 @@ export default function LandingNav() {
               <Link
                 key={l.href}
                 href={l.href}
-                className="text-[13px] font-medium text-neutral-500 hover:text-blue-600 transition-colors"
+                className="text-[13px] font-medium text-neutral-400 hover:text-white transition-colors"
               >
                 {l.label}
               </Link>
@@ -45,13 +42,13 @@ export default function LandingNav() {
           <div className="hidden md:flex items-center gap-3">
             <Link
               href="/login"
-              className="text-[13px] font-medium text-neutral-600 hover:text-blue-600 transition-colors"
+              className="text-[13px] font-medium text-neutral-400 hover:text-white transition-colors"
             >
               Sign in
             </Link>
             <Link
               href="/register"
-              className="px-4 py-2 text-[13px] font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm"
+              className="px-4 py-2 text-[13px] font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-500 transition-colors"
             >
               Get Started
             </Link>
@@ -60,7 +57,7 @@ export default function LandingNav() {
           {/* Mobile hamburger */}
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="md:hidden p-2 rounded-lg text-neutral-500 hover:bg-neutral-100 transition-colors"
+            className="md:hidden p-2 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
           >
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -68,38 +65,40 @@ export default function LandingNav() {
       </div>
 
       {/* Mobile dropdown */}
-      {mobileOpen && (
-        <div className="md:hidden border-t border-neutral-200/80 bg-white">
-          <div className="px-4 py-3 space-y-1">
-            {navLinks.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                onClick={() => setMobileOpen(false)}
-                className="block px-3 py-2.5 rounded-lg text-sm font-medium text-neutral-600 hover:bg-neutral-50 hover:text-blue-600 transition-colors"
-              >
-                {l.label}
-              </Link>
-            ))}
-            <div className="pt-3 mt-2 border-t border-neutral-100 flex flex-col gap-2">
-              <Link
-                href="/login"
-                onClick={() => setMobileOpen(false)}
-                className="px-3 py-2.5 rounded-lg text-sm font-medium text-neutral-600 hover:bg-neutral-50 transition-colors text-center"
-              >
-                Sign in
-              </Link>
-              <Link
-                href="/register"
-                onClick={() => setMobileOpen(false)}
-                className="px-3 py-2.5 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors text-center"
-              >
-                Get Started
-              </Link>
-            </div>
+      <div
+        className={`md:hidden border-t border-neutral-800/50 bg-neutral-950/95 backdrop-blur-xl overflow-hidden transition-all duration-200 ${
+          mobileOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+        }`}
+      >
+        <div className="px-4 py-3 space-y-1">
+          {navLinks.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              onClick={() => setMobileOpen(false)}
+              className="block px-3 py-2.5 rounded-lg text-sm font-medium text-neutral-400 hover:bg-neutral-800 hover:text-white transition-colors"
+            >
+              {l.label}
+            </Link>
+          ))}
+          <div className="pt-3 mt-2 border-t border-neutral-800 flex flex-col gap-2">
+            <Link
+              href="/login"
+              onClick={() => setMobileOpen(false)}
+              className="px-3 py-2.5 rounded-lg text-sm font-medium text-neutral-400 hover:bg-neutral-800 transition-colors text-center"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/register"
+              onClick={() => setMobileOpen(false)}
+              className="px-3 py-2.5 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-500 transition-colors text-center"
+            >
+              Get Started
+            </Link>
           </div>
         </div>
-      )}
+      </div>
     </nav>
   )
 }

@@ -21,6 +21,7 @@ interface ColumnMapping {
   amount?: string
   debit?: string
   credit?: string
+  balance?: string
   date_format?: string
 }
 
@@ -49,6 +50,7 @@ export default function ColumnMappingModal({ isOpen, file, onClose, onSaved }: C
   const [amountCol, setAmountCol] = useState('')
   const [debitCol, setDebitCol] = useState('')
   const [creditCol, setCreditCol] = useState('')
+  const [balanceCol, setBalanceCol] = useState('')
   const [dateFormat, setDateFormat] = useState('')
 
   const { currentClient } = useClient()
@@ -77,6 +79,19 @@ export default function ColumnMappingModal({ isOpen, file, onClose, onSaved }: C
     }
   }, [file])
 
+  // Reset all field selections when the file changes
+  useEffect(() => {
+    setDateCol('')
+    setDescCol('')
+    setAmountMode('single')
+    setAmountCol('')
+    setDebitCol('')
+    setCreditCol('')
+    setBalanceCol('')
+    setDateFormat('')
+    setError('')
+  }, [file])
+
   useEffect(() => {
     if (isOpen && file) {
       fetchPreview()
@@ -86,16 +101,26 @@ export default function ColumnMappingModal({ isOpen, file, onClose, onSaved }: C
   const autoSuggest = (hdrs: string[]) => {
     const lower = hdrs.map(h => h.toLowerCase())
 
+    // Reset all first so stale selections don't linger
+    setDateCol('')
+    setDescCol('')
+    setAmountMode('single')
+    setAmountCol('')
+    setDebitCol('')
+    setCreditCol('')
+    setBalanceCol('')
+
     // Date
     const dateIdx = lower.findIndex(h =>
       /\bdate\b/.test(h) || /\bdatum\b/.test(h) || /\bposting\b/.test(h)
     )
     if (dateIdx >= 0) setDateCol(hdrs[dateIdx])
 
-    // Description
+    // Description / Reference
     const descIdx = lower.findIndex(h =>
       /\bdescription\b/.test(h) || /\bdetails?\b/.test(h) || /\bnarration\b/.test(h) ||
-      /\bparticulars\b/.test(h) || /\bbeskrywing\b/.test(h)
+      /\bparticulars\b/.test(h) || /\bbeskrywing\b/.test(h) ||
+      /\bref(erence)?\b/.test(h) || /\btransaction.*desc\b/.test(h)
     )
     if (descIdx >= 0) setDescCol(hdrs[descIdx])
 
@@ -112,6 +137,10 @@ export default function ColumnMappingModal({ isOpen, file, onClose, onSaved }: C
       setAmountMode('single')
       setAmountCol(hdrs[amtIdx])
     }
+
+    // Balance (optional)
+    const balIdx = lower.findIndex(h => /\bbalance\b/.test(h) || /\bsaldo\b/.test(h))
+    if (balIdx >= 0) setBalanceCol(hdrs[balIdx])
   }
 
   const isValid = dateCol && descCol && (
@@ -134,9 +163,8 @@ export default function ColumnMappingModal({ isOpen, file, onClose, onSaved }: C
       if (debitCol) mapping.debit = debitCol
       if (creditCol) mapping.credit = creditCol
     }
-    if (dateFormat) {
-      mapping.date_format = dateFormat
-    }
+    if (balanceCol) mapping.balance = balanceCol
+    if (dateFormat) mapping.date_format = dateFormat
 
     try {
       const formData = new FormData()
@@ -154,8 +182,9 @@ export default function ColumnMappingModal({ isOpen, file, onClose, onSaved }: C
         { headers: { 'Content-Type': 'multipart/form-data' } }
       )
 
-      const { session_id, transaction_count, categories } = res.data
-      toast.success(`Uploaded ${transaction_count} transactions`)
+      const { session_id, transaction_count, skipped_count, categories } = res.data
+      const skipMsg = skipped_count > 0 ? ` (${skipped_count} rows skipped – invalid dates)` : ''
+      toast.success(`Uploaded ${transaction_count} transactions${skipMsg}`)
       onSaved(session_id, transaction_count, categories || [])
     } catch (err: any) {
       const msg = err.response?.data?.detail || 'Upload failed'
@@ -220,7 +249,7 @@ export default function ColumnMappingModal({ isOpen, file, onClose, onSaved }: C
                         </tr>
                       </thead>
                       <tbody>
-                        {sampleRows.slice(0, 3).map((row, ri) => (
+                        {sampleRows.slice(0, 5).map((row, ri) => (
                           <tr key={ri} className="border-b last:border-b-0">
                             {row.map((cell, ci) => (
                               <td key={ci} className="px-3 py-1.5 text-neutral-600 whitespace-nowrap">
@@ -337,6 +366,19 @@ export default function ColumnMappingModal({ isOpen, file, onClose, onSaved }: C
                   <select value={dateFormat} onChange={e => setDateFormat(e.target.value)} className={selectClass}>
                     {DATE_FORMATS.map((f, i) => (
                       <option key={i} value={f.value}>{f.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Balance column (optional) */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    Balance Column <span className="text-neutral-400 font-normal">(optional)</span>
+                  </label>
+                  <select value={balanceCol} onChange={e => setBalanceCol(e.target.value)} className={selectClass}>
+                    <option value="">None</option>
+                    {headers.map((h, i) => (
+                      <option key={i} value={h}>{h}</option>
                     ))}
                   </select>
                 </div>

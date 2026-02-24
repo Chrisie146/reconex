@@ -91,6 +91,7 @@ export default function ArchivedYearPage() {
 
   const [loading, setLoading]             = useState(true)
   const [downloading, setDownloading]     = useState(false)
+  const [clientName, setClientName]       = useState<string | null>(null)
 
   // Load financial year metadata + initial tab
   useEffect(() => {
@@ -113,6 +114,7 @@ export default function ArchivedYearPage() {
       const res = await axios.get(`${API_BASE_URL}/financial-years/${fyId}/summary`)
       setFy(res.data.financial_year)
       setSummary(res.data)
+      if (res.data.client_name) setClientName(res.data.client_name)
     } catch {
       toast.error('Failed to load archived year data.')
     } finally {
@@ -181,7 +183,13 @@ export default function ArchivedYearPage() {
 
       // Build CSV
       const headers = ['Date', 'Description', 'Amount', 'Category', 'VAT Amount', 'Bank Source', 'Session ID']
+      const meta = [
+        clientName ? `Client: ${clientName}` : null,
+        `Period: ${fy?.label ?? 'archive'}`,
+        `Generated: ${new Date().toLocaleDateString('en-ZA')}`,
+      ].filter(Boolean)
       const lines = [
+        ...meta.map(m => `# ${m}`),
         headers.join(','),
         ...rows.map(t => [
           t.date,
@@ -197,7 +205,8 @@ export default function ArchivedYearPage() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${fy?.label ?? 'archive'}_transactions.csv`
+      const clientSlug = clientName ? clientName.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 24) + '_' : ''
+      a.download = `${clientSlug}${fy?.label ?? 'archive'}_transactions.csv`
       document.body.appendChild(a); a.click()
       document.body.removeChild(a); URL.revokeObjectURL(url)
       toast.success('CSV downloaded.')
@@ -220,7 +229,7 @@ export default function ArchivedYearPage() {
     return (
       <main className="bg-white min-h-screen">
         <Sidebar sessionId={null} />
-        <div className="ml-64 flex items-center justify-center h-screen">
+        <div className="flex items-center justify-center h-screen" style={{ marginLeft: 'var(--sidebar-w, 256px)' }}>
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
         </div>
       </main>
@@ -231,7 +240,7 @@ export default function ArchivedYearPage() {
     <main className="bg-white min-h-screen">
       <Sidebar sessionId={null} />
 
-      <div className="ml-64 transition-all duration-300">
+      <div className="transition-all duration-300" style={{ marginLeft: 'var(--sidebar-w, 256px)' }}>
         <Header />
 
         <div className="max-w-7xl mx-auto px-6 py-12">

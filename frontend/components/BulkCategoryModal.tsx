@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import axios from '@/lib/axiosClient'
 import { toast } from 'sonner'
+import { posthog } from '@/lib/posthog'
 import { useClient } from '@/lib/clientContext'
 import LoadingButton from './LoadingButton'
 
@@ -140,6 +141,7 @@ export default function BulkCategoryModal({
         )
 
         const { updated_count, message } = response.data
+        posthog.capture('transactions_categorised', { count: updated_count, method: 'bulk', category: selectedCategory })
         onSuccess(message, updated_count)
       } else {
         // Update single transaction category
@@ -151,6 +153,7 @@ export default function BulkCategoryModal({
           }
         )
 
+        posthog.capture('transactions_categorised', { count: 1, method: 'single', category: selectedCategory })
         onSuccess(`Updated category to "${selectedCategory}"`, 1)
       }
 

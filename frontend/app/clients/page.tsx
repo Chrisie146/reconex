@@ -117,10 +117,10 @@ export default function ClientsPage() {
   )
 
   return (
-    <main className="bg-white min-h-screen">
+    <main className="bg-white dark:bg-neutral-950 min-h-screen">
       <Sidebar sessionId={null} />
       
-      <div className="ml-64 transition-all duration-300">
+      <div className="transition-all duration-300" style={{ marginLeft: 'var(--sidebar-w, 256px)' }}>
         <Header />
         
         <div className="max-w-7xl mx-auto px-6 py-12">

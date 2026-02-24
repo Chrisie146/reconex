@@ -632,7 +632,7 @@ class ExcelExporter:
     #  EXPORT: TRANSACTIONS
     # ══════════════════════════════════════════════════════════
     @staticmethod
-    def export_transactions(session_id: Optional[str], db: Session, client_id: Optional[int] = None, include_vat: bool = False) -> BytesIO:
+    def export_transactions(session_id: Optional[str], db: Session, client_id: Optional[int] = None, include_vat: bool = False, client_name: Optional[str] = None) -> BytesIO:
         """Export all transactions – clean, professional format."""
         query = db.query(Transaction)
         if session_id:
@@ -668,6 +668,8 @@ class ExcelExporter:
             date_range = f"{transactions[0].date.isoformat()}  to  {transactions[-1].date.isoformat()}"
             ExcelExporter._write_info_row(ws, "Period:", date_range, row=2)
         ExcelExporter._write_info_row(ws, "Transactions:", len(transactions), row=3)
+        if client_name:
+            ExcelExporter._write_info_row(ws, "Client:", client_name, row=4)
 
         # Header row
         HEADER_ROW = 5
@@ -724,7 +726,7 @@ class ExcelExporter:
     #  EXPORT: FOR ACCOUNTANT
     # ══════════════════════════════════════════════════════════
     @staticmethod
-    def export_for_accountant(session_id: str, db: Session, client_id: Optional[int] = None, include_vat: bool = False) -> BytesIO:
+    def export_for_accountant(session_id: str, db: Session, client_id: Optional[int] = None, include_vat: bool = False, client_name: Optional[str] = None) -> BytesIO:
         """Comprehensive multi-sheet report for accountants."""
         query = db.query(Transaction)
         if session_id:
@@ -760,6 +762,8 @@ class ExcelExporter:
         date_range = f"{transactions[0].date.isoformat()}  to  {transactions[-1].date.isoformat()}"
         ExcelExporter._write_info_row(ws_s, "Period:", date_range, row=3)
         ExcelExporter._write_info_row(ws_s, "Generated:", date.today().isoformat(), row=4)
+        if client_name:
+            ExcelExporter._write_info_row(ws_s, "Client:", client_name, row=5)
 
         # Key Metrics
         total_income = sum(t.amount for t in transactions if t.amount >= 0)
@@ -960,7 +964,7 @@ class ExcelExporter:
     #  EXPORT: SINGLE CATEGORY (monthly sections)
     # ══════════════════════════════════════════════════════════
     @staticmethod
-    def export_category_monthly(session_id: str, category: str, db: Session, client_id: Optional[int] = None) -> BytesIO:
+    def export_category_monthly(session_id: str, category: str, db: Session, client_id: Optional[int] = None, client_name: Optional[str] = None) -> BytesIO:
         query = db.query(Transaction).filter(Transaction.category == category)
         if session_id:
             query = query.filter(Transaction.session_id == session_id)
@@ -980,6 +984,8 @@ class ExcelExporter:
             ws.column_dimensions[letter].width = w
 
         ExcelExporter._write_branded_title(ws, f"Category: {category}", NUM_COLS, row=1)
+        if client_name:
+            ExcelExporter._write_info_row(ws, "Client:", client_name, row=2)
         row = 3
 
         if not txns:
@@ -1055,6 +1061,7 @@ class ExcelExporter:
         date_to: Optional[str] = None,
         include_vat: bool = False,
         selected_categories: Optional[List[str]] = None,
+        client_name: Optional[str] = None,
     ) -> BytesIO:
         from datetime import datetime
 
@@ -1120,6 +1127,8 @@ class ExcelExporter:
                 ws.column_dimensions[letter].width = w
 
             ExcelExporter._write_branded_title(ws, f"Category: {category}", num_cols, row=1)
+            if client_name:
+                ExcelExporter._write_info_row(ws, "Client:", client_name, row=2)
 
             row = 3
             data_first_row = None
@@ -1221,7 +1230,7 @@ class ExcelExporter:
     #  EXPORT: MONTHLY SUMMARY
     # ══════════════════════════════════════════════════════════
     @staticmethod
-    def export_monthly_summary(summary_data: Dict[str, Any], include_vat: bool = False, transactions: Optional[List[Any]] = None) -> BytesIO:
+    def export_monthly_summary(summary_data: Dict[str, Any], include_vat: bool = False, transactions: Optional[List[Any]] = None, client_name: Optional[str] = None) -> BytesIO:
         wb = openpyxl.Workbook()
 
         # ── Sheet 1: Monthly Overview ─────────────────────────
@@ -1248,6 +1257,8 @@ class ExcelExporter:
                 ws_o.column_dimensions[letter].width = w
 
         ExcelExporter._write_branded_title(ws_o, "Monthly Summary", NUM_O, row=1)
+        if client_name:
+            ExcelExporter._write_info_row(ws_o, "Client:", client_name, row=2)
 
         HEADER_R = 3
         for col, h in enumerate(o_headers, 1):

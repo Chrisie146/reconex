@@ -4,6 +4,7 @@ import { useState, useRef } from 'react'
 import { FileUp, AlertCircle, Upload, FileText, Shield, Loader2 } from 'lucide-react'
 import axios from '@/lib/axiosClient'
 import UploadPreviewModal from './UploadPreviewModal'
+import { posthog } from '@/lib/posthog'
 import ColumnMappingModal from './ColumnMappingModal'
 import { useClient } from '@/lib/clientContext'
 
@@ -79,6 +80,10 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
         const resp2 = await axios.post(saveEndpoint, formData)
         const { session_id, transaction_count, categories, warnings } = resp2.data
         if (warnings) console.warn('Upload warnings:', warnings)
+        posthog.capture('file_uploaded', {
+          file_type: isPDF ? 'pdf' : 'csv',
+          transaction_count,
+        })
         onUploadSuccess(session_id, transaction_count, categories)
       }
     } catch (err: any) {
@@ -92,6 +97,7 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
         setError('')
         setColumnMappingOpen(true)
       } else {
+        posthog.capture('file_upload_failed', { file_type: isPDF ? 'pdf' : 'csv', error: errorMessage })
         setError(errorMessage)
         setFileName('')
       }
@@ -121,7 +127,7 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
   }
 
   const supportedBanks = [
-    'Standard Bank', 'ABSA', 'FNB', 'Capitec', 'Nedbank', 'Investec',
+    'Standard Bank', 'ABSA', 'FNB', 'Capitec',
   ]
 
   return (
@@ -145,16 +151,16 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
           relative rounded-2xl border-2 border-dashed p-12 text-center transition-all duration-200
           ${dragActive
             ? 'border-blue-400 bg-blue-50/60 ring-4 ring-blue-100'
-            : 'border-neutral-300 bg-neutral-50 hover:border-neutral-400 hover:bg-neutral-100/60'}
+            : 'border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 hover:border-neutral-400 dark:hover:border-neutral-600 hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60'}
         `}
       >
         {/* Icon */}
         <div className="flex justify-center mb-5">
           <div className={`
             rounded-xl p-3.5 transition-colors duration-200
-            ${dragActive ? 'bg-blue-100' : 'bg-white ring-1 ring-neutral-200 shadow-sm'}
+            ${dragActive ? 'bg-blue-100' : 'bg-white dark:bg-neutral-800 ring-1 ring-neutral-200 dark:ring-neutral-600 shadow-sm'}
           `}>
-            <Upload className={`w-7 h-7 ${dragActive ? 'text-blue-600' : 'text-neutral-700'}`} />
+            <Upload className={`w-7 h-7 ${dragActive ? 'text-blue-600' : 'text-neutral-700 dark:text-neutral-300'}`} />
           </div>
         </div>
 
@@ -162,7 +168,7 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
         <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-2">
           Upload Statement
         </p>
-        <h2 className="text-xl font-semibold text-neutral-900 mb-1">
+        <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-1">
           {dragActive ? 'Drop your file here' : 'Upload Bank Statement'}
         </h2>
         <p className="text-sm text-neutral-500 mb-6">
@@ -200,7 +206,7 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
         />
 
         {/* Supported Banks */}
-        <div className="mt-8 pt-6 border-t border-neutral-200">
+        <div className="mt-8 pt-6 border-t border-neutral-200 dark:border-neutral-700">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 mb-3">
             Supported Banks
           </p>
@@ -208,16 +214,14 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
             {supportedBanks.map((bank) => (
               <span
                 key={bank}
-                className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-medium text-neutral-600 ring-1 ring-neutral-200"
+                className="inline-flex items-center gap-1.5 rounded-full bg-white dark:bg-neutral-800 px-3 py-1 text-xs font-medium text-neutral-600 dark:text-neutral-300 ring-1 ring-neutral-200 dark:ring-neutral-600"
               >
                 <Shield className="w-3 h-3 text-blue-500" />
                 {bank}
               </span>
             ))}
           </div>
-          <p className="mt-3 text-xs text-neutral-400">
-            Other banks supported via manual column mapping
-          </p>
+
         </div>
 
         {/* File Size Note */}

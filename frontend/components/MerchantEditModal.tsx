@@ -11,10 +11,11 @@ interface Props {
   onClose: () => void
   transaction: any | null
   sessionId: string
+  clientId?: number | null
   onSaved?: (merchant: string) => void
 }
 
-export default function MerchantEditModal({ isOpen, onClose, transaction, sessionId, onSaved }: Props) {
+export default function MerchantEditModal({ isOpen, onClose, transaction, sessionId, clientId, onSaved }: Props) {
   const [merchant, setMerchant] = useState('')
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [keyword, setKeyword] = useState('')
@@ -78,7 +79,23 @@ export default function MerchantEditModal({ isOpen, onClose, transaction, sessio
               const payload = { keyword: useKeyword, merchant, only_unassigned: true }
               const res = await axios.post(`${API_BASE_URL}/bulk-merchant`, payload, { params: { session_id: sessionId } })
               const updated = res.data.updated_count || 0
-              toast.success(`Applied to ${updated} transaction(s)`)
+
+              // Save as a learned rule so future uploads auto-apply this merchant
+              if (useKeyword && useKeyword.length >= 3 && merchant) {
+                try {
+                  const learnParams: Record<string, any> = {}
+                  if (clientId) learnParams.client_id = clientId
+                  await axios.post(
+                    `${API_BASE_URL}/merchant-rules/learn`,
+                    { keyword: useKeyword, merchant, auto_apply: true, enabled: true },
+                    { params: learnParams }
+                  )
+                } catch {
+                  // non-fatal — rule save failed but merchant was applied
+                }
+              }
+
+              toast.success(`Applied to ${updated} transaction(s) and saved rule`)
               onSaved?.(merchant)
               onClose()
             } catch (e) {

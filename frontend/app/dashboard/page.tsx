@@ -154,14 +154,14 @@ export default function Dashboard() {
   }, [sessionId, currentClient?.id, refreshTrigger])
 
   return (
-    <main className="bg-white">
+    <main className="bg-white dark:bg-neutral-950 min-h-screen">
       <Sidebar 
         sessionId={sessionId}
         selectedStatement={selectedStatement}
         onStatementChange={setSelectedStatement}
       />
       
-      <div className="ml-64 transition-all duration-300">
+      <div className="transition-all duration-300" style={{ marginLeft: 'var(--sidebar-w, 256px)' }}>
         <Header />
         
         <div className="max-w-6xl mx-auto px-4 py-12" suppressHydrationWarning>
@@ -294,7 +294,7 @@ export default function Dashboard() {
         />
       )}
 
-      <footer className="border-t border-neutral-200 bg-neutral-50 mt-16">
+      <footer className="border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 mt-16">
         <div className="max-w-6xl mx-auto px-4 py-6 text-center text-sm text-neutral-600">
           <p>Reconex v1.0 | © {new Date().getFullYear()} All Rights Reserved</p>
         </div>

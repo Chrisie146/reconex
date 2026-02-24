@@ -33,10 +33,10 @@ export default function Page() {
   }, [])
 
   return (
-    <div className="bg-neutral-50 min-h-screen">
+    <div className="bg-neutral-50 dark:bg-neutral-950 min-h-screen">
       <Sidebar sessionId={sessionId} />
 
-      <div className="ml-64 transition-all duration-300">
+      <div className="transition-all duration-300" style={{ marginLeft: 'var(--sidebar-w, 256px)' }}>
         <div className="max-w-[1400px] mx-auto px-6 py-6 space-y-6">
 
           {/* ── Page header ─────────────────────────────────────── */}

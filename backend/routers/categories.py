@@ -376,6 +376,7 @@ def export_vat_report(
 
         if session_id:
             ensure_session_access_lenient(session_id, current_user, db)
+        client = None
         if client_id is not None:
             client = db.query(Client).filter(Client.id == client_id, Client.user_id == current_user.id).first()
             if not client:
@@ -391,7 +392,8 @@ def export_vat_report(
 
         report_bytes = vat_service.export_vat_report(session_id, start, end, format, client_id, export_type)
 
-        identifier = session_id[:8] if session_id else f"client_{client_id}"
+        import re
+        identifier = re.sub(r'[^\w-]', '_', client.name.strip())[:24] if client else (session_id[:8] if session_id else f"client_{client_id}")
         type_str = export_type.replace("_", "_")
         if format == "csv":
             filename = f"vat_{type_str}_{identifier}.csv"

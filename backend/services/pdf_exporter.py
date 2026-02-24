@@ -79,7 +79,7 @@ def _header_footer(canvas, doc):
     canvas.setFillColor(colors.HexColor("#9CA3AF"))
     canvas.drawCentredString(
         doc.pagesize[0] / 2, 12 * mm,
-        f"Bank Statement Analyzer  |  Generated {date.today().isoformat()}  |  Page {doc.page}"
+        f"Reconex  |  Generated {date.today().isoformat()}  |  Page {doc.page}"
     )
     # Top accent line
     canvas.setStrokeColor(INDIGO_MID)
@@ -127,6 +127,7 @@ def export_executive_summary_pdf(
     db: Session,
     client_id: Optional[int] = None,
     include_vat: bool = False,
+    client_name: Optional[str] = None,
 ) -> BytesIO:
     """Generate branded executive-summary PDF (landscape, with full reconciliation table)."""
     from services.summary import calculate_monthly_summary
@@ -175,6 +176,8 @@ def export_executive_summary_pdf(
         period = f"{transactions[0].date.isoformat()}  to  {transactions[-1].date.isoformat()}"
         story.append(Paragraph(f"Period: {period}", styles["BodySmall"]))
     story.append(Paragraph(f"Generated: {date.today().isoformat()}", styles["BodySmall"]))
+    if client_name:
+        story.append(Paragraph(f"Client: {client_name}", styles["BodySmall"]))
     story.append(Spacer(1, 8 * mm))
 
     # ── KPI Cards ─────────────────────────────────────────────────
@@ -402,6 +405,7 @@ def export_transactions_pdf(
     db: Session,
     client_id: Optional[int] = None,
     include_vat: bool = False,
+    client_name: Optional[str] = None,
 ) -> BytesIO:
     """Generate a branded transactions PDF listing."""
     query = db.query(Transaction)
@@ -425,6 +429,8 @@ def export_transactions_pdf(
     if transactions:
         period = f"{transactions[0].date.isoformat()}  to  {transactions[-1].date.isoformat()}"
         story.append(Paragraph(f"Period: {period}", styles["BodySmall"]))
+    if client_name:
+        story.append(Paragraph(f"Client: {client_name}", styles["BodySmall"]))
     story.append(Spacer(1, 6 * mm))
 
     if not transactions:
@@ -498,6 +504,7 @@ def export_category_pdf(
     client_id: Optional[int] = None,
     selected_categories: Optional[List[str]] = None,
     include_vat: bool = False,
+    client_name: Optional[str] = None,
 ) -> BytesIO:
     """Generate a per-category PDF with monthly sections."""
     query = db.query(Transaction)
@@ -531,6 +538,8 @@ def export_category_pdf(
     if include_vat:
         story.append(Paragraph("VAT amounts are shown where applicable.", styles["BodySmall"]))
     story.append(Paragraph(f"Generated: {date.today().isoformat()}", styles["BodySmall"]))
+    if client_name:
+        story.append(Paragraph(f"Client: {client_name}", styles["BodySmall"]))
     story.append(Spacer(1, 6 * mm))
 
     for cat_name in sorted(cats.keys()):

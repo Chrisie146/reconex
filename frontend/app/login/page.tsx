@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import axios from '@/lib/axiosClient'
 import { setToken, setAuthUser } from '@/lib/auth'
-import { Landmark, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
+import { posthog } from '@/lib/posthog'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -23,6 +24,7 @@ export default function LoginPage() {
       const data = response.data
       setToken(data.access_token)
       setAuthUser({ user_id: data.user_id, email: data.email, full_name: data.full_name })
+      posthog.capture('user_logged_in', { email: data.email })
       // Keep loading true — full-screen overlay will show during navigation
       router.push('/dashboard')
     } catch (err: any) {
@@ -33,13 +35,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-950 px-4">
       {/* Full-screen loading overlay shown after successful login */}
       {loading && (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
-          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center mb-4 shadow-lg">
-            <Landmark className="w-5 h-5 text-white" />
-          </div>
           <Loader2 className="w-6 h-6 animate-spin text-blue-600 mb-2" />
           <p className="text-sm text-neutral-500 font-medium">Signing you in…</p>
         </div>
@@ -47,15 +46,12 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Brand */}
         <Link href="/" className="flex items-center justify-center gap-2.5 mb-8">
-          <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center">
-            <Landmark className="w-[18px] h-[18px] text-white" />
-          </div>
-          <span className="text-lg font-bold text-neutral-900 tracking-tight">Recon<span className="text-blue-600">ex</span></span>
+          <span className="text-lg font-bold text-neutral-900 tracking-tight">recon<span className="text-blue-600">ex</span></span>
         </Link>
 
         {/* Card */}
-        <div className="rounded-2xl bg-white ring-1 ring-neutral-200 shadow-sm p-6">
-          <h1 className="text-xl font-bold text-neutral-900">Sign in</h1>
+        <div className="rounded-2xl bg-white dark:bg-neutral-900 ring-1 ring-neutral-200 dark:ring-neutral-700 shadow-sm p-6">
+          <h1 className="text-xl font-bold text-neutral-900 dark:text-white">Sign in</h1>
           <p className="text-sm text-neutral-500 mt-1">Access your statements and reports.</p>
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">

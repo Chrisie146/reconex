@@ -93,10 +93,10 @@ export default function Page() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
       <Sidebar sessionId={null} />
 
-      <div className="ml-64 transition-all duration-300">
+      <div className="transition-all duration-300" style={{ marginLeft: 'var(--sidebar-w, 256px)' }}>
         <div className="mx-auto max-w-5xl px-6 py-8">
           {/* Page Header */}
           <div className="flex items-center justify-between mb-6">
@@ -152,7 +152,7 @@ export default function Page() {
               <p className="text-sm text-neutral-500">Select a client in the sidebar to view their previous statements.</p>
             </div>
           ) : sessions.length === 0 ? (
-            <div className="rounded-2xl bg-white ring-1 ring-neutral-200 shadow-sm p-12 text-center">
+            <div className="rounded-2xl bg-white dark:bg-neutral-900 ring-1 ring-neutral-200 dark:ring-neutral-700 shadow-sm p-12 text-center">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-100">
                 <FileText className="w-6 h-6 text-neutral-400" />
               </div>
@@ -162,7 +162,7 @@ export default function Page() {
           ) : (
             <div className="space-y-3">
               {/* Select All Bar */}
-              <div className="flex items-center gap-3 rounded-xl bg-white px-4 py-3 ring-1 ring-neutral-200 shadow-sm">
+              <div className="flex items-center gap-3 rounded-xl bg-white dark:bg-neutral-900 px-4 py-3 ring-1 ring-neutral-200 dark:ring-neutral-700 shadow-sm">
                 <input
                   type="checkbox"
                   checked={selectedSessions.size === sessions.length && sessions.length > 0}
@@ -179,10 +179,10 @@ export default function Page() {
                 <div
                   key={s.session_id}
                   className={`
-                    flex items-center gap-4 rounded-xl bg-white px-4 py-4 ring-1 shadow-sm transition-all
+                    flex items-center gap-4 rounded-xl bg-white dark:bg-neutral-900 px-4 py-4 ring-1 shadow-sm transition-all
                     ${selectedSessions.has(s.session_id)
-                      ? 'ring-blue-300 bg-blue-50/40'
-                      : 'ring-neutral-200 hover:ring-neutral-300'}
+                      ? 'ring-blue-300 bg-blue-50/40 dark:bg-blue-950/40'
+                      : 'ring-neutral-200 dark:ring-neutral-700 hover:ring-neutral-300 dark:hover:ring-neutral-600'}
                   `}
                 >
                   <input
@@ -239,7 +239,7 @@ export default function Page() {
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-neutral-200">
+          <div className="relative w-full max-w-md rounded-2xl bg-white dark:bg-neutral-900 p-6 shadow-2xl ring-1 ring-neutral-200 dark:ring-neutral-700">
             <button
               onClick={() => setDeleteConfirm(null)}
               disabled={deleting}

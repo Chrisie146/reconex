@@ -103,7 +103,7 @@ def _build_reset_email_html(reset_link: str) -> str:
           <!-- Header -->
           <tr>
             <td style="background-color:#2563eb;padding:32px 40px;text-align:center;">
-              <span style="font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.3px;">StatementBur</span>
+              <span style="font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.3px;">Reconex</span>
             </td>
           </tr>
 
@@ -112,7 +112,7 @@ def _build_reset_email_html(reset_link: str) -> str:
             <td style="padding:40px 40px 32px;">
               <h1 style="margin:0 0 16px;font-size:20px;font-weight:600;color:#18181b;">Reset your password</h1>
               <p style="margin:0 0 24px;font-size:15px;color:#52525b;line-height:1.6;">
-                We received a request to reset the password for your StatementBur account.
+                We received a request to reset the password for your Reconex account.
                 Click the button below to choose a new password.
               </p>
 
@@ -146,7 +146,7 @@ def _build_reset_email_html(reset_link: str) -> str:
           <tr>
             <td style="padding:24px 40px;text-align:center;">
               <p style="margin:0;font-size:12px;color:#a1a1aa;">
-                &copy; 2025 StatementBur. All rights reserved.
+                &copy; 2025 Reconex. All rights reserved.
               </p>
             </td>
           </tr>
@@ -171,7 +171,7 @@ def _send_reset_email(to_email: str, reset_link: str) -> None:
         resend.Emails.send({
             "from": Config.FROM_EMAIL,
             "to": [to_email],
-            "subject": "Reset your StatementBur password",
+            "subject": "Reset your Reconex password",
             "html": _build_reset_email_html(reset_link),
         })
         logger.info(f"[EMAIL] Password reset email sent to {to_email}")

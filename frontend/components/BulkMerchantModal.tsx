@@ -22,7 +22,14 @@ export default function BulkMerchantModal({ isOpen, onClose, transactions, sessi
   const [onlyUnassigned, setOnlyUnassigned] = useState(true)
   const [suggestions, setSuggestions] = useState<string[]>([])
 
-  useEffect(() => { if (isOpen) setSelectedIds(transactions.map(t => t.id)) }, [isOpen, transactions])
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedIds(transactions.map(t => t.id))
+      setMerchant('')
+      setKeyword('')
+      setOnlyUnassigned(true)
+    }
+  }, [isOpen, transactions])
 
   useEffect(() => {
     const fetch = async () => {
@@ -73,21 +80,37 @@ export default function BulkMerchantModal({ isOpen, onClose, transactions, sessi
         <div className="flex justify-end gap-2 mt-4">
           <button className="px-3 py-1 border rounded" onClick={onClose}>Cancel</button>
           <button className="px-3 py-1 bg-neutral-900 text-white rounded" onClick={async () => {
+            if (!merchant.trim()) { toast.error('Please enter a merchant name'); return }
+            if (selectedIds.length === 0) { toast.error('Select at least one transaction'); return }
             try {
               const params: any = clientId ? { client_id: clientId } : { session_id: sessionId }
-              const res = await axios.post(`${API_BASE_URL}/bulk-merchant/ids`, { ids: selectedIds, merchant }, { params })
+              const res = await axios.post(`${API_BASE_URL}/bulk-merchant/ids`, { ids: selectedIds, merchant: merchant.trim() }, { params })
               onApplied?.(res.data.message || 'Applied', res.data.updated_count || 0)
             } catch (e) {
               toast.error('Failed to apply merchant')
             }
-          }}>Apply to selected</button>
+          }}>Apply to {selectedIds.length} selected</button>
 
           <button className="px-3 py-1 border rounded" onClick={async () => {
+            if (!merchant.trim()) { toast.error('Please enter a merchant name'); return }
             // Apply by keyword across session/client
             try {
-              const payload = { keyword: (keyword || '').trim(), merchant, only_unassigned: !!onlyUnassigned }
+              const payload = { keyword: (keyword || '').trim(), merchant: merchant.trim(), only_unassigned: !!onlyUnassigned }
               const params: any = clientId ? { client_id: clientId } : { session_id: sessionId }
               const res = await axios.post(`${API_BASE_URL}/bulk-merchant`, payload, { params })
+
+              // Save as learned rule so future uploads auto-apply
+              const kw = (keyword || '').trim()
+              if (kw.length >= 3) {
+                try {
+                  await axios.post(
+                    `${API_BASE_URL}/merchant-rules/learn`,
+                    { keyword: kw, merchant: merchant.trim(), auto_apply: true, enabled: true },
+                    { params: clientId ? { client_id: clientId } : {} }
+                  )
+                } catch { /* non-fatal */ }
+              }
+
               onApplied?.(res.data.message || 'Applied', res.data.updated_count || 0)
             } catch (e) {
               toast.error('Failed to apply by keyword')

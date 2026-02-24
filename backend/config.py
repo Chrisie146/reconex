@@ -100,6 +100,11 @@ class Config:
     SENTRY_TRACES_SAMPLE_RATE = float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1"))  # 10% of transactions
     SENTRY_PROFILES_SAMPLE_RATE = float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.1"))  # 10% of transactions
     SENTRY_SEND_DEFAULT_PII = os.getenv("SENTRY_SEND_DEFAULT_PII", "false").lower() in ("true", "1", "yes")
+
+    # PostHog Product Analytics
+    POSTHOG_API_KEY = os.getenv("POSTHOG_API_KEY", "")
+    POSTHOG_HOST = os.getenv("POSTHOG_HOST", "https://us.i.posthog.com")
+    POSTHOG_ENABLED = os.getenv("POSTHOG_ENABLED", "true").lower() in ("true", "1", "yes") and bool(os.getenv("POSTHOG_API_KEY", ""))
     
     @classmethod
     def validate(cls):

@@ -2,6 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Animation delay utilities ───────────────────────────────────── */
+.animation-delay-200 {
+  animation-delay: 200ms;
+}
+.animation-delay-400 {
+  animation-delay: 400ms;
+}
+.animation-delay-600 {
+  animation-delay: 600ms;
+}
+.animation-delay-2000 {
+  animation-delay: 2000ms;
+}
+
+/* Apply fill-mode to fade-in animations so they stay invisible until triggered */
+.animate-fade-in,
+.animate-fade-in-up {
+  opacity: 0;
+  animation-fill-mode: forwards;
+}
+
 * {
   @apply m-0 p-0 box-border;
 }
@@ -36,4 +57,140 @@ body {
 
 .btn-danger {
   @apply btn bg-red-600 text-white hover:bg-red-700;
+}
+
+/* ── Dark Mode Global Overrides ───────────────────────────────────── */
+html.dark {
+  color-scheme: dark;
+}
+
+/* Card utility */
+html.dark .card {
+  background-color: #171717;
+  border-color: #404040;
+  color: #fafafa;
+}
+
+/* btn-secondary */
+html.dark .btn-secondary {
+  background-color: #262626;
+  color: #fafafa;
+}
+html.dark .btn-secondary:hover {
+  background-color: #404040;
+}
+
+/* ── Table internals (handles TransactionsTable & other tables) ───── */
+html.dark table {
+  color: #d4d4d4;
+}
+
+html.dark thead th,
+html.dark thead tr {
+  background-color: #111111 !important;
+  border-color: #404040 !important;
+  color: #a3a3a3;
+}
+
+html.dark tbody td {
+  color: #d4d4d4;
+}
+
+html.dark tbody tr:hover {
+  background-color: #1f1f1f !important;
+}
+
+html.dark table .divide-y > * + * {
+  border-color: #262626;
+}
+
+/* Toolbar / filter bar inside dark panels */
+html.dark .bg-neutral-50\/80,
+html.dark .bg-neutral-50 {
+  /* handled per-component via dark: variants */
+}
+
+/* Override common light-bg utility classes site-wide in dark mode */
+html.dark .bg-white {
+  background-color: #171717;
+}
+
+html.dark .bg-neutral-50 {
+  background-color: #111111;
+}
+
+html.dark .bg-neutral-100 {
+  background-color: #1e1e1e;
+}
+
+html.dark .border-neutral-200 {
+  border-color: #404040;
+}
+
+html.dark .border-neutral-100 {
+  border-color: #262626;
+}
+
+html.dark .text-neutral-900 {
+  color: #fafafa;
+}
+
+html.dark .text-neutral-800 {
+  color: #f5f5f5;
+}
+
+html.dark .text-neutral-700 {
+  color: #e5e5e5;
+}
+
+html.dark .text-neutral-600 {
+  color: #d4d4d4;
+}
+
+html.dark .divide-neutral-100 > * + * {
+  border-color: #262626;
+}
+
+html.dark .divide-neutral-200 > * + * {
+  border-color: #404040;
+}
+
+html.dark .ring-neutral-200 {
+  --tw-ring-color: rgb(64 64 64);
+}
+
+html.dark .hover\:bg-neutral-50:hover {
+  background-color: #1e1e1e;
+}
+
+html.dark .hover\:bg-neutral-100:hover {
+  background-color: #262626;
+}
+
+/* ── Form inputs in dark mode ────────────────────────────────────── */
+html.dark input:not([type='checkbox']):not([type='radio']):not([type='range']),
+html.dark select,
+html.dark textarea {
+  background-color: #262626 !important;
+  border-color: #404040 !important;
+  color: #f5f5f5 !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #737373 !important;
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────────── */
+html.dark ::-webkit-scrollbar-track {
+  background: #171717;
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: #404040;
+  border-radius: 6px;
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #525252;
 }

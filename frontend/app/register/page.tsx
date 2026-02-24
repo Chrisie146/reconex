@@ -6,6 +6,7 @@ import Link from 'next/link'
 import axios from '@/lib/axiosClient'
 import { setToken, setAuthUser } from '@/lib/auth'
 import { Landmark, Loader2 } from 'lucide-react'
+import { posthog } from '@/lib/posthog'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -34,6 +35,7 @@ export default function RegisterPage() {
       const data = response.data
       setToken(data.access_token)
       setAuthUser({ user_id: data.user_id, email: data.email, full_name: data.full_name })
+      posthog.capture('user_registered', { email: data.email, full_name: data.full_name })
 
       // Mark as new user so dashboard shows onboarding
       if (typeof window !== 'undefined') {
@@ -50,7 +52,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-950 px-4">
       <div className="w-full max-w-sm">
         {/* Brand */}
         <Link href="/" className="flex items-center justify-center gap-2.5 mb-8">
@@ -61,8 +63,8 @@ export default function RegisterPage() {
         </Link>
 
         {/* Card */}
-        <div className="rounded-2xl bg-white ring-1 ring-neutral-200 shadow-sm p-6">
-          <h1 className="text-xl font-bold text-neutral-900">Create account</h1>
+        <div className="rounded-2xl bg-white dark:bg-neutral-900 ring-1 ring-neutral-200 dark:ring-neutral-700 shadow-sm p-6">
+          <h1 className="text-xl font-bold text-neutral-900 dark:text-white">Create account</h1>
           <p className="text-sm text-neutral-500 mt-1">Start analyzing bank statements securely.</p>
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">

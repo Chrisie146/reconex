@@ -145,12 +145,11 @@ export default function TransactionEditPanel({
         { params: bulkParams }
       )
 
-      await axios.post(`${API_BASE_URL}/merchant-rules/learn`, {
-        keyword: trimmedKeyword,
-        merchant: trimmedMerchant,
-        auto_apply: true,
-        enabled: true,
-      })
+      await axios.post(
+        `${API_BASE_URL}/merchant-rules/learn`,
+        { keyword: trimmedKeyword, merchant: trimmedMerchant, auto_apply: true, enabled: true },
+        clientId ? { params: { client_id: clientId } } : {}
+      )
 
       const updated = response.data?.updated_count || 0
       setSuccess(`Applied merchant to ${updated} transaction(s)`)
@@ -389,7 +388,8 @@ export default function TransactionEditPanel({
     return null
   }
 
-  const hasChanges = category !== (transaction.category || '') || merchant !== (transaction.merchant || '')
+  const descriptionChangedLocally = editingDescription && description !== cleanDescription(transaction.description)
+  const hasChanges = category !== (transaction.category || '') || merchant !== (transaction.merchant || '') || descriptionChangedLocally
 
   return (
     <>

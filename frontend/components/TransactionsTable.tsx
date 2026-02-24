@@ -76,6 +76,7 @@ interface Transaction {
   description: string
   amount: number
   category: string
+  invoice_id?: number | null
   merchant?: string | null
   vat_amount?: number | null
   amount_excl_vat?: number | null
@@ -155,10 +156,11 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
   const [selectedCategoryValue, setSelectedCategoryValue] = useState<string>('')
   const [editingMerchantId, setEditingMerchantId] = useState<number | null>(null)
   const [editingMerchantValue, setEditingMerchantValue] = useState<string>('')
-  const [invoices, setInvoices] = useState<any[]>([])
-  const [invoicesByAmount, setInvoicesByAmount] = useState<Record<number, any[]>>({})
+  const [invoicesById, setInvoicesById] = useState<Record<number, any>>({})
   const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null)
+  const [selectedInvoiceTxnId, setSelectedInvoiceTxnId] = useState<number | null>(null)
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
+  const [deletingInvoice, setDeletingInvoice] = useState(false)
   const [savingId, setSavingId] = useState<number | null>(null)
   const [showInvoiceUploadModal, setShowInvoiceUploadModal] = useState(false)
   const [transactionForUpload, setTransactionForUpload] = useState<any | null>(null)
@@ -326,8 +328,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
 
         if (!params) {
           setTransactions([])
-          setInvoices([])
-          setInvoicesByAmount({})
+          setInvoicesById({})
           setLoading(false)
           return
         }
@@ -349,17 +350,11 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
         if (Object.keys(invoiceParams).length > 0) {
           const invResponse = await axios.get(`${API_BASE_URL}/invoices`, { params: invoiceParams })
           const invs = invResponse.data.invoices || []
-          setInvoices(invs)
-          const byAmount: Record<number, any[]> = {}
-          invs.forEach((inv: any) => {
-            const amt = Math.round(inv.total_amount * 100)
-            if (!byAmount[amt]) byAmount[amt] = []
-            byAmount[amt].push(inv)
-          })
-          setInvoicesByAmount(byAmount)
+          const byId: Record<number, any> = {}
+          invs.forEach((inv: any) => { byId[inv.id] = inv })
+          setInvoicesById(byId)
         } else {
-          setInvoices([])
-          setInvoicesByAmount({})
+          setInvoicesById({})
         }
       } catch (error) {
         console.error('[TransactionsTable] Failed to fetch data:', error)
@@ -403,7 +398,10 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
     setSearchTrigger(prev => prev + 1)
   }
 
-  const handleCategorizeFiltered = () => { setShowFilteredModal(true) }
+  const handleCategorizeFiltered = () => {
+    setFilteredModalTransactions(sortedAndFilteredTransactions)
+    setShowFilteredModal(true)
+  }
 
   const handleUndo = async () => {
     try {
@@ -645,7 +643,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
   const visibleCols = columnOrder.filter((c) => visibleColumns.has(c) && (c !== 'running_balance' || showRunningBalance) && ((c !== 'vat_amount' && c !== 'amount_excl_vat') || vatEnabled))
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
+    <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-700">
       {/* ─── Header ─── */}
       <div className="border-b border-neutral-200">
         {/* Title row */}
@@ -664,18 +662,27 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
             <button
               onClick={handleCategorizeFiltered}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-neutral-900 text-white text-sm font-medium rounded-lg hover:bg-neutral-800 active:bg-neutral-950 transition-colors shadow-sm"
-              title="Categorize filtered transactions"
+              title={`Categorize currently filtered transactions (${sortedAndFilteredTransactions.length})`}
             >
               <Tag size={15} />
               Categorize
+              {sortedAndFilteredTransactions.length < transactions.length && (
+                <span className="text-xs bg-white/20 rounded px-1">{sortedAndFilteredTransactions.length}</span>
+              )}
             </button>
             <button
-              onClick={() => setShowBulkMerchantModal(true)}
+              onClick={() => {
+                setFilteredModalTransactions(sortedAndFilteredTransactions)
+                setShowBulkMerchantModal(true)
+              }}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-neutral-700 text-white text-sm font-medium rounded-lg hover:bg-neutral-600 active:bg-neutral-800 transition-colors shadow-sm"
-              title="Assign merchant"
+              title={`Assign merchant to filtered transactions (${sortedAndFilteredTransactions.length})`}
             >
               <Users size={15} />
               Merchant
+              {sortedAndFilteredTransactions.length < transactions.length && (
+                <span className="text-xs bg-white/20 rounded px-1">{sortedAndFilteredTransactions.length}</span>
+              )}
             </button>
             <button
               onClick={() => setShowClearCategoriesModal(true)}
@@ -826,7 +833,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
                 <label className="block text-[10px] font-semibold text-neutral-500 uppercase tracking-wide mb-1">Keyword Search</label>
                 <input
                   type="text"
-                  placeholder="Server-side search..."
+                  placeholder="Search..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   className="w-full text-sm px-3 py-2 border border-neutral-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:border-transparent"
@@ -949,12 +956,13 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
 
       <BulkMerchantModal
         isOpen={showBulkMerchantModal}
-        onClose={() => setShowBulkMerchantModal(false)}
-        transactions={transactions}
+        onClose={() => { setShowBulkMerchantModal(false); setFilteredModalTransactions(null) }}
+        transactions={filteredModalTransactions || transactions}
         sessionId={sessionId || ''}
         clientId={currentClient?.id}
         onApplied={(message, count) => {
           setShowBulkMerchantModal(false)
+          setFilteredModalTransactions(null)
           setSuccessMessage(message)
           setSelectedIds(new Set())
           setTimeout(() => setSuccessMessage(''), 4000)
@@ -1156,17 +1164,19 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
                               return (
                                 <td key={`${txn.id}-${col}`} className="px-4 py-2.5">
                                   {(() => {
-                                    const amt = Math.round(Math.abs(txn.amount) * 100)
-                                    const matchingInvoices = invoicesByAmount[amt] || []
-                                    return matchingInvoices.length > 0 ? (
-                                      <button className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-[11px] font-medium hover:bg-blue-100 transition-colors"
-                                        onClick={(e) => { e.stopPropagation(); setSelectedInvoice(matchingInvoices[0]); setShowInvoiceModal(true) }}>
-                                        <FileText size={12} /> {matchingInvoices.length}
+                                    const inv = txn.invoice_id ? invoicesById[txn.invoice_id] : null
+                                    return inv ? (
+                                      <button
+                                        className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-[11px] font-medium hover:bg-blue-100 transition-colors"
+                                        onClick={(e) => { e.stopPropagation(); setSelectedInvoice(inv); setSelectedInvoiceTxnId(txn.id); setShowInvoiceModal(true) }}
+                                        title="View / download invoice">
+                                        <FileText size={12} /> Invoice
                                       </button>
                                     ) : (
-                                      <button onClick={(e) => { e.stopPropagation(); setTransactionForUpload({ id: txn.id, date: txn.date, description: txn.description, amount: txn.amount, session_id: txn.session_id }); setShowInvoiceUploadModal(true) }}
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); setTransactionForUpload({ id: txn.id, date: txn.date, description: txn.description, amount: txn.amount, session_id: txn.session_id }); setShowInvoiceUploadModal(true) }}
                                         className="inline-flex items-center gap-1 px-2 py-1 text-neutral-400 rounded-md text-[11px] font-medium hover:bg-neutral-100 hover:text-neutral-600 transition-colors opacity-0 group-hover:opacity-100"
-                                        title="Upload invoice">
+                                        title="Attach invoice">
                                         + Invoice
                                       </button>
                                     )
@@ -1304,64 +1314,78 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
         </div>
       )}
 
-      {/* Invoice Detail Modal */}
+      {/* Attached Invoice Panel */}
       {showInvoiceModal && selectedInvoice && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-96 overflow-auto">
-            <div className="sticky top-0 flex items-center justify-between px-6 py-4 border-b bg-white rounded-t-xl">
-              <h2 className="text-base font-semibold text-neutral-900">Invoice Details</h2>
-              <button onClick={() => setShowInvoiceModal(false)} className="p-1 hover:bg-neutral-100 rounded-md transition-colors"><X size={18} /></button>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setShowInvoiceModal(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100">
+              <div className="flex items-center gap-2.5">
+                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50">
+                  <FileText className="w-4 h-4 text-blue-600" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-neutral-900">Attached Invoice</h2>
+                  <p className="text-[11px] text-neutral-400">{selectedInvoice.file_reference?.split('/').pop() || 'invoice.pdf'}</p>
+                </div>
+              </div>
+              <button onClick={() => setShowInvoiceModal(false)} className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors">
+                <X size={16} />
+              </button>
             </div>
-            <div className="px-6 py-5 space-y-4">
-              <div>
-                <label className="block text-[10px] font-semibold text-neutral-500 uppercase tracking-wide mb-1">Supplier</label>
-                <p className="text-sm text-neutral-900">{selectedInvoice.supplier_name}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-semibold text-neutral-500 uppercase tracking-wide mb-1">Invoice Date</label>
-                  <p className="text-sm text-neutral-900">{new Date(selectedInvoice.invoice_date).toLocaleDateString('en-ZA')}</p>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-neutral-500 uppercase tracking-wide mb-1">Invoice Number</label>
-                  <p className="text-sm text-neutral-900">{selectedInvoice.invoice_number || 'N/A'}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-semibold text-neutral-500 uppercase tracking-wide mb-1">Total Amount</label>
-                  <p className="text-sm text-neutral-900 font-semibold">R{selectedInvoice.total_amount.toFixed(2)}</p>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-semibold text-neutral-500 uppercase tracking-wide mb-1">VAT Amount</label>
-                  <p className="text-sm text-neutral-900">R{(selectedInvoice.vat_amount || 0).toFixed(2)}</p>
-                </div>
-              </div>
+
+            {/* Actions */}
+            <div className="px-5 py-4 flex gap-3">
               {selectedInvoice.file_reference && (
-                <div>
-                  <button type="button"
-                    onClick={async () => {
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const txnSessionId = transactions.find(t => t.id === selectedInvoiceTxnId)?.session_id || sessionId
+                      const response = await axios.get(`${API_BASE_URL}/invoice/download`, { params: { invoice_id: selectedInvoice.id, ...(txnSessionId ? { session_id: txnSessionId } : {}) }, responseType: 'blob' })
                       try {
-                        const response = await axios.get(`${API_BASE_URL}/invoice/download`, { params: { session_id: sessionId, invoice_id: selectedInvoice.id }, responseType: 'blob' })
-                        // S3 backend returns JSON { download_url } instead of a binary blob
-                        try {
-                          const text = await (response.data as Blob).text()
-                          const json = JSON.parse(text)
-                          if (json.download_url) { window.open(json.download_url, '_blank'); return }
-                        } catch {}
-                        // Local storage: response is the actual PDF binary
-                        const url = window.URL.createObjectURL(response.data as Blob)
-                        const link = document.createElement('a')
-                        link.href = url; link.download = `invoice_${selectedInvoice.id}.pdf`
-                        document.body.appendChild(link); link.click(); link.remove()
-                        window.URL.revokeObjectURL(url)
-                      } catch (error) { console.error('Failed to download invoice:', error) }
-                    }}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-neutral-900 text-white text-sm font-medium rounded-lg hover:bg-neutral-800 transition-colors">
-                    <FileText size={15} /> Download PDF
-                  </button>
-                </div>
+                        const text = await (response.data as Blob).text()
+                        const json = JSON.parse(text)
+                        if (json.download_url) { window.open(json.download_url, '_blank'); return }
+                      } catch {}
+                      const url = window.URL.createObjectURL(response.data as Blob)
+                      const link = document.createElement('a')
+                      link.href = url; link.download = selectedInvoice.file_reference.split('/').pop() || `invoice_${selectedInvoice.id}.pdf`
+                      document.body.appendChild(link); link.click(); link.remove()
+                      window.URL.revokeObjectURL(url)
+                    } catch { /* ignore */ }
+                  }}
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-neutral-900 text-white text-sm font-medium rounded-lg hover:bg-neutral-800 transition-colors">
+                  <FileText size={14} /> Download
+                </button>
               )}
+              <button
+                type="button"
+                disabled={deletingInvoice}
+                onClick={async () => {
+                  if (!selectedInvoice) return
+                  setDeletingInvoice(true)
+                  try {
+                    const txnSessionId = transactions.find(t => t.id === selectedInvoiceTxnId)?.session_id || sessionId
+                    await axios.delete(`${API_BASE_URL}/invoice/${selectedInvoice.id}`, { params: txnSessionId ? { session_id: txnSessionId } : {} })
+                    // Remove from local state
+                    setInvoicesById(prev => { const next = { ...prev }; delete next[selectedInvoice.id]; return next })
+                    // Clear invoice_id from the transaction
+                    if (selectedInvoiceTxnId) {
+                      setTransactions(prev => prev.map(t => t.id === selectedInvoiceTxnId ? { ...t, invoice_id: null } : t))
+                    }
+                    setShowInvoiceModal(false)
+                    setSelectedInvoice(null)
+                    setSelectedInvoiceTxnId(null)
+                  } catch {
+                    /* ignore */
+                  } finally {
+                    setDeletingInvoice(false)
+                  }
+                }}
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50">
+                <Trash2 size={14} /> {deletingInvoice ? 'Deleting…' : 'Delete'}
+              </button>
             </div>
           </div>
         </div>
@@ -1378,9 +1402,10 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
           setTransactionForUpload(null)
           setTimeout(() => setSuccessMessage(''), 3000)
           if (invoice && transactionForUpload) {
-            setInvoices(prev => [...prev, invoice])
-            const amt = Math.round(Math.abs(transactionForUpload.amount) * 100)
-            setInvoicesByAmount(prev => ({ ...prev, [amt]: [...(prev[amt] || []), invoice] }))
+            // Register invoice in the id map
+            setInvoicesById(prev => ({ ...prev, [invoice.id]: invoice }))
+            // Link the invoice to the transaction in local state
+            setTransactions(prev => prev.map(t => t.id === transactionForUpload.id ? { ...t, invoice_id: invoice.id } : t))
           }
         }}
       />

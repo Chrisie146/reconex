@@ -1,8 +1,9 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react'
 import { apiFetch } from './apiFetch'
 import { isAuthenticated } from './auth'
+import ClientSwitchingOverlay from '@/components/ClientSwitchingOverlay'
 
 export interface Client {
   id: number
@@ -14,6 +15,7 @@ interface ClientContextType {
   clients: Client[]
   currentClient: Client | null
   isLoading: boolean
+  isSwitchingClient: boolean
   error: string | null
   setCurrentClient: (client: Client | null) => void
   refreshClients: () => Promise<void>
@@ -26,10 +28,32 @@ const ClientContext = createContext<ClientContextType | undefined>(undefined)
 
 export function ClientProvider({ children }: { children: ReactNode }) {
   const [clients, setClients] = useState<Client[]>([])
-  const [currentClient, setCurrentClient] = useState<Client | null>(null)
+  const [currentClient, setCurrentClientRaw] = useState<Client | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isSwitchingClient, setIsSwitchingClient] = useState(false)
+  const [switchingToName, setSwitchingToName] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const switchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isInitialLoad = useRef(true)
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+
+  // Wrapped setter — shows overlay when switching between two real clients
+  const setCurrentClient = (client: Client | null) => {
+    if (
+      !isInitialLoad.current &&
+      client !== null &&
+      currentClient !== null &&
+      client.id !== currentClient.id
+    ) {
+      setSwitchingToName(client.name)
+      setIsSwitchingClient(true)
+      if (switchTimerRef.current) clearTimeout(switchTimerRef.current)
+      switchTimerRef.current = setTimeout(() => {
+        setIsSwitchingClient(false)
+      }, 2800)
+    }
+    setCurrentClientRaw(client)
+  }
 
   // Load clients on mount only if authenticated
   useEffect(() => {
@@ -74,16 +98,18 @@ export function ClientProvider({ children }: { children: ReactNode }) {
 
       // If saved client exists in fetched list, restore it
       if (savedClient && fetchedClients.find((c: Client) => c.id === savedClient!.id)) {
-        setCurrentClient(savedClient)
+        setCurrentClientRaw(savedClient)
+        isInitialLoad.current = false
         return
       }
 
       // If no saved client but we have clients, select the first one
       if (fetchedClients.length > 0) {
-        setCurrentClient(fetchedClients[0])
+        setCurrentClientRaw(fetchedClients[0])
       } else {
-        setCurrentClient(null)
+        setCurrentClientRaw(null)
       }
+      isInitialLoad.current = false
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch clients'
       console.error('[ClientContext] Error:', message)
@@ -164,6 +190,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
         clients,
         currentClient,
         isLoading,
+        isSwitchingClient,
         error,
         setCurrentClient,
         refreshClients,
@@ -172,6 +199,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
         deleteClient
       }}
     >
+      {isSwitchingClient && <ClientSwitchingOverlay clientName={switchingToName} />}
       {children}
     </ClientContext.Provider>
   )

@@ -24,6 +24,7 @@ from routers.dependencies import (
 )
 from services.cache import get_cache, cached
 from services.categoriser import extract_merchant
+from services import posthog_tracker
 
 router = APIRouter(tags=["Transactions"])
 
@@ -699,6 +700,18 @@ def bulk_categorize(
                 ).distinct().all()
                 for (sid,) in client_sessions:
                     cache.invalidate_session(sid)
+
+        if updated_count > 0:
+            posthog_tracker.capture(
+                str(current_user.id),
+                "transactions_categorised",
+                {
+                    "count": updated_count,
+                    "category": request.category,
+                    "method": "bulk",
+                    "scope": "session" if session_id else "client",
+                },
+            )
 
         return {
             "updated_count": updated_count,

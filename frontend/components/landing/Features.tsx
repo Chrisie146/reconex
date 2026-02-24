@@ -1,120 +1,130 @@
-import {
-  BarChart3, Zap, TrendingUp, Building2, FileSpreadsheet,
-  ShieldCheck, PenLine, Target, Smartphone
-} from 'lucide-react'
+'use client'
+
+import { useEffect, useRef, useState } from 'react'
 
 const features = [
   {
-    icon: BarChart3,
-    title: 'Automatic Categorization',
-    description:
-      'AI-powered rules automatically categorize your transactions based on descriptions. Customize categories to match your business needs.',
-  },
-  {
-    icon: Zap,
-    title: 'Lightning Fast Processing',
-    description:
-      'Process thousands of transactions in seconds. Upload CSV or PDF statements and get instant results with smart OCR extraction.',
-  },
-  {
-    icon: TrendingUp,
-    title: 'Monthly Analytics',
-    description:
-      'Comprehensive monthly summaries showing income, expenses and net balance. Visual breakdowns by category reveal spending patterns.',
-  },
-  {
-    icon: Building2,
     title: 'Multi-Bank Support',
     description:
-      'Works with FNB, Standard Bank, ABSA, Capitec, Nedbank and more. Automatically detects bank format and extracts data accurately.',
+      'Auto-detects and parses statements from FNB, Standard Bank, ABSA, Capitec, Nedbank and Investec. Manual column mapping available for any other bank.',
   },
   {
-    icon: FileSpreadsheet,
-    title: 'Excel Export',
+    title: 'CSV & PDF Upload',
     description:
-      'Export accountant-ready Excel reports with all transactions categorized. Perfect for tax season and financial reporting.',
+      'Upload CSV exports or PDF statements. OCR-powered extraction handles scanned PDFs with support for Afrikaans and English formats.',
   },
   {
-    icon: ShieldCheck,
-    title: 'Secure & Private',
+    title: 'Auto-Categorization',
     description:
-      'Your financial data never leaves your session. Bank-level encryption with no permanent storage. Complete privacy guaranteed.',
+      'Rule-based engine with a built-in South African merchant database. 15 default categories, custom categories, and learned patterns that improve over time.',
   },
   {
-    icon: PenLine,
+    title: 'VAT Calculation',
+    description:
+      'Automatic 15% SA VAT computation per transaction. Configure VAT per category. Export VAT Input and Output reports with date range filtering.',
+  },
+  {
+    title: 'Excel & PDF Export',
+    description:
+      'Export categorized transactions, monthly summaries, per-category breakdowns and accountant reports. Available in Excel, PDF and CSV.',
+  },
+  {
+    title: 'Invoice Matching',
+    description:
+      'Upload invoices and auto-match them to bank transactions using supplier name similarity, amount matching and date proximity scoring.',
+  },
+  {
+    title: 'Multi-Client Management',
+    description:
+      'Manage multiple clients from a single account. Each client has isolated transactions, rules, categories, invoices and financial years.',
+  },
+  {
     title: 'Inline Editing',
     description:
-      'Edit transactions, categories and rules directly in the interface. Bulk update similar transactions with one click.',
+      'Edit transactions, categories and merchants directly in the table. Bulk-categorize by keyword or selection. Undo bulk actions instantly.',
   },
   {
-    icon: Target,
-    title: 'Smart Rules Engine',
+    title: 'Analytics Dashboard',
     description:
-      'Create custom rules to automatically categorize future transactions. Learn from your patterns and improve accuracy over time.',
+      'Cash flow charts, income vs expense trends, category breakdowns, merchant analytics and recurring transaction detection  all in one view.',
   },
   {
-    icon: Smartphone,
-    title: 'Responsive Design',
+    title: 'Financial Years',
     description:
-      'Works seamlessly on desktop, tablet, and mobile. Manage your statements anywhere, anytime with a professional interface.',
+      'Define financial year periods per client. Archive completed years and access historical data in read-only mode at any time.',
+  },
+  {
+    title: 'Reconciliation',
+    description:
+      'Set opening and closing balances. Running balance validation with deterministic arithmetic verification and 1-cent tolerance.',
+  },
+  {
+    title: 'Custom Rules Engine',
+    description:
+      'Create keyword-based categorization rules with priority ordering. Clone rules across clients. Auto-apply on every upload.',
   },
 ]
 
-const stats = [
-  { value: '10K+', label: 'Statements Processed' },
-  { value: '500+', label: 'Happy Businesses' },
-  { value: '95%', label: 'Accuracy Rate' },
-  { value: '60s', label: 'Average Setup Time' },
-]
+function FeatureCard({ feature, index }: { feature: typeof features[0]; index: number }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true)
+          observer.disconnect()
+        }
+      },
+      { threshold: 0.15 }
+    )
+    if (ref.current) observer.observe(ref.current)
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <div
+      ref={ref}
+      className={`group relative rounded-xl border border-neutral-200 bg-white p-6 transition-all duration-500 hover:border-neutral-300 hover:shadow-sm ${
+        visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
+      }`}
+      style={{ transitionDelay: `${index * 60}ms` }}
+    >
+      <div className="w-8 h-8 rounded-lg bg-neutral-100 flex items-center justify-center mb-4 text-[13px] font-bold text-neutral-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+        {String(index + 1).padStart(2, '0')}
+      </div>
+      <h3 className="text-[15px] font-semibold text-neutral-900 mb-2">
+        {feature.title}
+      </h3>
+      <p className="text-sm text-neutral-500 leading-relaxed">
+        {feature.description}
+      </p>
+    </div>
+  )
+}
 
 export default function Features() {
   return (
     <section id="features" className="py-24 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section header */}
-        <div className="text-center mb-14">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-blue-600 mb-3">
-            Capabilities
+        <div className="text-center mb-16">
+          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-3">
+            What it does
           </p>
           <h2 className="text-3xl sm:text-4xl font-bold text-neutral-900 mb-4">
-            Everything You Need to Analyze Statements
+            Every feature, real and working
           </h2>
-          <p className="text-lg text-neutral-500 max-w-2xl mx-auto">
-            Professional tools designed for bookkeepers, accountants and business owners
-            who need accurate financial insights fast.
+          <p className="text-base text-neutral-500 max-w-xl mx-auto">
+            No vaporware. Every capability listed here is built, tested, and ready to use today.
           </p>
         </div>
 
         {/* Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {features.map((f) => {
-            const Icon = f.icon
-            return (
-              <div
-                key={f.title}
-                className="group rounded-xl border border-neutral-200 bg-white p-6 hover:shadow-md hover:border-blue-200 transition-all duration-200"
-              >
-                <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center mb-4 group-hover:bg-blue-100 transition-colors">
-                  <Icon className="w-5 h-5 text-blue-600" />
-                </div>
-                <h3 className="text-base font-semibold text-neutral-900 mb-2 group-hover:text-blue-600 transition-colors">
-                  {f.title}
-                </h3>
-                <p className="text-sm text-neutral-500 leading-relaxed">
-                  {f.description}
-                </p>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Stats */}
-        <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-6">
-          {stats.map((s) => (
-            <div key={s.label} className="text-center py-6 rounded-xl bg-neutral-50">
-              <div className="text-3xl font-bold text-blue-600 mb-1">{s.value}</div>
-              <div className="text-sm text-neutral-500">{s.label}</div>
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {features.map((f, i) => (
+            <FeatureCard key={f.title} feature={f} index={i} />
           ))}
         </div>
       </div>

@@ -41,14 +41,14 @@ export default function Page() {
 
   return (
     <>
-      <div className="bg-white">
+      <div className="bg-white dark:bg-neutral-950 min-h-screen">
         <Sidebar 
           sessionId={clientSessionId}
           selectedStatement={selectedStatement}
           onStatementChange={setSelectedStatement}
         />
 
-        <div className="ml-64 transition-all duration-300">
+        <div className="transition-all duration-300" style={{ marginLeft: 'var(--sidebar-w, 256px)' }}>
           <div className="container mx-auto p-4">
             {selectedStatement && (
               <StatementInfoBanner selectedStatement={selectedStatement} sessionId={clientSessionId} />

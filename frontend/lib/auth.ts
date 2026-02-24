@@ -54,5 +54,6 @@ export function logout(): void {
   // Clear any other auth-related data
   if (typeof window !== 'undefined') {
     localStorage.removeItem('selected_client')
+    window.dispatchEvent(new Event('auth:logout'))
   }
 }

@@ -137,7 +137,7 @@ export default function OCRPage(){
     <>
       <Sidebar sessionId={null} />
       
-      <div className="ml-64 transition-all duration-300">
+      <div className="transition-all duration-300" style={{ marginLeft: 'var(--sidebar-w, 256px)' }}>
         <div className="p-6">
           <h2 className="text-2xl font-semibold mb-4">Guided OCR Wizard</h2>
 

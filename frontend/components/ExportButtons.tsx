@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Download, FileText, BarChart3, FolderOpen, Briefcase, Loader2, Info, FileDown, FileSpreadsheet } from 'lucide-react'
 import axios from '@/lib/axiosClient'
 import { toast } from 'sonner'
+import { posthog } from '@/lib/posthog'
 import type { Client } from '@/lib/clientContext'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -73,6 +74,7 @@ export default function ExportButtons({ sessionId, currentClient }: ExportButton
       const blobUrl = window.URL.createObjectURL(res.data)
       const a = document.createElement('a'); a.href = blobUrl; a.download = fn
       document.body.appendChild(a); a.click(); document.body.removeChild(a); window.URL.revokeObjectURL(blobUrl)
+      posthog.capture('export_triggered', { type: key, format })
       toast.success(`${FORMAT_META[format].label} exported successfully`)
     } catch { toast.error('Export failed. Please try again.') }
     finally { setActiveKey(null) }

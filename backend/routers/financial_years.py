@@ -699,6 +699,8 @@ def get_archived_summary(
     grouped by category — used for report exports.
     """
     fy = _get_fy_or_404(fy_id, current_user, db)
+    client = db.query(Client).filter(Client.id == fy.client_id).first()
+    client_name = client.name if client else None
 
     rows = (
         db.query(
@@ -716,6 +718,7 @@ def get_archived_summary(
 
     return {
         "financial_year": _serialize_fy(fy),
+        "client_name": client_name,
         "total_income": total_income,
         "total_expenses": total_expenses,
         "net": total_income + total_expenses,

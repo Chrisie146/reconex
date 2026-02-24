@@ -53,8 +53,15 @@ async def column_mapping_preview(
         if not file_content:
             raise HTTPException(status_code=400, detail="Empty file")
 
-        # Decode and read CSV
-        text = file_content.decode("utf-8", errors="replace")
+        # Decode with UTF-8 first, fall back to CP1252 for SA bank files
+        for encoding in ("utf-8", "cp1252", "latin-1"):
+            try:
+                text = file_content.decode(encoding)
+                break
+            except (UnicodeDecodeError, LookupError):
+                continue
+        else:
+            text = file_content.decode("utf-8", errors="replace")
         reader = csv.reader(io.StringIO(text))
         all_rows = list(reader)
 
@@ -123,6 +130,8 @@ async def column_mapping_upload(
     # Validate mapping has required fields
     if "date" not in mapping:
         raise HTTPException(status_code=400, detail="column_mapping must include 'date'")
+    if "description" not in mapping:
+        raise HTTPException(status_code=400, detail="column_mapping must include 'description'")
     if "amount" not in mapping and ("debit" not in mapping and "credit" not in mapping):
         raise HTTPException(
             status_code=400,
@@ -163,6 +172,7 @@ async def column_mapping_upload(
 
         # Convert to transaction list
         transactions = []
+        skipped_count = 0
         for _, row in df_normalized.iterrows():
             date_str = row.get("Date", "")
             description = row.get("Description", "")
@@ -170,6 +180,7 @@ async def column_mapping_upload(
 
             date_obj = parse_date(date_str)
             if not date_obj:
+                skipped_count += 1
                 continue
 
             if isinstance(amount, float) and (math.isnan(amount) or math.isinf(amount)):
@@ -224,6 +235,7 @@ async def column_mapping_upload(
         return sanitize_response_data({
             "session_id": session_id,
             "transaction_count": len(transactions),
+            "skipped_count": skipped_count,
             "categories": sorted(list(categories_found)),
             "bank_source": bank_source,
         })

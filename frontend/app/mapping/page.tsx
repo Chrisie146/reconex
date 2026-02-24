@@ -13,7 +13,7 @@ export default function Page() {
     <div className="bg-white">
       <Sidebar sessionId={sessionId} />
       
-      <div className="ml-64 transition-all duration-300">
+      <div className="transition-all duration-300" style={{ marginLeft: 'var(--sidebar-w, 256px)' }}>
         <div className="container mx-auto p-4">
           <MappingPage />
         </div>

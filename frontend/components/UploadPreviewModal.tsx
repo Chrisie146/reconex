@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import axios from '@/lib/axiosClient'
 import { toast } from 'sonner'
 import { useClient } from '@/lib/clientContext'
+import { posthog } from '@/lib/posthog'
 import { X, Check, Loader2, FileText, AlertCircle, Plus, Trash2, ArrowUpRight, ArrowDownRight, Scale, ChevronDown, ChevronUp } from 'lucide-react'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -124,6 +125,10 @@ export default function UploadPreviewModal({ isOpen, onClose, parsed, isPdf = fa
 
       const query = params ? `?${params}` : ''
       const res = await axios.post(`${API_BASE_URL}/save_parsed${query}`, { transactions: toSave })
+      posthog.capture('file_uploaded', {
+        file_type: isPdf ? 'pdf' : 'csv',
+        transaction_count: res.data.transaction_count,
+      })
       onSaved?.(res.data.session_id, res.data.transaction_count, res.data.categories || [])
       onClose()
     } catch (e: any) {

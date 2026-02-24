@@ -74,8 +74,8 @@ def score_match(invoice: Dict[str, Any], txn: Dict[str, Any]) -> Dict[str, Any]:
     Apply deterministic matching rules and return score and explanation.
 
     Rules (ordered):
-      - Exact Amount Match: abs diff <= 1.00 => +50
-      - Date Proximity: invoice_date within ±7 days => +25
+      - Exact Amount Match: abs diff <= 1.00 (gross or ex-VAT) => +50
+      - Date Proximity: ±7 days => +25, ±30 days (payment terms) => +10
       - Supplier Name Match: fuzzy match (ratio >= 0.7) => +25
 
     Returns dict: { score:int, classification:str, matched: {amount:bool,date:bool,supplier:bool}, explanation:str }
@@ -84,9 +84,10 @@ def score_match(invoice: Dict[str, Any], txn: Dict[str, Any]) -> Dict[str, Any]:
     matched = {"amount": False, "date": False, "supplier": False}
     reasons: List[str] = []
 
-    # Amount
+    # Amount — try gross total first, then ex-VAT (total - vat)
     try:
         inv_amt = float(invoice.get("total_amount") or 0.0)
+        vat_amt = invoice.get("vat_amount")
         txn_amt = float(txn.get("amount") or 0.0)
         # Bank transactions are typically negative (debits), so compare absolute values
         txn_amt_abs = abs(txn_amt)
@@ -94,13 +95,23 @@ def score_match(invoice: Dict[str, Any], txn: Dict[str, Any]) -> Dict[str, Any]:
         if amt_diff <= 1.0:
             score += 50
             matched["amount"] = True
-            reasons.append(f"Amount within £1 (diff £{amt_diff:.2f})")
+            reasons.append(f"Amount match (diff R{amt_diff:.2f})")
+        elif vat_amt is not None:
+            # Try ex-VAT amount — some payments exclude VAT
+            ex_vat = inv_amt - float(vat_amt)
+            ex_diff = abs(ex_vat - txn_amt_abs)
+            if ex_diff <= 1.0:
+                score += 45
+                matched["amount"] = True
+                reasons.append(f"Ex-VAT amount match (diff R{ex_diff:.2f})")
+            else:
+                reasons.append(f"Amount diff R{amt_diff:.2f} (ex-VAT diff R{ex_diff:.2f})")
         else:
-            reasons.append(f"Amount diff £{amt_diff:.2f}")
+            reasons.append(f"Amount diff R{amt_diff:.2f}")
     except Exception:
         reasons.append("Amount comparison failed")
 
-    # Date proximity
+    # Date proximity — ±7 days (full credit), ±30 days (payment terms, partial credit)
     try:
         inv_date = invoice.get("invoice_date")
         txn_date = txn.get("date")
@@ -114,6 +125,10 @@ def score_match(invoice: Dict[str, Any], txn: Dict[str, Any]) -> Dict[str, Any]:
                 score += 25
                 matched["date"] = True
                 reasons.append(f"Date within {delta} day(s)")
+            elif delta <= 30:
+                score += 10
+                matched["date"] = True
+                reasons.append(f"Date within {delta} day(s) (payment terms)")
             else:
                 reasons.append(f"Date delta {delta} day(s)")
     except Exception:
@@ -154,48 +169,73 @@ def score_match(invoice: Dict[str, Any], txn: Dict[str, Any]) -> Dict[str, Any]:
 def find_best_matches(invoices: List[Dict[str, Any]], txns: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     For each invoice, evaluate all transactions and return best match info.
-    Returns list of { invoice_id, invoice, best_match_txn_id, txn, score, classification, explanation }
+    Transactions are assigned exclusively — the same transaction cannot be the
+    best match for two different invoices (greedy highest-score-first assignment).
+    Returns list of { invoice_id, invoice, transaction_id, transaction, score, classification, explanation }
     """
-    results = []
-    for inv in invoices:
-        best = None
-        best_meta = None
-        for t in txns:
-            meta = score_match(inv, t)
-            key = (meta['score'], -meta.get('amount_diff', 99999), )
-            if best is None:
-                best = (t, meta)
-                best_meta = meta
-            else:
-                # choose larger score; tiebreaker: smaller amount diff, then smaller date delta (embedded in explanation)
-                if meta['score'] > best_meta['score']:
-                    best = (t, meta)
-                    best_meta = meta
-                elif meta['score'] == best_meta['score']:
-                    if meta.get('amount_diff', 99999) < best_meta.get('amount_diff', 99999):
-                        best = (t, meta)
-                        best_meta = meta
-
-        if best:
-            results.append({
-                "invoice_id": inv.get("id"),
-                "invoice": inv,
-                "transaction_id": best[0].get("id"),
-                "transaction": best[0],
-                "score": best[1]["score"],
-                "classification": best[1]["classification"],
-                "explanation": best[1]["explanation"],
-                "matched": best[1]["matched"]
-            })
-        else:
-            results.append({
+    if not txns:
+        return [
+            {
                 "invoice_id": inv.get("id"),
                 "invoice": inv,
                 "transaction_id": None,
                 "transaction": None,
                 "score": 0,
                 "classification": "Low",
-                "explanation": "No candidate transactions"
+                "explanation": "No candidate transactions",
+                "matched": {"amount": False, "date": False, "supplier": False},
+            }
+            for inv in invoices
+        ]
+
+    # Build all (invoice, txn, meta) combos and sort best-first
+    candidates = []
+    for inv in invoices:
+        for t in txns:
+            meta = score_match(inv, t)
+            candidates.append((inv, t, meta))
+
+    # Greedy assignment: pick highest-scoring pairs, mark both sides as used
+    candidates.sort(key=lambda x: (-x[2]["score"], x[2].get("amount_diff", 99999)))
+
+    assigned_inv_ids: set = set()
+    assigned_txn_ids: set = set()
+    assignment: Dict[Any, tuple] = {}  # invoice_id -> (txn, meta)
+
+    for inv, txn, meta in candidates:
+        inv_id = inv.get("id")
+        txn_id = txn.get("id")
+        if inv_id in assigned_inv_ids or txn_id in assigned_txn_ids:
+            continue
+        assignment[inv_id] = (txn, meta)
+        assigned_inv_ids.add(inv_id)
+        assigned_txn_ids.add(txn_id)
+
+    results = []
+    for inv in invoices:
+        inv_id = inv.get("id")
+        if inv_id in assignment:
+            txn, meta = assignment[inv_id]
+            results.append({
+                "invoice_id": inv_id,
+                "invoice": inv,
+                "transaction_id": txn.get("id"),
+                "transaction": txn,
+                "score": meta["score"],
+                "classification": meta["classification"],
+                "explanation": meta["explanation"],
+                "matched": meta["matched"],
+            })
+        else:
+            results.append({
+                "invoice_id": inv_id,
+                "invoice": inv,
+                "transaction_id": None,
+                "transaction": None,
+                "score": 0,
+                "classification": "Low",
+                "explanation": "No unique transaction available",
+                "matched": {"amount": False, "date": False, "supplier": False},
             })
 
     return results

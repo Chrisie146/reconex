@@ -6,15 +6,18 @@ import { usePathname } from 'next/navigation'
 import {
   ChevronLeft, ChevronRight, BarChart3, Upload, MapPin, List,
   Archive, Eye, Tag, Zap, Sparkles, FileText, FileSpreadsheet,
-  FolderOpen, ChevronDown, Receipt, Users, Download, Landmark,
-  Settings2, PanelLeftClose, PanelLeft, Loader2, CalendarRange, HardDrive
+  FolderOpen, ChevronDown, Receipt, Users, Download,
+  Settings2, PanelLeftClose, PanelLeft, Loader2, CalendarRange, HardDrive,
+  AlertTriangle
 } from 'lucide-react'
 import axios from '@/lib/axiosClient'
 import { toast } from 'sonner'
+import { posthog } from '@/lib/posthog'
 import ClientSelector from './ClientSelector'
 import StatementSelector from './StatementSelector'
 import VATExportModal from './VATExportModal'
 import CategoriesExportModal from './CategoriesExportModal'
+import UnusualTransactionsModal from './UnusualTransactionsModal'
 import { useClient } from '@/lib/clientContext'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -55,6 +58,11 @@ function SectionHeader({
 export default function Sidebar({ sessionId, selectedStatement = '', onStatementChange }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
+
+  // Sync sidebar width to a CSS variable so content areas can respond
+  useEffect(() => {
+    document.documentElement.style.setProperty('--sidebar-w', isCollapsed ? '60px' : '256px')
+  }, [isCollapsed])
   const [exporting, setExporting] = useState(false)
   const { currentClient } = useClient()
 
@@ -66,6 +74,7 @@ export default function Sidebar({ sessionId, selectedStatement = '', onStatement
   // modals
   const [showVATModal, setShowVATModal] = useState(false)
   const [showCategoriesModal, setShowCategoriesModal] = useState(false)
+  const [showUnusualModal, setShowUnusualModal] = useState(false)
 
   const pathname = usePathname()
 
@@ -96,6 +105,7 @@ export default function Sidebar({ sessionId, selectedStatement = '', onStatement
       link.href = url; link.download = filename
       document.body.appendChild(link); link.click()
       document.body.removeChild(link); window.URL.revokeObjectURL(url)
+      posthog.capture('export_triggered', { type, format: 'xlsx' })
     } catch { toast.error('Export failed. Please try again.') }
     finally { setExporting(false) }
   }, [sessionId, currentClient])
@@ -141,10 +151,7 @@ export default function Sidebar({ sessionId, selectedStatement = '', onStatement
       <div className="flex items-center justify-between h-14 px-3 border-b border-slate-800 shrink-0">
         {!isCollapsed && (
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-600">
-              <Landmark className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-sm font-bold tracking-tight truncate">Recon<span className="text-blue-400">ex</span></span>
+            <span className="text-sm font-bold tracking-tight truncate lowercase">recon<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-600">ex</span></span>
           </div>
         )}
         <button onClick={() => setIsCollapsed(!isCollapsed)}
@@ -213,6 +220,16 @@ export default function Sidebar({ sessionId, selectedStatement = '', onStatement
                 collapsed={isCollapsed} loading={exporting}
                 onClick={() => handleExport(item.type)} />
             ))}
+            {(exportsOpen || isCollapsed) && (
+              <ExportButton
+                icon={<AlertTriangle className="w-[18px] h-[18px]" />}
+                label="Unusual Transactions"
+                title="Flag irregular or unusual transactions"
+                collapsed={isCollapsed}
+                loading={false}
+                onClick={() => setShowUnusualModal(true)}
+              />
+            )}
 
             {/* ── Configuration ────────────────────────────────────── */}
             <SectionHeader label="Configuration" open={configOpen} toggle={() => setConfigOpen(!configOpen)} collapsed={isCollapsed} />
@@ -252,6 +269,7 @@ export default function Sidebar({ sessionId, selectedStatement = '', onStatement
       {/* ── Modals ──────────────────────────────────────────────── */}
       <VATExportModal isOpen={showVATModal} onClose={() => setShowVATModal(false)} sessionId={sessionId} clientId={currentClient?.id} />
       <CategoriesExportModal isOpen={showCategoriesModal} onClose={() => setShowCategoriesModal(false)} sessionId={sessionId} clientId={currentClient?.id} />
+      <UnusualTransactionsModal isOpen={showUnusualModal} onClose={() => setShowUnusualModal(false)} sessionId={sessionId} clientId={currentClient?.id} />
     </div>
   )
 }

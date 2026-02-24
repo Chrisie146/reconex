@@ -1,137 +1,163 @@
-import { Lightbulb, BarChart3, Zap } from 'lucide-react'
+'use client'
+
+import { useEffect, useRef, useState } from 'react'
+
+const transactions = [
+  { date: '2026-01-15', desc: 'WOOLWORTHS FOOD', amount: -892.50, category: 'Groceries' },
+  { date: '2026-01-15', desc: 'SALARY DEPOSIT', amount: 35000.00, category: 'Salary' },
+  { date: '2026-01-14', desc: 'ENGEN GARAGE', amount: -650.00, category: 'Fuel' },
+  { date: '2026-01-14', desc: 'CITY OF CPT ELECTRICITY', amount: -1245.80, category: 'Utilities' },
+  { date: '2026-01-13', desc: 'VODACOM AIRTIME', amount: -199.00, category: 'Utilities' },
+]
+
+const categories = [
+  { name: 'Groceries', amount: 8640, pct: 72 },
+  { name: 'Fuel', amount: 3200, pct: 27 },
+  { name: 'Utilities', amount: 4890, pct: 41 },
+  { name: 'Insurance', amount: 2100, pct: 18 },
+  { name: 'Bank Fees', amount: 450, pct: 4 },
+]
 
 export default function Screenshots() {
+  const ref = useRef<HTMLDivElement>(null)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true)
+          observer.disconnect()
+        }
+      },
+      { threshold: 0.1 }
+    )
+    if (ref.current) observer.observe(ref.current)
+    return () => observer.disconnect()
+  }, [])
+
   return (
     <section className="py-24 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section header */}
         <div className="text-center mb-14">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-blue-600 mb-3">
+          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-3">
             Preview
           </p>
           <h2 className="text-3xl sm:text-4xl font-bold text-neutral-900 mb-4">
-            Powerful Analytics, Beautiful Interface
+            What you will actually see
           </h2>
-          <p className="text-lg text-neutral-500 max-w-2xl mx-auto">
-            A professional dashboard designed for clarity and efficiency
+          <p className="text-base text-neutral-500 max-w-xl mx-auto">
+            A clean dashboard built for speed and clarity. No clutter.
           </p>
         </div>
 
         {/* Browser frame */}
-        <div className="mb-12 rounded-2xl overflow-hidden shadow-xl ring-1 ring-neutral-200">
+        <div
+          ref={ref}
+          className={`rounded-2xl overflow-hidden ring-1 ring-neutral-200 shadow-2xl shadow-neutral-200/50 transition-all duration-1000 ${
+            visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+          }`}
+        >
           {/* Title bar */}
-          <div className="bg-neutral-900 px-4 py-3 flex items-center gap-2">
+          <div className="bg-neutral-900 px-4 py-3 flex items-center">
             <div className="flex gap-1.5">
-              <div className="w-3 h-3 rounded-full bg-red-500" />
-              <div className="w-3 h-3 rounded-full bg-yellow-500" />
-              <div className="w-3 h-3 rounded-full bg-green-500" />
+              <div className="w-2.5 h-2.5 rounded-full bg-neutral-700" />
+              <div className="w-2.5 h-2.5 rounded-full bg-neutral-700" />
+              <div className="w-2.5 h-2.5 rounded-full bg-neutral-700" />
             </div>
-            <div className="ml-auto text-neutral-500 text-xs font-mono">Reconex</div>
+            <div className="mx-auto text-neutral-500 text-xs font-mono">app.reconex.co.za/dashboard</div>
           </div>
 
-          {/* Mock dashboard */}
-          <div className="bg-neutral-50 p-6 sm:p-8">
-            {/* Summary cards */}
-            <div className="bg-white rounded-xl ring-1 ring-neutral-200 p-5 mb-5">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-neutral-400 mb-4">
-                Monthly Summary
-              </p>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="rounded-lg bg-emerald-50 ring-1 ring-emerald-200 p-4">
-                  <div className="text-xs text-emerald-700 mb-1">Total Income</div>
-                  <div className="text-xl font-bold text-emerald-600">R 45,230</div>
+          {/* Dashboard content */}
+          <div className="bg-neutral-50 p-5 sm:p-8">
+            {/* Summary row */}
+            <div className="grid grid-cols-3 gap-4 mb-5">
+              {[
+                { label: 'Total Income', value: 'R 45,230.00', color: 'text-emerald-600', bg: 'bg-emerald-50 ring-emerald-100' },
+                { label: 'Total Expenses', value: 'R 32,150.30', color: 'text-red-600', bg: 'bg-red-50 ring-red-100' },
+                { label: 'Net Balance', value: 'R 13,079.70', color: 'text-blue-600', bg: 'bg-blue-50 ring-blue-100' },
+              ].map((card) => (
+                <div key={card.label} className={`rounded-xl ring-1 p-4 ${card.bg}`}>
+                  <div className="text-[11px] text-neutral-500 uppercase tracking-wider mb-1">{card.label}</div>
+                  <div className={`text-lg sm:text-xl font-bold ${card.color}`}>{card.value}</div>
                 </div>
-                <div className="rounded-lg bg-red-50 ring-1 ring-red-200 p-4">
-                  <div className="text-xs text-red-700 mb-1">Total Expenses</div>
-                  <div className="text-xl font-bold text-red-600">R 32,150</div>
-                </div>
-                <div className="rounded-lg bg-blue-50 ring-1 ring-blue-200 p-4">
-                  <div className="text-xs text-blue-700 mb-1">Net Balance</div>
-                  <div className="text-xl font-bold text-blue-600">R 13,080</div>
-                </div>
-              </div>
+              ))}
             </div>
 
-            {/* Category breakdown */}
-            <div className="bg-white rounded-xl ring-1 ring-neutral-200 p-5">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-neutral-400 mb-4">
-                Category Breakdown
-              </p>
-              <div className="space-y-3">
-                {[
-                  { category: 'Groceries', amount: 8500, color: 'bg-blue-500' },
-                  { category: 'Rent', amount: 12000, color: 'bg-violet-500' },
-                  { category: 'Utilities', amount: 3200, color: 'bg-amber-500' },
-                  { category: 'Transportation', amount: 4500, color: 'bg-emerald-500' },
-                ].map((item) => (
-                  <div key={item.category} className="flex items-center gap-3">
-                    <span className="text-sm text-neutral-600 min-w-[110px]">{item.category}</span>
-                    <div className="flex-1 bg-neutral-100 rounded-full h-5 overflow-hidden">
-                      <div
-                        className={`${item.color} h-full rounded-full flex items-center justify-end pr-2`}
-                        style={{ width: `${(item.amount / 12000) * 100}%` }}
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+              {/* Transactions table */}
+              <div className="lg:col-span-3 bg-white rounded-xl ring-1 ring-neutral-200 overflow-hidden">
+                <div className="px-5 py-3 border-b border-neutral-100">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-neutral-400">Recent Transactions</span>
+                </div>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-[11px] uppercase tracking-wider text-neutral-400 border-b border-neutral-100">
+                      <th className="px-5 py-2.5 font-medium">Date</th>
+                      <th className="px-5 py-2.5 font-medium">Description</th>
+                      <th className="px-5 py-2.5 font-medium text-right">Amount</th>
+                      <th className="px-5 py-2.5 font-medium">Category</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {transactions.map((tx, i) => (
+                      <tr
+                        key={i}
+                        className={`border-b border-neutral-50 transition-all duration-500 ${
+                          visible ? 'opacity-100' : 'opacity-0'
+                        }`}
+                        style={{ transitionDelay: `${600 + i * 100}ms` }}
                       >
-                        <span className="text-[10px] text-white font-semibold">
-                          R {item.amount.toLocaleString()}
-                        </span>
+                        <td className="px-5 py-2.5 text-neutral-400 font-mono text-xs">{tx.date}</td>
+                        <td className="px-5 py-2.5 text-neutral-700 font-medium">{tx.desc}</td>
+                        <td className={`px-5 py-2.5 text-right font-mono text-xs font-semibold ${tx.amount >= 0 ? 'text-emerald-600' : 'text-neutral-700'}`}>
+                          R {Math.abs(tx.amount).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="px-5 py-2.5">
+                          <span className="inline-block px-2 py-0.5 rounded text-[11px] font-medium bg-neutral-100 text-neutral-600">
+                            {tx.category}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Category breakdown */}
+              <div className="lg:col-span-2 bg-white rounded-xl ring-1 ring-neutral-200 p-5">
+                <div className="mb-4">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-neutral-400">Expense Categories</span>
+                </div>
+                <div className="space-y-3">
+                  {categories.map((cat, i) => (
+                    <div
+                      key={cat.name}
+                      className={`transition-all duration-700 ${
+                        visible ? 'opacity-100' : 'opacity-0'
+                      }`}
+                      style={{ transitionDelay: `${800 + i * 80}ms` }}
+                    >
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-neutral-600 font-medium">{cat.name}</span>
+                        <span className="text-neutral-400 font-mono">R {cat.amount.toLocaleString()}</span>
+                      </div>
+                      <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-blue-500 rounded-full transition-all duration-1000 ease-out"
+                          style={{
+                            width: visible ? `${cat.pct}%` : '0%',
+                            transitionDelay: `${900 + i * 80}ms`,
+                          }}
+                        />
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Highlight cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {[
-            {
-              icon: Lightbulb,
-              title: 'Smart Categorization',
-              description:
-                'AI-powered rules learn from your patterns to automatically categorize transactions accurately.',
-              accent: 'indigo',
-            },
-            {
-              icon: BarChart3,
-              title: 'Visual Analytics',
-              description:
-                'Beautiful charts and graphs help you understand your financial health at a glance.',
-              accent: 'emerald',
-            },
-            {
-              icon: Zap,
-              title: 'Lightning Fast',
-              description:
-                'Process thousands of transactions in seconds with our optimized parsing engine.',
-              accent: 'violet',
-            },
-          ].map((card) => {
-            const Icon = card.icon
-            const bgMap: Record<string, string> = {
-              indigo: 'bg-blue-50 ring-blue-200',
-              emerald: 'bg-emerald-50 ring-emerald-200',
-              violet: 'bg-violet-50 ring-violet-200',
-            }
-            const iconColorMap: Record<string, string> = {
-              indigo: 'text-blue-600',
-              emerald: 'text-emerald-600',
-              violet: 'text-violet-600',
-            }
-            return (
-              <div
-                key={card.title}
-                className={`rounded-xl p-6 ring-1 ${bgMap[card.accent]}`}
-              >
-                <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center mb-4">
-                  <Icon className={`w-5 h-5 ${iconColorMap[card.accent]}`} />
-                </div>
-                <h4 className="text-base font-semibold text-neutral-900 mb-2">{card.title}</h4>
-                <p className="text-sm text-neutral-500 leading-relaxed">{card.description}</p>
-              </div>
-            )
-          })}
         </div>
       </div>
     </section>

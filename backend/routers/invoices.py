@@ -115,7 +115,28 @@ def match_invoices(
         invoices_db = db.query(Invoice).filter(Invoice.session_id == session_id).all()
         txns_db = db.query(Transaction).filter(Transaction.session_id == session_id).all()
 
-        invoices = [
+        if not txns_db:
+            return {"matches": [], "count": 0, "detail": "No transactions in this session to match against"}
+
+        # Skip invoices that the user has already confirmed or rejected
+        locked_statuses = {"confirmed", "rejected"}
+        locked_inv_ids = {
+            im.invoice_id
+            for im in db.query(InvoiceMatch).filter(
+                InvoiceMatch.invoice_id.in_([i.id for i in invoices_db]),
+                InvoiceMatch.status.in_(locked_statuses),
+            ).all()
+        }
+        # Also skip transactions already confirmed to a different invoice
+        locked_txn_ids = {
+            im.transaction_id
+            for im in db.query(InvoiceMatch).filter(
+                InvoiceMatch.status == "confirmed",
+                InvoiceMatch.transaction_id.isnot(None),
+            ).all()
+        }
+
+        invoices_to_match = [
             {
                 "id": inv.id,
                 "supplier_name": inv.supplier_name,
@@ -126,13 +147,15 @@ def match_invoices(
                 "file_reference": inv.file_reference,
             }
             for inv in invoices_db
+            if inv.id not in locked_inv_ids
         ]
         txns = [
             {"id": t.id, "date": t.date.isoformat() if t.date else None, "description": t.description, "amount": t.amount}
             for t in txns_db
+            if t.id not in locked_txn_ids
         ]
 
-        matches = matcher.find_best_matches(invoices, txns)
+        matches = matcher.find_best_matches(invoices_to_match, txns)
 
         for m in matches:
             inv_id = m.get("invoice_id")
@@ -142,6 +165,9 @@ def match_invoices(
 
             existing = db.query(InvoiceMatch).filter(InvoiceMatch.invoice_id == inv_id).first()
             if existing:
+                # Never overwrite a confirmed or rejected decision
+                if existing.status in locked_statuses:
+                    continue
                 existing.transaction_id = txn_id
                 existing.confidence = score
                 existing.explanation = explanation
@@ -271,16 +297,33 @@ def unmatched_view(
     try:
         ensure_session_access(session_id, current_user, db)
 
-        confirmed_txn_ids = {im.transaction_id for im in db.query(InvoiceMatch).filter(InvoiceMatch.status == "confirmed").all()}
         txns_db = db.query(Transaction).filter(Transaction.session_id == session_id).all()
+        invs_db = db.query(Invoice).filter(Invoice.session_id == session_id).all()
+
+        session_inv_ids = [i.id for i in invs_db]
+        session_txn_ids = [t.id for t in txns_db]
+
+        # Filter confirmed IDs to this session only
+        confirmed_txn_ids = {
+            im.transaction_id
+            for im in db.query(InvoiceMatch).filter(
+                InvoiceMatch.status == "confirmed",
+                InvoiceMatch.transaction_id.in_(session_txn_ids),
+            ).all()
+        }
+        confirmed_inv_ids = {
+            im.invoice_id
+            for im in db.query(InvoiceMatch).filter(
+                InvoiceMatch.status == "confirmed",
+                InvoiceMatch.invoice_id.in_(session_inv_ids),
+            ).all()
+        }
+
         unmatched_txns = [
             {"id": t.id, "date": t.date.isoformat(), "description": t.description, "amount": t.amount}
             for t in txns_db
             if t.id not in confirmed_txn_ids
         ]
-
-        confirmed_inv_ids = {im.invoice_id for im in db.query(InvoiceMatch).filter(InvoiceMatch.status == "confirmed").all()}
-        invs_db = db.query(Invoice).filter(Invoice.session_id == session_id).all()
         unmatched_invoices = [
             {"id": i.id, "supplier_name": i.supplier_name, "invoice_date": i.invoice_date.isoformat(), "total_amount": i.total_amount}
             for i in invs_db
@@ -296,16 +339,25 @@ def unmatched_view(
 def download_invoice_file(
     request: Request,
     invoice_id: int,
-    session_id: str,
+    session_id: str = Query(default=None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Generate a secure, time-limited download URL for the invoice PDF."""
     try:
-        ensure_session_access(session_id, current_user, db)
-        inv = db.query(Invoice).filter(Invoice.id == invoice_id, Invoice.session_id == session_id).first()
+        # Look up the invoice by ID first
+        inv = db.query(Invoice).filter(Invoice.id == invoice_id).first()
         if not inv:
             raise HTTPException(status_code=404, detail="Invoice not found")
+
+        # Verify ownership: check via session_id (if provided) or the invoice's own session
+        effective_session = session_id or inv.session_id
+        if effective_session:
+            ensure_session_access(effective_session, current_user, db)
+        else:
+            # No session available – deny access
+            raise HTTPException(status_code=403, detail="Cannot verify invoice ownership")
+
         if not inv.file_reference:
             raise HTTPException(status_code=404, detail="No file attached to this invoice")
 
@@ -443,7 +495,7 @@ async def upload_invoice_file_auto(
             "invoice_number": inv.invoice_number,
             "total_amount": inv.total_amount,
             "vat_amount": inv.vat_amount,
-            "file_key": inv.file_reference,
+            "file_reference": inv.file_reference,
         }]
 
         matches = matcher.find_best_matches(invoices, txns)
@@ -506,15 +558,17 @@ async def upload_invoice_file_direct(
         storage = get_storage()
         storage.upload_file(content, file_key, content_type="application/pdf")
 
-        meta = extract_invoice_metadata(content)
-        if not meta.get("supplier_name") and not meta.get("total_amount"):
-            raise HTTPException(status_code=400, detail="Failed to extract key fields from invoice.")
+        # Attempt metadata extraction but do not fail if it returns nothing
+        try:
+            meta = extract_invoice_metadata(content)
+        except Exception:
+            meta = {}
 
         invoice_date = meta.get("invoice_date") or txn.date
 
         inv = Invoice(
             session_id=session_id,
-            supplier_name=(meta.get("supplier_name") or "").strip() or "Unknown Supplier",
+            supplier_name=(meta.get("supplier_name") or "").strip() or filename,
             invoice_date=invoice_date,
             invoice_number=meta.get("invoice_number"),
             total_amount=float(meta.get("total_amount") or 0.0),
@@ -536,7 +590,10 @@ async def upload_invoice_file_direct(
                 status="confirmed",
             )
             db.add(im)
-            db.commit()
+
+        # Explicitly link the invoice to the transaction
+        txn.invoice_id = inv.id
+        db.commit()
 
         return {
             "success": True,
@@ -553,6 +610,50 @@ async def upload_invoice_file_direct(
             "transaction_id": transaction_id,
             "message": "Invoice linked successfully",
         }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.delete("/invoice/{invoice_id}")
+def delete_invoice(
+    invoice_id: int,
+    session_id: str = Query(default=None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Delete an invoice, its matches, and unlink from any transactions."""
+    try:
+        inv = db.query(Invoice).filter(Invoice.id == invoice_id).first()
+        if not inv:
+            raise HTTPException(status_code=404, detail="Invoice not found")
+
+        # Verify ownership via provided session_id or the invoice's own session
+        effective_session = session_id or inv.session_id
+        if effective_session:
+            ensure_session_access(effective_session, current_user, db)
+        else:
+            raise HTTPException(status_code=403, detail="Cannot verify invoice ownership")
+
+        # Unlink any transactions that reference this invoice
+        db.query(Transaction).filter(Transaction.invoice_id == invoice_id).update({"invoice_id": None})
+
+        # Delete invoice matches
+        db.query(InvoiceMatch).filter(InvoiceMatch.invoice_id == invoice_id).delete()
+
+        # Delete the file from storage if present
+        if inv.file_reference:
+            try:
+                storage = get_storage()
+                storage.delete_file(inv.file_reference)
+            except Exception:
+                pass  # Non-fatal: file may already be gone
+
+        db.delete(inv)
+        db.commit()
+
+        return {"success": True, "message": "Invoice deleted"}
     except HTTPException:
         raise
     except Exception as e:
