@@ -7,7 +7,7 @@ import RuleEditor from './RuleEditor'
 import PreviewModal from './PreviewModal'
 
 export default function RulesTable() {
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
   const [rules, setRules] = React.useState<any[]>([])
   const [loading, setLoading] = React.useState(true)
   const [editing, setEditing] = React.useState<any>(null)

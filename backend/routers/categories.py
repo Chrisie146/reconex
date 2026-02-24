@@ -8,6 +8,7 @@ from typing import Optional
 from datetime import date
 
 from auth import get_current_user
+from exceptions import AppException
 from models import Client, CustomCategory, Transaction, User, get_db
 from routers.dependencies import (
     CreateCategoryRequest,
@@ -63,6 +64,8 @@ def get_categories(
             return {"categories": categories_with_counts}
     except HTTPException:
         raise
+    except AppException:
+        raise
     except Exception as e:
         logger.error(f"[categories] Unexpected error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to get categories: {str(e)}")
@@ -95,6 +98,8 @@ def create_category(
         return {"success": True, "message": message, "categories": all_categories}
     except HTTPException:
         raise
+    except AppException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to create category: {str(e)}")
 
@@ -123,6 +128,8 @@ def delete_all_custom_categories(
         return {"success": True, "message": f"Deleted {count} custom category(ies)", "deleted_count": count}
     except HTTPException:
         raise
+    except AppException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to delete categories: {str(e)}")
 
@@ -148,6 +155,8 @@ def delete_category(
         return {"success": True, "message": message}
     except HTTPException:
         raise
+    except AppException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to delete category: {str(e)}")
 
@@ -170,6 +179,8 @@ def get_categories_with_vat(
         categories = categories_service.get_all_categories_with_vat(session_id, client_id=client_id)
         return {"categories": categories}
     except HTTPException:
+        raise
+    except AppException:
         raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to get categories: {str(e)}")
@@ -197,6 +208,8 @@ def update_category_vat(
         return {"success": True, "message": message}
     except HTTPException:
         raise
+    except AppException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to update VAT settings: {str(e)}")
 
@@ -221,6 +234,10 @@ def get_transactions_for_category(
 
         txns = get_transactions_by_category(category, db, session_id=session_id, client_id=client_id)
         return {"transactions": txns}
+    except HTTPException:
+        raise
+    except AppException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -243,6 +260,10 @@ def get_vat_config(
         if config:
             return {"vat_enabled": config.vat_enabled == 1, "default_vat_rate": config.default_vat_rate}
         return {"vat_enabled": False, "default_vat_rate": 15.0}
+    except HTTPException:
+        raise
+    except AppException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to get VAT config: {str(e)}")
 
@@ -272,6 +293,8 @@ def update_vat_config(
             raise HTTPException(status_code=400, detail=message)
         return {"success": True, "message": message}
     except HTTPException:
+        raise
+    except AppException:
         raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to update VAT config: {str(e)}")
@@ -304,6 +327,8 @@ def recalculate_vat(
         return {"success": True, "message": message, "stats": stats}
     except HTTPException:
         raise
+    except AppException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to recalculate VAT: {str(e)}")
 
@@ -325,6 +350,10 @@ def get_vat_summary(
         return summary
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid date format: {str(e)}")
+    except HTTPException:
+        raise
+    except AppException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to get VAT summary: {str(e)}")
 
@@ -379,6 +408,8 @@ def export_vat_report(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid date format: {str(e)}")
     except HTTPException:
+        raise
+    except AppException:
         raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to export VAT report: {str(e)}")

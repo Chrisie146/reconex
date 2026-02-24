@@ -12,6 +12,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from auth import get_current_user
+from exceptions import AppException
 from models import Client, Rule, SessionState, Transaction, TransactionMerchant, User, UserCategorizationRule, get_db
 from routers.dependencies import (
     BulkApplyRulesRequest,
@@ -44,6 +45,8 @@ def get_session_rules(
         ensure_session_access(session_id, current_user, db)
         rules = categories_service.get_rules(session_id)
         return {"rules": rules}
+    except (HTTPException, AppException):
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to fetch rules: {str(e)}")
 
@@ -143,6 +146,8 @@ def preview_session_rule(
         ]
         preview = categories_service.preview_rule_matches(session_id, rule_id, txn_dicts)
         return preview
+    except (HTTPException, AppException):
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to preview rule: {str(e)}")
 
@@ -185,6 +190,8 @@ def apply_rules_bulk(
             "updated_count": result["updated"],
             "rules_applied": result["rules_applied"],
         }
+    except (HTTPException, AppException):
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to apply rules: {str(e)}")
 
@@ -205,6 +212,8 @@ def get_rule_statistics(
         ]
         stats = categories_service.get_rule_statistics(session_id, txn_dicts)
         return {"statistics": stats}
+    except (HTTPException, AppException):
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to fetch statistics: {str(e)}")
 
@@ -245,6 +254,8 @@ def list_rules(
                 }
             )
         return {"rules": out}
+    except (HTTPException, AppException):
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -518,6 +529,8 @@ def get_learned_rules(
         effective_user_id = str(current_user.id)
         rules = learning_service.get_learned_rules(effective_user_id, db, client_id=client_id)
         return {"rules": rules, "total": len(rules)}
+    except (HTTPException, AppException):
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch learned rules: {str(e)}")
 
