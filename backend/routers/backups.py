@@ -14,13 +14,13 @@ import shutil
 from datetime import datetime
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from auth import get_current_user
 from config import DATABASE_URL, ENVIRONMENT
-from models import BackupRecord, User, get_db
+from models import BackupRecord, User, get_db, engine
 
 router = APIRouter(tags=["Backups"])
 
@@ -42,7 +42,7 @@ def _pg_dump_stream(db_url: str):
     env, db_name = _get_pg_env(db_url)
     parsed = urlparse(db_url)
 
-    cmd = ["pg_dump", "--no-password", "-Fp"]  # plain-text SQL format
+    cmd = ["pg_dump", "--no-password", "-Fp", "--clean", "--if-exists"]  # plain-text SQL, restorable
     if parsed.hostname:
         cmd += ["-h", parsed.hostname]
     if parsed.port:
@@ -121,6 +121,71 @@ def _sqlite_stream(db_url: str):
         yield chunk
 
 
+# ---------------------------------------------------------------------------
+# Restore helpers
+# ---------------------------------------------------------------------------
+
+
+def _sqlite_restore(db_url: str, gz_data: bytes) -> None:
+    """Overwrite the SQLite database file with the content from a .gz backup."""
+    db_path = db_url.replace("sqlite:///", "").replace("sqlite://", "")
+    if not os.path.isabs(db_path):
+        db_path = os.path.join(os.path.dirname(__file__), "..", db_path)
+    db_path = os.path.normpath(db_path)
+
+    decompressed = gzip.decompress(gz_data)
+
+    # Validate SQLite magic header
+    if not decompressed[:16].startswith(b"SQLite format 3\x00"):
+        raise ValueError("Uploaded file is not a valid SQLite database")
+
+    tmp_path = db_path + ".restore_tmp"
+    try:
+        with open(tmp_path, "wb") as f:
+            f.write(decompressed)
+        # Release all pooled connections so the file can be replaced
+        engine.dispose()
+        shutil.move(tmp_path, db_path)
+    except Exception:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+        raise
+
+
+def _pg_restore(db_url: str, gz_data: bytes) -> None:
+    """Restore a PostgreSQL database from a gzip-compressed SQL dump."""
+    env, db_name = _get_pg_env(db_url)
+    parsed = urlparse(db_url)
+
+    sql_bytes = gzip.decompress(gz_data)
+
+    cmd = ["psql", "--single-transaction", "--no-password"]
+    if parsed.hostname:
+        cmd += ["-h", parsed.hostname]
+    if parsed.port:
+        cmd += ["-p", str(parsed.port)]
+    if parsed.username:
+        cmd += ["-U", parsed.username]
+    cmd.append(db_name)
+
+    result = subprocess.run(
+        cmd,
+        input=sql_bytes,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=env,
+        timeout=300,
+    )
+    if result.returncode != 0:
+        stderr = result.stderr.decode("utf-8", errors="ignore")
+        raise RuntimeError(f"psql restore failed: {stderr[:500]}")
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+
+
 @router.get("/backups/download")
 def download_backup(
     current_user: User = Depends(get_current_user),
@@ -185,6 +250,62 @@ def download_backup(
         except Exception:
             pass
         raise HTTPException(status_code=500, detail=f"Backup failed: {str(e)}")
+
+
+@router.post("/backups/restore")
+async def restore_backup(
+    file: UploadFile = File(...),
+    confirm: bool = Query(False),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Restore the database from an uploaded .gz backup file.
+
+    WARNING: This overwrites ALL current data irreversibly.
+    The `confirm=true` query parameter must be present.
+    """
+    if not confirm:
+        raise HTTPException(
+            status_code=400,
+            detail="Restore aborted: add confirm=true to proceed. This will overwrite all current data.",
+        )
+
+    if not (file.filename or "").endswith(".gz"):
+        raise HTTPException(status_code=400, detail="Backup file must be a .gz compressed file")
+
+    # Read upload (2 GB hard cap)
+    content = await file.read(2 * 1024 * 1024 * 1024)
+    if not content:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+
+    url = DATABASE_URL
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql://", 1)
+
+    is_postgres = url.startswith("postgresql")
+    is_sqlite = url.startswith("sqlite")
+
+    if not is_postgres and not is_sqlite:
+        raise HTTPException(status_code=500, detail="Unsupported database type for restore")
+
+    try:
+        # Close the session held by this request before we replace the DB
+        db.close()
+
+        if is_sqlite:
+            _sqlite_restore(url, content)
+        else:
+            _pg_restore(url, content)
+
+        return {
+            "success": True,
+            "message": "Database restored successfully. Refresh the application to see restored data.",
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Restore failed: {str(e)}")
 
 
 @router.get("/backups/history")

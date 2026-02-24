@@ -261,7 +261,12 @@ export default function Sidebar({ sessionId, selectedStatement = '', onStatement
 
       {/* ── Footer ──────────────────────────────────────────────── */}
       {!isCollapsed && (
-        <div className="shrink-0 border-t border-slate-800 px-4 py-3">
+        <div className="shrink-0 border-t border-slate-800 px-4 py-3 space-y-1">
+          <div className="flex items-center justify-center gap-3 text-[10px]">
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-neutral-600 hover:text-neutral-400 transition-colors">Privacy</a>
+            <a href="/security" target="_blank" rel="noopener noreferrer" className="text-neutral-600 hover:text-neutral-400 transition-colors">Security</a>
+            <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-neutral-600 hover:text-neutral-400 transition-colors">Terms</a>
+          </div>
           <p className="text-[10px] text-neutral-600 text-center">Reconex v2.0</p>
         </div>
       )}

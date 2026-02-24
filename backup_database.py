@@ -263,6 +263,101 @@ class DatabaseBackup:
         
         return 0.0
 
+    # -------------------------------------------------------------------------
+    # Restore
+    # -------------------------------------------------------------------------
+
+    def restore(self, backup_path: str) -> None:
+        """
+        Restore the database from a .gz backup file.
+
+        Args:
+            backup_path: Path to the .gz backup file produced by this tool
+        """
+        backup_file = Path(backup_path)
+        if not backup_file.exists():
+            raise FileNotFoundError(f"Backup file not found: {backup_path}")
+        if not backup_file.name.endswith(".gz"):
+            raise ValueError("Backup file must be a .gz compressed file")
+
+        logger.info(f"📂 Restoring from: {backup_file}")
+        with open(backup_file, "rb") as f:
+            content = f.read()
+
+        if self.db_type == "sqlite":
+            self._restore_sqlite(content)
+        elif self.db_type == "postgresql":
+            self._restore_postgresql(content)
+        else:
+            raise ValueError(f"Unsupported database type: {self.db_type}")
+
+        logger.info(f"✅ Database restored from: {backup_file.name}")
+
+    def _restore_sqlite(self, gz_data: bytes) -> None:
+        """Restore SQLite database from gzip-compressed backup."""
+        db_path = self.database_url.replace("sqlite:///", "").split("?")[0]
+        if db_path.startswith("./"):
+            db_path = db_path[2:]
+
+        logger.info("🔄 Decompressing backup...")
+        decompressed = gzip.decompress(gz_data)
+
+        # Validate SQLite magic header
+        if not decompressed[:16].startswith(b"SQLite format 3\x00"):
+            raise ValueError("File does not appear to be a valid SQLite database")
+
+        logger.info(f"✅ Valid SQLite database ({len(decompressed) / (1024*1024):.2f} MB)")
+
+        tmp_path = db_path + ".restore_tmp"
+        try:
+            logger.info("⏳ Writing restored database...")
+            with open(tmp_path, "wb") as f:
+                f.write(decompressed)
+            shutil.move(tmp_path, db_path)
+            logger.info(f"✅ Database file restored: {db_path}")
+        except Exception:
+            if Path(tmp_path).exists():
+                Path(tmp_path).unlink()
+            raise
+
+    def _restore_postgresql(self, gz_data: bytes) -> None:
+        """Restore PostgreSQL database from gzip-compressed SQL dump."""
+        import urllib.parse
+
+        parsed = urllib.parse.urlparse(self.database_url)
+
+        logger.info("🔄 Decompressing backup...")
+        sql_bytes = gzip.decompress(gz_data)
+        logger.info(f"✅ Decompressed SQL ({len(sql_bytes) / (1024*1024):.2f} MB)")
+
+        env = os.environ.copy()
+        if parsed.password:
+            env["PGPASSWORD"] = parsed.password
+
+        cmd = ["psql", "--single-transaction", "--no-password"]
+        if parsed.hostname:
+            cmd += ["-h", parsed.hostname]
+        if parsed.port:
+            cmd += ["-p", str(parsed.port)]
+        if parsed.username:
+            cmd += ["-U", parsed.username]
+        cmd.append(parsed.path.lstrip("/") or "statementbur")
+
+        logger.info("⏳ Running psql restore...")
+        result = subprocess.run(
+            cmd,
+            input=sql_bytes,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=env,
+            timeout=300,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"psql restore failed: {result.stderr.decode('utf-8', errors='ignore')[:500]}"
+            )
+        logger.info("✅ PostgreSQL restore complete")
+
 
 class CloudUpload:
     """Handles uploading backups to cloud storage"""
@@ -387,6 +482,11 @@ def main():
         description="Database backup script for Bank Statement Analyzer"
     )
     parser.add_argument(
+        "--restore",
+        metavar="BACKUP_FILE",
+        help="Restore the database from a .gz backup file (DESTRUCTIVE — overwrites current data)"
+    )
+    parser.add_argument(
         "--upload-s3",
         action="store_true",
         help="Upload backup to AWS S3"
@@ -448,7 +548,19 @@ def main():
     try:
         # Initialize backup handler
         backup_handler = DatabaseBackup(database_url)
-        
+
+        # Restore mode — separate path, nothing else runs
+        if args.restore:
+            logger.warning("⚠️  RESTORE MODE: This will overwrite the current database!")
+            logger.warning(f"   Source: {args.restore}")
+            confirm = input("Type YES to confirm restore: ").strip()
+            if confirm != "YES":
+                logger.info("Restore cancelled.")
+                return 0
+            backup_handler.restore(args.restore)
+            logger.info("✅ Restore complete — restart your application to use the restored database.")
+            return 0
+
         # List backups if requested
         if args.list:
             backup_handler.list_backups()

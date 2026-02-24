@@ -46,10 +46,15 @@ export default function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="pt-8 border-t border-neutral-900">
-          <p className="text-xs text-neutral-600 text-center">
+        <div className="pt-8 border-t border-neutral-900 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-xs text-neutral-600">
             &copy; {currentYear} Reconex. All rights reserved.
           </p>
+          <div className="flex items-center gap-4 text-xs">
+            <Link href="/privacy" className="text-neutral-600 hover:text-neutral-400 transition-colors">Privacy Policy</Link>
+            <Link href="/security" className="text-neutral-600 hover:text-neutral-400 transition-colors">Security</Link>
+            <Link href="/terms" className="text-neutral-600 hover:text-neutral-400 transition-colors">Terms of Service</Link>
+          </div>
         </div>
       </div>
     </footer>

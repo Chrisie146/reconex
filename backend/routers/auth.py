@@ -178,6 +178,93 @@ def _send_reset_email(to_email: str, reset_link: str) -> None:
     except Exception as exc:
         logger.error(f"[EMAIL] Failed to send reset email to {to_email}: {exc}")
 
+
+def _build_welcome_email_html(name: str) -> str:
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome to Reconex Beta</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;padding:40px 0;">
+    <tr>
+      <td align="center">
+        <table width="560" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;border:1px solid #e4e4e7;overflow:hidden;">
+
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#2563eb;padding:32px 40px;text-align:center;">
+              <span style="font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.3px;">Reconex</span>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px 40px 32px;">
+              <h1 style="margin:0 0 16px;font-size:20px;font-weight:600;color:#18181b;">Welcome to Reconex Beta &#x1F680;</h1>
+              <p style="margin:0 0 16px;font-size:15px;color:#52525b;line-height:1.6;">Hi {name},</p>
+              <p style="margin:0 0 16px;font-size:15px;color:#52525b;line-height:1.6;">
+                Thank you for joining the early beta of Reconex.
+              </p>
+              <p style="margin:0 0 16px;font-size:15px;color:#52525b;line-height:1.6;">
+                Reconex is currently in active development, and your feedback will directly shape how it evolves.
+              </p>
+              <p style="margin:0 0 8px;font-size:15px;font-weight:600;color:#18181b;">To get started:</p>
+              <ol style="margin:0 0 24px;padding-left:20px;font-size:15px;color:#52525b;line-height:1.8;">
+                <li>Upload your latest bank statement</li>
+                <li>Review the categorised transactions</li>
+                <li>Reconcile your closing balance</li>
+              </ol>
+              <p style="margin:0;font-size:15px;color:#52525b;line-height:1.6;">
+                If anything feels confusing or breaks, just reply to this email.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Divider -->
+          <tr>
+            <td style="padding:0 40px;">
+              <hr style="border:none;border-top:1px solid #e4e4e7;margin:0;" />
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 40px;text-align:center;">
+              <p style="margin:0 0 4px;font-size:13px;color:#52525b;">&mdash; Christopher</p>
+              <p style="margin:0;font-size:12px;color:#a1a1aa;">&copy; 2025 Reconex. All rights reserved.</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>"""
+
+
+def _send_welcome_email(to_email: str, name: str) -> None:
+    """Send a welcome email to a newly registered user via Resend. Fire-and-forget — never raises."""
+    api_key = Config.RESEND_API_KEY
+    if not api_key:
+        logger.warning("[EMAIL] RESEND_API_KEY not set — skipping welcome email")
+        return
+
+    try:
+        resend.api_key = api_key
+        resend.Emails.send({
+            "from": Config.FROM_EMAIL,
+            "to": [to_email],
+            "subject": "Welcome to Reconex Beta \U0001F680",
+            "html": _build_welcome_email_html(name),
+        })
+        logger.info(f"[EMAIL] Welcome email sent to {to_email}")
+    except Exception as exc:
+        logger.error(f"[EMAIL] Failed to send welcome email to {to_email}: {exc}")
+
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
@@ -210,6 +297,7 @@ def register(request: UserRegister, db: Session = Depends(get_db)):
         access_token = create_access_token(data={"sub": str(new_user.id)})
 
         logger.info(f"New user registered: {request.email} with default client")
+        _send_welcome_email(new_user.email, new_user.full_name)
 
         return TokenResponse(
             access_token=access_token,
