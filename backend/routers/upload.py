@@ -157,11 +157,15 @@ def _apply_rules_and_save(
 
     db.commit()
 
-    # Apply learned categorisation rules
+    # Apply learned categorisation rules.
+    # override_existing=True so that learned rules take priority over the built-in
+    # keyword categorizer — this is the core of the "memory" feature.
     try:
         all_transactions = db.query(Transaction).filter(Transaction.session_id == session_id).all()
         effective_user_id = str(current_user.id)
-        suggestions = learning_service.apply_learned_rules(effective_user_id, all_transactions, db, client_id=client_id)
+        suggestions = learning_service.apply_learned_rules(
+            effective_user_id, all_transactions, db, client_id=client_id, override_existing=True
+        )
 
         updated_ids = []
         for txn_id, cat in suggestions.items():
@@ -432,11 +436,13 @@ def save_parsed_transactions(
 
         db.commit()
 
-        # Apply learned rules
+        # Apply learned rules — override_existing=True so they beat the built-in categorizer
         try:
             all_transactions = db.query(Transaction).filter(Transaction.session_id == session_id).all()
             effective_user_id = str(current_user.id)
-            suggestions = learning_service.apply_learned_rules(effective_user_id, all_transactions, db, client_id=client_id)
+            suggestions = learning_service.apply_learned_rules(
+                effective_user_id, all_transactions, db, client_id=client_id, override_existing=True
+            )
             for txn_id, cat in suggestions.items():
                 txn = db.query(Transaction).filter(Transaction.id == txn_id).first()
                 if txn:

@@ -257,7 +257,8 @@ class CategorizationLearningService:
         user_id: str,
         transactions: List,
         db: Session,
-        client_id: Optional[int] = None
+        client_id: Optional[int] = None,
+        override_existing: bool = False
     ) -> Dict[int, str]:
         """
         Apply learned rules to a list of transactions
@@ -267,6 +268,12 @@ class CategorizationLearningService:
         1. Pattern type (exact > merchant > starts_with > contains)
         2. Confidence score
         3. Use count (more frequently used rules)
+        
+        Args:
+            override_existing: If True, learned rules override any auto-assigned category
+                               (use during upload so learned rules beat the built-in categorizer).
+                               If False, only apply to uncategorized / 'Other' transactions
+                               (use for manual re-apply to avoid overwriting user work).
         """
         from models import UserCategorizationRule
         
@@ -299,9 +306,12 @@ class CategorizationLearningService:
         suggestions = {}
         
         for txn in transactions:
-            # Skip already categorized transactions (unless category is "Other")
-            if hasattr(txn, 'category') and txn.category and txn.category != 'Other':
-                continue
+            # Skip already categorized transactions unless override_existing is set.
+            # During upload, override_existing=True so learned rules beat the built-in
+            # keyword categorizer. During manual re-apply, we leave user-set categories alone.
+            if not override_existing:
+                if hasattr(txn, 'category') and txn.category and txn.category != 'Other':
+                    continue
             
             description = txn.description if hasattr(txn, 'description') else str(txn)
             normalized_desc = CategorizationLearningService.normalize_description(description)

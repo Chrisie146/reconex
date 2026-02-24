@@ -356,7 +356,8 @@ def apply_learned_rules_to_session(
     try:
         all_transactions = db.query(Transaction).filter(Transaction.session_id == session_id).all()
         effective_user_id = str(current_user.id)
-        suggestions = learning_service.apply_learned_rules(effective_user_id, all_transactions, db)
+        # override_existing=True so learned rules beat the built-in keyword categorizer
+        suggestions = learning_service.apply_learned_rules(effective_user_id, all_transactions, db, override_existing=True)
 
         updated_ids = []
         for txn_id, category in suggestions.items():

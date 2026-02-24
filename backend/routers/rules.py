@@ -635,7 +635,11 @@ def apply_learned_rules(
         else:
             transactions = []
 
-        suggestions = learning_service.apply_learned_rules(effective_user_id, transactions, db, client_id=client_id)
+        # override_existing=True: user explicitly wants their learned rules applied,
+        # so they should win over any auto-assigned categories
+        suggestions = learning_service.apply_learned_rules(
+            effective_user_id, transactions, db, client_id=client_id, override_existing=True
+        )
 
         updated_count = 0
         updated_ids = []
