@@ -130,7 +130,7 @@ export default function InvoiceMatchCard({ invoice, suggested, sessionId, onUpda
           {/* Match details */}
           {suggested?.transaction && (
             <div className="mt-2.5 flex items-start gap-3 rounded-lg bg-neutral-50 border border-neutral-100 px-3 py-2.5">
-              <ArrowRight className="w-3.5 h-3.5 text-indigo-400 mt-0.5 shrink-0" />
+              <ArrowRight className="w-3.5 h-3.5 text-blue-400 mt-0.5 shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-neutral-700 truncate">
                   {suggested.transaction.description}

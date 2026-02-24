@@ -23,7 +23,7 @@ const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string
   'Utilities':       { bg: 'bg-cyan-50',     text: 'text-cyan-700',     border: 'border-cyan-200',     dot: 'bg-cyan-500' },
   'Entertainment':   { bg: 'bg-pink-50',     text: 'text-pink-700',     border: 'border-pink-200',     dot: 'bg-pink-500' },
   'Medical':         { bg: 'bg-red-50',      text: 'text-red-700',      border: 'border-red-200',      dot: 'bg-red-500' },
-  'Rent':            { bg: 'bg-indigo-50',   text: 'text-indigo-700',   border: 'border-indigo-200',   dot: 'bg-indigo-500' },
+  'Rent':            { bg: 'bg-blue-50',   text: 'text-blue-700',   border: 'border-blue-200',   dot: 'bg-blue-500' },
   'Subscriptions':   { bg: 'bg-fuchsia-50',  text: 'text-fuchsia-700',  border: 'border-fuchsia-200',  dot: 'bg-fuchsia-500' },
   'Loan':            { bg: 'bg-rose-50',     text: 'text-rose-700',     border: 'border-rose-200',     dot: 'bg-rose-500' },
   'Loan Repayment':  { bg: 'bg-rose-50',     text: 'text-rose-700',     border: 'border-rose-200',     dot: 'bg-rose-500' },
@@ -197,7 +197,7 @@ export default function CategoriesManager({ sessionId }: CategoriesManagerProps)
       <div className="rounded-xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4">
           <div className="flex items-center gap-3">
-            <Calculator className="w-5 h-5 text-indigo-500" />
+            <Calculator className="w-5 h-5 text-blue-500" />
             <div>
               <p className="text-sm font-semibold text-neutral-800">VAT Calculation</p>
               <p className="text-xs text-neutral-500">South African 15% standard rate</p>
@@ -219,7 +219,7 @@ export default function CategoriesManager({ sessionId }: CategoriesManagerProps)
             {vatEnabled && (
               <button
                 onClick={handleManualRecalculate} disabled={loading}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
                 {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Calculator className="w-3.5 h-3.5" />}
                 Recalculate
@@ -253,7 +253,7 @@ export default function CategoriesManager({ sessionId }: CategoriesManagerProps)
           <input
             type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
             placeholder="Search categories..."
-            className="w-full rounded-lg border border-neutral-200 bg-white pl-9 pr-3 py-2 text-sm text-neutral-700 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 transition-colors"
+            className="w-full rounded-lg border border-neutral-200 bg-white pl-9 pr-3 py-2 text-sm text-neutral-700 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-colors"
           />
           {searchQuery && (
             <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -279,7 +279,7 @@ export default function CategoriesManager({ sessionId }: CategoriesManagerProps)
           </button>
           <button
             onClick={() => setShowAddForm(!showAddForm)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors"
           >
             <Plus className="w-3.5 h-3.5" /> Add Category
           </button>
@@ -288,9 +288,9 @@ export default function CategoriesManager({ sessionId }: CategoriesManagerProps)
 
       {/* ── Add category form (expandable) ──────────────────────── */}
       {showAddForm && (
-        <form onSubmit={handleAddCategory} className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-5 space-y-4">
+        <form onSubmit={handleAddCategory} className="rounded-xl border border-blue-200 bg-blue-50/50 p-5 space-y-4">
           <h3 className="text-sm font-semibold text-neutral-800 flex items-center gap-2">
-            <Plus className="w-4 h-4 text-indigo-500" /> New Category
+            <Plus className="w-4 h-4 text-blue-500" /> New Category
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
             <div className="md:col-span-2">
@@ -298,7 +298,7 @@ export default function CategoriesManager({ sessionId }: CategoriesManagerProps)
               <input
                 type="text" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)}
                 placeholder="e.g. Pet Care, Subscriptions"
-                className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300"
+                className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300"
                 disabled={loading}
               />
             </div>
@@ -307,19 +307,19 @@ export default function CategoriesManager({ sessionId }: CategoriesManagerProps)
               <input
                 type="number" value={newCategoryRate} onChange={e => setNewCategoryRate(parseFloat(e.target.value))}
                 min="0" max="100" step="0.1"
-                className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300"
+                className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300"
                 disabled={loading || !newCategoryVAT}
               />
             </div>
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-xs font-medium text-neutral-600 cursor-pointer">
                 <input type="checkbox" checked={newCategoryVAT} onChange={e => setNewCategoryVAT(e.target.checked)}
-                  className="w-4 h-4 rounded border-neutral-300 text-indigo-600 focus:ring-indigo-300" />
+                  className="w-4 h-4 rounded border-neutral-300 text-blue-600 focus:ring-blue-300" />
                 VAT applicable
               </label>
               <div className="flex gap-2">
                 <button type="submit" disabled={loading || !newCategoryName.trim()}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-40 transition-colors">
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-40 transition-colors">
                   {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Create
                 </button>
                 <button type="button" onClick={() => setShowAddForm(false)}
@@ -382,7 +382,7 @@ export default function CategoriesManager({ sessionId }: CategoriesManagerProps)
                         <input type="checkbox" checked={cat.vat_applicable}
                           onChange={e => handleUpdateCategoryVAT(cat.name, e.target.checked, cat.vat_rate)}
                           disabled={loading}
-                          className="w-4 h-4 rounded border-neutral-300 text-indigo-600 focus:ring-indigo-300 cursor-pointer disabled:opacity-50" />
+                          className="w-4 h-4 rounded border-neutral-300 text-blue-600 focus:ring-blue-300 cursor-pointer disabled:opacity-50" />
                       </td>
                       {/* vat rate */}
                       <td className="px-5 py-3 text-center">
@@ -392,7 +392,7 @@ export default function CategoriesManager({ sessionId }: CategoriesManagerProps)
                               <input type="number" value={tempRate} onChange={e => setTempRate(parseFloat(e.target.value))}
                                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleUpdateCategoryVAT(cat.name, cat.vat_applicable, tempRate); }; if (e.key === 'Escape') setEditingRate(null) }}
                                 min="0" max="100" step="0.1" autoFocus
-                                className="w-16 rounded border border-indigo-300 px-2 py-1 text-xs text-center focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                                className="w-16 rounded border border-blue-300 px-2 py-1 text-xs text-center focus:outline-none focus:ring-2 focus:ring-blue-200" />
                               <button onClick={() => { handleUpdateCategoryVAT(cat.name, cat.vat_applicable, tempRate) }}
                                 className="p-0.5 text-emerald-600 hover:text-emerald-700"><Check className="w-3.5 h-3.5" /></button>
                               <button onClick={() => setEditingRate(null)}
@@ -400,7 +400,7 @@ export default function CategoriesManager({ sessionId }: CategoriesManagerProps)
                             </div>
                           ) : (
                             <button onClick={() => { setEditingRate(cat.name); setTempRate(cat.vat_rate) }} disabled={loading}
-                              className="text-xs font-medium text-neutral-700 hover:text-indigo-600 underline decoration-dotted underline-offset-2 transition-colors">
+                              className="text-xs font-medium text-neutral-700 hover:text-blue-600 underline decoration-dotted underline-offset-2 transition-colors">
                               {cat.vat_rate}%
                             </button>
                           )

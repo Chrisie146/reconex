@@ -139,8 +139,8 @@ export default function UploadPreviewModal({ isOpen, onClose, parsed, isPdf = fa
         {/* Header */}
         <div className="flex items-center justify-between border-b border-neutral-200 px-6 py-3 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-indigo-50 p-2">
-              <FileText className="w-5 h-5 text-indigo-600" />
+            <div className="rounded-lg bg-blue-50 p-2">
+              <FileText className="w-5 h-5 text-blue-600" />
             </div>
             <div>
               <h3 className="text-lg font-semibold text-neutral-900">Preview Parsed Transactions</h3>
@@ -166,7 +166,7 @@ export default function UploadPreviewModal({ isOpen, onClose, parsed, isPdf = fa
                 type="checkbox"
                 checked={selectedCount === rows.length}
                 onChange={toggleAll}
-                className="h-4 w-4 rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500"
+                className="h-4 w-4 rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
               />
               <span className="text-xs font-medium text-neutral-600">Select all</span>
             </label>
@@ -208,7 +208,7 @@ export default function UploadPreviewModal({ isOpen, onClose, parsed, isPdf = fa
                         type="checkbox"
                         checked={selected[i]}
                         onChange={() => toggleSelect(i)}
-                        className="h-4 w-4 rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500"
+                        className="h-4 w-4 rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
                       />
                       {r._manual && (
                         <span className="inline-block rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 leading-tight">
@@ -219,7 +219,7 @@ export default function UploadPreviewModal({ isOpen, onClose, parsed, isPdf = fa
                   </td>
                   <td className="py-2 pr-3">
                     <input
-                      className="w-full rounded-lg bg-neutral-50 px-2.5 py-1.5 text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full rounded-lg bg-neutral-50 px-2.5 py-1.5 text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       value={r.date}
                       placeholder="YYYY-MM-DD"
                       onChange={(e) => updateField(i, 'date', e.target.value)}
@@ -227,7 +227,7 @@ export default function UploadPreviewModal({ isOpen, onClose, parsed, isPdf = fa
                   </td>
                   <td className="py-2 pr-3">
                     <input
-                      className="w-full rounded-lg bg-neutral-50 px-2.5 py-1.5 text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full rounded-lg bg-neutral-50 px-2.5 py-1.5 text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       value={r.description}
                       placeholder="Transaction description"
                       onChange={(e) => updateField(i, 'description', e.target.value)}
@@ -235,7 +235,7 @@ export default function UploadPreviewModal({ isOpen, onClose, parsed, isPdf = fa
                   </td>
                   <td className="py-2 pr-3">
                     <input
-                      className="w-full rounded-lg bg-neutral-50 px-2.5 py-1.5 text-right text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full rounded-lg bg-neutral-50 px-2.5 py-1.5 text-right text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       value={String(r.amount)}
                       placeholder="0.00"
                       onChange={(e) => updateField(i, 'amount', e.target.value)}
@@ -332,7 +332,7 @@ export default function UploadPreviewModal({ isOpen, onClose, parsed, isPdf = fa
                     <div className="relative">
                       <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-neutral-400">R</span>
                       <input
-                        className="w-full rounded-lg bg-white pl-7 pr-3 py-1.5 text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full rounded-lg bg-white pl-7 pr-3 py-1.5 text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={openingBalance}
                         placeholder="0.00"
                         onChange={e => setOpeningBalance(e.target.value)}
@@ -346,7 +346,7 @@ export default function UploadPreviewModal({ isOpen, onClose, parsed, isPdf = fa
                     <div className="relative">
                       <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-neutral-400">R</span>
                       <input
-                        className="w-full rounded-lg bg-white pl-7 pr-3 py-1.5 text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full rounded-lg bg-white pl-7 pr-3 py-1.5 text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={closingBalance}
                         placeholder="0.00"
                         onChange={e => setClosingBalance(e.target.value)}
@@ -401,7 +401,7 @@ export default function UploadPreviewModal({ isOpen, onClose, parsed, isPdf = fa
             <button
               onClick={handleSave}
               disabled={saving || selectedCount === 0}
-              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? (
                 <>

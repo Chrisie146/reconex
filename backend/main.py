@@ -109,6 +109,8 @@ tags_metadata = [
     {"name": "Sessions", "description": "Manage upload sessions"},
     {"name": "Background Jobs", "description": "Async task management"},
     {"name": "Admin", "description": "Cache and system administration"},
+    {"name": "Financial Years", "description": "Define, archive, and view financial years per client"},
+    {"name": "Backups", "description": "Trigger and download full database backups"},
 ]
 
 
@@ -355,6 +357,8 @@ from routers.reports import router as reports_router
 from routers.background_jobs import router as background_jobs_router
 from routers.admin import router as admin_router
 from routers.column_mapping import router as column_mapping_router
+from routers.financial_years import router as financial_years_router
+from routers.backups import router as backups_router
 
 app.include_router(auth_router)
 app.include_router(categories_router)
@@ -370,6 +374,8 @@ app.include_router(reports_router)
 app.include_router(background_jobs_router)
 app.include_router(admin_router)
 app.include_router(column_mapping_router)
+app.include_router(financial_years_router)
+app.include_router(backups_router)
 
 logger.info("✅ All routers registered successfully")
 

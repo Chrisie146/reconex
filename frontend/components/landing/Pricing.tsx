@@ -65,7 +65,7 @@ export default function Pricing() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section header */}
         <div className="text-center mb-14">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-indigo-600 mb-3">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-blue-600 mb-3">
             Pricing
           </p>
           <h2 className="text-3xl sm:text-4xl font-bold text-neutral-900 mb-4">
@@ -85,7 +85,7 @@ export default function Pricing() {
                 key={plan.name}
                 className={`relative rounded-2xl p-7 ${
                   isPopular
-                    ? 'bg-indigo-600 text-white ring-2 ring-indigo-400 shadow-xl md:scale-105'
+                    ? 'bg-blue-600 text-white ring-2 ring-blue-400 shadow-xl md:scale-105'
                     : 'bg-white ring-1 ring-neutral-200 shadow-sm'
                 }`}
               >
@@ -104,15 +104,15 @@ export default function Pricing() {
 
                 {/* Price */}
                 <div className="mb-3">
-                  <span className={`text-4xl font-bold ${isPopular ? 'text-white' : 'text-indigo-600'}`}>
+                  <span className={`text-4xl font-bold ${isPopular ? 'text-white' : 'text-blue-600'}`}>
                     {plan.price}
                   </span>
-                  <span className={`text-sm ml-1 ${isPopular ? 'text-indigo-200' : 'text-neutral-400'}`}>
+                  <span className={`text-sm ml-1 ${isPopular ? 'text-blue-200' : 'text-neutral-400'}`}>
                     / {plan.period}
                   </span>
                 </div>
 
-                <p className={`text-sm mb-6 ${isPopular ? 'text-indigo-200' : 'text-neutral-500'}`}>
+                <p className={`text-sm mb-6 ${isPopular ? 'text-blue-200' : 'text-neutral-500'}`}>
                   {plan.description}
                 </p>
 
@@ -121,8 +121,8 @@ export default function Pricing() {
                   href={plan.href}
                   className={`block w-full py-2.5 rounded-lg text-sm font-semibold text-center mb-6 transition-colors ${
                     isPopular
-                      ? 'bg-white text-indigo-600 hover:bg-indigo-50'
-                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                      ? 'bg-white text-blue-600 hover:bg-blue-50'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
                   } ${plan.disabled ? 'pointer-events-none opacity-60' : ''}`}
                 >
                   {plan.cta}
@@ -137,7 +137,7 @@ export default function Pricing() {
                           isPopular ? 'text-emerald-300' : 'text-emerald-600'
                         }`}
                       />
-                      <span className={`text-sm ${isPopular ? 'text-indigo-100' : 'text-neutral-600'}`}>
+                      <span className={`text-sm ${isPopular ? 'text-blue-100' : 'text-neutral-600'}`}>
                         {f}
                       </span>
                     </li>

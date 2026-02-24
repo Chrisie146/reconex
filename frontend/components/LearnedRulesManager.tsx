@@ -181,20 +181,20 @@ export default function LearnedRulesManager({ sessionId }: LearnedRulesManagerPr
           <Trash2 className="w-3.5 h-3.5" /> Delete All
         </button>
         <button onClick={() => setShowInfo(!showInfo)}
-          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${showInfo ? 'bg-indigo-100 text-indigo-700' : 'text-neutral-500 hover:bg-neutral-100'}`}>
+          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${showInfo ? 'bg-blue-100 text-blue-700' : 'text-neutral-500 hover:bg-neutral-100'}`}>
           <Info className="w-3.5 h-3.5" /> How it works
         </button>
       </div>
 
       {/* ── Info Panel ──────────────────────────────────────────── */}
       {showInfo && (
-        <div className="rounded-xl border border-indigo-200 bg-indigo-50/60 px-5 py-4">
-          <h3 className="text-sm font-semibold text-indigo-900 mb-2">How Auto-Learning Works</h3>
-          <ul className="grid grid-cols-1 md:grid-cols-2 gap-1.5 text-xs text-indigo-800">
-            <li className="flex items-start gap-2"><span className="mt-1 w-1 h-1 rounded-full bg-indigo-400 shrink-0" /> When you categorize, the system learns patterns</li>
-            <li className="flex items-start gap-2"><span className="mt-1 w-1 h-1 rounded-full bg-indigo-400 shrink-0" /> Future uploads are auto-categorized</li>
-            <li className="flex items-start gap-2"><span className="mt-1 w-1 h-1 rounded-full bg-indigo-400 shrink-0" /> You can edit or disable any learned pattern</li>
-            <li className="flex items-start gap-2"><span className="mt-1 w-1 h-1 rounded-full bg-indigo-400 shrink-0" /> Typically saves 70-90% categorization time</li>
+        <div className="rounded-xl border border-blue-200 bg-blue-50/60 px-5 py-4">
+          <h3 className="text-sm font-semibold text-blue-900 mb-2">How Auto-Learning Works</h3>
+          <ul className="grid grid-cols-1 md:grid-cols-2 gap-1.5 text-xs text-blue-800">
+            <li className="flex items-start gap-2"><span className="mt-1 w-1 h-1 rounded-full bg-blue-400 shrink-0" /> When you categorize, the system learns patterns</li>
+            <li className="flex items-start gap-2"><span className="mt-1 w-1 h-1 rounded-full bg-blue-400 shrink-0" /> Future uploads are auto-categorized</li>
+            <li className="flex items-start gap-2"><span className="mt-1 w-1 h-1 rounded-full bg-blue-400 shrink-0" /> You can edit or disable any learned pattern</li>
+            <li className="flex items-start gap-2"><span className="mt-1 w-1 h-1 rounded-full bg-blue-400 shrink-0" /> Typically saves 70-90% categorization time</li>
           </ul>
         </div>
       )}
@@ -297,7 +297,7 @@ export default function LearnedRulesManager({ sessionId }: LearnedRulesManagerPr
                         {rule.enabled ? <Power className="w-4 h-4" /> : <PowerOff className="w-4 h-4" />}
                       </button>
                       <button onClick={() => startEdit(rule)}
-                        className="rounded-lg p-1.5 text-indigo-600 hover:bg-indigo-50 transition-colors" title="Edit category">
+                        className="rounded-lg p-1.5 text-blue-600 hover:bg-blue-50 transition-colors" title="Edit category">
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button onClick={() => deleteRule(rule.id)}

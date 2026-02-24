@@ -123,10 +123,10 @@ export default function IncomeExpenseTrend({ sessionId, currentClient }: IncomeE
           <button
             onClick={() => setShowNet(!showNet)}
             className={`flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium transition-colors ${
-              showNet ? 'bg-indigo-100 text-indigo-700' : 'bg-neutral-50 text-neutral-400'
+              showNet ? 'bg-blue-100 text-blue-700' : 'bg-neutral-50 text-neutral-400'
             }`}
           >
-            <span className="w-2 h-2 rounded-full bg-indigo-500" />
+            <span className="w-2 h-2 rounded-full bg-blue-500" />
             Net
           </button>
         </div>

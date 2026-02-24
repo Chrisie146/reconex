@@ -12,10 +12,10 @@ export default function Footer() {
           {/* Brand */}
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center">
+              <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center">
                 <Landmark className="w-[18px] h-[18px] text-white" />
               </div>
-              <span className="text-lg font-bold text-white tracking-tight">StatementBur</span>
+              <span className="text-lg font-bold text-white tracking-tight">Recon<span className="text-blue-400">ex</span></span>
             </div>
             <p className="text-sm text-neutral-500 max-w-sm mb-6 leading-relaxed">
               Professional-grade bank statement analysis for small businesses,
@@ -76,7 +76,7 @@ export default function Footer() {
             </p>
             <ul className="space-y-2.5 text-sm">
               <li><Link href="#faq" className="hover:text-white transition-colors">FAQ</Link></li>
-              <li><a href="mailto:support@statementbur.com" className="hover:text-white transition-colors">Contact Us</a></li>
+              <li><a href="mailto:support@reconex.com" className="hover:text-white transition-colors">Contact Us</a></li>
               <li><Link href="#" className="hover:text-white transition-colors">Documentation</Link></li>
               <li><Link href="#" className="hover:text-white transition-colors">API Docs</Link></li>
             </ul>
@@ -87,7 +87,7 @@ export default function Footer() {
         <div className="pt-8 border-t border-neutral-800">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-xs text-neutral-600">
-              &copy; {currentYear} StatementBur. All rights reserved.
+              &copy; {currentYear} Reconex. All rights reserved.
             </p>
             <div className="flex gap-6 text-xs">
               <Link href="#" className="text-neutral-600 hover:text-white transition-colors">Privacy Policy</Link>

@@ -6,7 +6,7 @@ export default function Screenshots() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section header */}
         <div className="text-center mb-14">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-indigo-600 mb-3">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-blue-600 mb-3">
             Preview
           </p>
           <h2 className="text-3xl sm:text-4xl font-bold text-neutral-900 mb-4">
@@ -26,7 +26,7 @@ export default function Screenshots() {
               <div className="w-3 h-3 rounded-full bg-yellow-500" />
               <div className="w-3 h-3 rounded-full bg-green-500" />
             </div>
-            <div className="ml-auto text-neutral-500 text-xs font-mono">StatementBur</div>
+            <div className="ml-auto text-neutral-500 text-xs font-mono">Reconex</div>
           </div>
 
           {/* Mock dashboard */}
@@ -45,9 +45,9 @@ export default function Screenshots() {
                   <div className="text-xs text-red-700 mb-1">Total Expenses</div>
                   <div className="text-xl font-bold text-red-600">R 32,150</div>
                 </div>
-                <div className="rounded-lg bg-indigo-50 ring-1 ring-indigo-200 p-4">
-                  <div className="text-xs text-indigo-700 mb-1">Net Balance</div>
-                  <div className="text-xl font-bold text-indigo-600">R 13,080</div>
+                <div className="rounded-lg bg-blue-50 ring-1 ring-blue-200 p-4">
+                  <div className="text-xs text-blue-700 mb-1">Net Balance</div>
+                  <div className="text-xl font-bold text-blue-600">R 13,080</div>
                 </div>
               </div>
             </div>
@@ -59,7 +59,7 @@ export default function Screenshots() {
               </p>
               <div className="space-y-3">
                 {[
-                  { category: 'Groceries', amount: 8500, color: 'bg-indigo-500' },
+                  { category: 'Groceries', amount: 8500, color: 'bg-blue-500' },
                   { category: 'Rent', amount: 12000, color: 'bg-violet-500' },
                   { category: 'Utilities', amount: 3200, color: 'bg-amber-500' },
                   { category: 'Transportation', amount: 4500, color: 'bg-emerald-500' },
@@ -110,12 +110,12 @@ export default function Screenshots() {
           ].map((card) => {
             const Icon = card.icon
             const bgMap: Record<string, string> = {
-              indigo: 'bg-indigo-50 ring-indigo-200',
+              indigo: 'bg-blue-50 ring-blue-200',
               emerald: 'bg-emerald-50 ring-emerald-200',
               violet: 'bg-violet-50 ring-violet-200',
             }
             const iconColorMap: Record<string, string> = {
-              indigo: 'text-indigo-600',
+              indigo: 'text-blue-600',
               emerald: 'text-emerald-600',
               violet: 'text-violet-600',
             }

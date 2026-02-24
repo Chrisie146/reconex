@@ -113,8 +113,8 @@ export default function CategoriesExportModal({ isOpen, onClose, sessionId, clie
         {/* ── Header ───────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-100">
-              <FileSpreadsheet className="w-4 h-4 text-indigo-600" />
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100">
+              <FileSpreadsheet className="w-4 h-4 text-blue-600" />
             </div>
             <h2 className="text-base font-bold text-neutral-900">Export Categories</h2>
             {includeVAT && (
@@ -137,7 +137,7 @@ export default function CategoriesExportModal({ isOpen, onClose, sessionId, clie
             </div>
             <label className="flex items-center gap-2.5 cursor-pointer mb-3">
               <input type="checkbox" checked={useFullPeriod} onChange={e => setUseFullPeriod(e.target.checked)}
-                className="w-4 h-4 rounded border-neutral-300 text-indigo-600 focus:ring-indigo-300" />
+                className="w-4 h-4 rounded border-neutral-300 text-blue-600 focus:ring-blue-300" />
               <span className="text-sm text-neutral-700">Use full statement period</span>
             </label>
             {!useFullPeriod && (
@@ -146,7 +146,7 @@ export default function CategoriesExportModal({ isOpen, onClose, sessionId, clie
                   <div key={f.label}>
                     <label className="block text-[11px] font-semibold text-neutral-500 mb-1">{f.label}</label>
                     <input type="date" value={f.val} onChange={e => f.set(e.target.value)}
-                      className="w-full rounded-lg border border-neutral-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300" />
+                      className="w-full rounded-lg border border-neutral-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300" />
                   </div>
                 ))}
               </div>
@@ -167,15 +167,15 @@ export default function CategoriesExportModal({ isOpen, onClose, sessionId, clie
                 <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500">Categories</h3>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={handleSelectAll} className="text-[11px] font-medium text-indigo-600 hover:text-indigo-800">All</button>
+                <button onClick={handleSelectAll} className="text-[11px] font-medium text-blue-600 hover:text-blue-800">All</button>
                 <span className="text-neutral-300">|</span>
-                <button onClick={handleDeselectAll} className="text-[11px] font-medium text-indigo-600 hover:text-indigo-800">None</button>
+                <button onClick={handleDeselectAll} className="text-[11px] font-medium text-blue-600 hover:text-blue-800">None</button>
               </div>
             </div>
 
             {loadingCategories ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-5 h-5 text-indigo-500 animate-spin" />
+                <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
               </div>
             ) : !Array.isArray(categories) || categories.length === 0 ? (
               <div className="py-6 rounded-xl border border-dashed border-neutral-200 text-center text-sm text-neutral-400">
@@ -187,9 +187,9 @@ export default function CategoriesExportModal({ isOpen, onClose, sessionId, clie
                   const checked = selectedCategories.includes(cat.name)
                   return (
                     <label key={cat.name}
-                      className={`flex items-center gap-3 px-3.5 py-2.5 cursor-pointer transition-colors ${checked ? 'bg-indigo-50/40' : 'hover:bg-neutral-50'}`}>
+                      className={`flex items-center gap-3 px-3.5 py-2.5 cursor-pointer transition-colors ${checked ? 'bg-blue-50/40' : 'hover:bg-neutral-50'}`}>
                       <input type="checkbox" checked={checked} onChange={() => handleCategoryToggle(cat.name)}
-                        className="w-4 h-4 rounded border-neutral-300 text-indigo-600 focus:ring-indigo-300" />
+                        className="w-4 h-4 rounded border-neutral-300 text-blue-600 focus:ring-blue-300" />
                       <span className="text-sm text-neutral-700 flex-1 truncate">{cat.name}</span>
                       <span className="text-[11px] text-neutral-400 tabular-nums">{cat.transaction_count}</span>
                     </label>
@@ -239,7 +239,7 @@ export default function CategoriesExportModal({ isOpen, onClose, sessionId, clie
             Cancel
           </button>
           <button onClick={handleExport} disabled={exporting || !dateFrom || !dateTo || selectedCategories.length === 0}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
             {exporting
               ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Exporting...</>
               : <><FileSpreadsheet className="w-3.5 h-3.5" /> Export Report</>}

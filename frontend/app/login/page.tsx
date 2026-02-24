@@ -37,20 +37,20 @@ export default function LoginPage() {
       {/* Full-screen loading overlay shown after successful login */}
       {loading && (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
-          <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center mb-4 shadow-lg">
+          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center mb-4 shadow-lg">
             <Landmark className="w-5 h-5 text-white" />
           </div>
-          <Loader2 className="w-6 h-6 animate-spin text-indigo-600 mb-2" />
+          <Loader2 className="w-6 h-6 animate-spin text-blue-600 mb-2" />
           <p className="text-sm text-neutral-500 font-medium">Signing you in…</p>
         </div>
       )}
       <div className="w-full max-w-sm">
         {/* Brand */}
         <Link href="/" className="flex items-center justify-center gap-2.5 mb-8">
-          <div className="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center">
+          <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center">
             <Landmark className="w-[18px] h-[18px] text-white" />
           </div>
-          <span className="text-lg font-bold text-neutral-900 tracking-tight">StatementBur</span>
+          <span className="text-lg font-bold text-neutral-900 tracking-tight">Recon<span className="text-blue-600">ex</span></span>
         </Link>
 
         {/* Card */}
@@ -65,7 +65,7 @@ export default function LoginPage() {
               </label>
               <input
                 type="email"
-                className="mt-1.5 w-full rounded-lg ring-1 ring-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
+                className="mt-1.5 w-full rounded-lg ring-1 ring-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
                 placeholder="you@company.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -77,13 +77,13 @@ export default function LoginPage() {
                 <label className="text-[11px] font-bold uppercase tracking-widest text-neutral-500">
                   Password
                 </label>
-                <Link href="/forgot-password" className="text-[11px] font-medium text-indigo-600 hover:text-indigo-700 transition-colors">
+                <Link href="/forgot-password" className="text-[11px] font-medium text-blue-600 hover:text-blue-700 transition-colors">
                   Forgot password?
                 </Link>
               </div>
               <input
                 type="password"
-                className="mt-1.5 w-full rounded-lg ring-1 ring-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
+                className="mt-1.5 w-full rounded-lg ring-1 ring-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
                 placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -100,7 +100,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 py-2.5 text-sm font-semibold text-white transition-colors"
+              className="w-full flex items-center justify-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-60 py-2.5 text-sm font-semibold text-white transition-colors"
             >
               {loading ? (
                 <>
@@ -116,7 +116,7 @@ export default function LoginPage() {
 
         <p className="mt-5 text-center text-sm text-neutral-500">
           No account?{' '}
-          <Link href="/register" className="font-medium text-indigo-600 hover:text-indigo-700 transition-colors">
+          <Link href="/register" className="font-medium text-blue-600 hover:text-blue-700 transition-colors">
             Create one
           </Link>
         </p>

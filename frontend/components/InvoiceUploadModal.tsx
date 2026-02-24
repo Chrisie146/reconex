@@ -67,8 +67,8 @@ export default function InvoiceUploadModal({ isOpen, onClose, transaction, sessi
         {/* ── Header ───────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100">
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-100">
-              <Upload className="w-4 h-4 text-indigo-600" />
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100">
+              <Upload className="w-4 h-4 text-blue-600" />
             </div>
             <div>
               <h2 className="text-base font-bold text-neutral-900">Upload Invoice</h2>
@@ -104,17 +104,17 @@ export default function InvoiceUploadModal({ isOpen, onClose, transaction, sessi
               onClick={() => !loading && fileInputRef.current?.click()}
               className={`rounded-xl border-2 border-dashed p-8 text-center cursor-pointer transition-all ${
                 loading ? 'border-neutral-200 bg-neutral-50 cursor-wait'
-                : dragOver ? 'border-indigo-400 bg-indigo-50/50'
+                : dragOver ? 'border-blue-400 bg-blue-50/50'
                 : fileName ? 'border-emerald-300 bg-emerald-50/30'
                 : 'border-neutral-200 hover:border-neutral-300 hover:bg-neutral-50/50'
               }`}
             >
               <div className={`mx-auto mb-3 flex items-center justify-center w-10 h-10 rounded-xl ${
-                fileName ? 'bg-emerald-100' : 'bg-indigo-50'
+                fileName ? 'bg-emerald-100' : 'bg-blue-50'
               }`}>
-                {loading ? <Loader2 className="w-5 h-5 text-indigo-500 animate-spin" />
+                {loading ? <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
                   : fileName ? <FileUp className="w-5 h-5 text-emerald-600" />
-                  : <Upload className="w-5 h-5 text-indigo-500" />}
+                  : <Upload className="w-5 h-5 text-blue-500" />}
               </div>
               <p className="text-sm font-medium text-neutral-700">
                 {fileName || 'Drop PDF here or click to select'}
@@ -123,7 +123,7 @@ export default function InvoiceUploadModal({ isOpen, onClose, transaction, sessi
 
               {loading && progress > 0 && (
                 <div className="mt-4 h-1.5 w-full rounded-full bg-neutral-200 overflow-hidden">
-                  <div className="h-full rounded-full bg-indigo-500 transition-all" style={{ width: `${progress}%` }} />
+                  <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${progress}%` }} />
                 </div>
               )}
 

@@ -104,7 +104,7 @@ export default function RecurringTransactions({ sessionId, currentClient }: Recu
               onClick={() => setFilterType(f)}
               className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${
                 filterType === f
-                  ? 'bg-indigo-100 text-indigo-700'
+                  ? 'bg-blue-100 text-blue-700'
                   : 'bg-neutral-50 text-neutral-500 hover:bg-neutral-100'
               }`}
             >
@@ -200,7 +200,7 @@ export default function RecurringTransactions({ sessionId, currentClient }: Recu
                     {/* Active months pills */}
                     <div className="flex flex-wrap gap-1 mb-3">
                       {item.months_active.map((m) => (
-                        <span key={m} className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 font-medium">
+                        <span key={m} className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 font-medium">
                           {m}
                         </span>
                       ))}

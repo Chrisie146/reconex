@@ -106,7 +106,7 @@ function ResetPasswordForm() {
         </p>
         <Link
           href="/login"
-          className="mt-4 inline-block text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
+          className="mt-4 inline-block text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
         >
           Go to sign in
         </Link>
@@ -130,7 +130,7 @@ function ResetPasswordForm() {
           <div className="relative mt-1.5">
             <input
               type={showNew ? 'text' : 'password'}
-              className="w-full rounded-lg ring-1 ring-neutral-200 bg-neutral-50 px-3 py-2 pr-10 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
+              className="w-full rounded-lg ring-1 ring-neutral-200 bg-neutral-50 px-3 py-2 pr-10 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
               placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
@@ -190,7 +190,7 @@ function ResetPasswordForm() {
           <div className="relative mt-1.5">
             <input
               type={showConfirm ? 'text' : 'password'}
-              className="w-full rounded-lg ring-1 ring-neutral-200 bg-neutral-50 px-3 py-2 pr-10 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
+              className="w-full rounded-lg ring-1 ring-neutral-200 bg-neutral-50 px-3 py-2 pr-10 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
               placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
@@ -224,7 +224,7 @@ function ResetPasswordForm() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full flex items-center justify-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 py-2.5 text-sm font-semibold text-white transition-colors"
+          className="w-full flex items-center justify-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-60 py-2.5 text-sm font-semibold text-white transition-colors"
         >
           {loading ? (
             <>
@@ -249,16 +249,16 @@ export default function ResetPasswordPage() {
       <div className="w-full max-w-sm">
         {/* Brand */}
         <Link href="/" className="flex items-center justify-center gap-2.5 mb-8">
-          <div className="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center">
+          <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center">
             <Landmark className="w-[18px] h-[18px] text-white" />
           </div>
-          <span className="text-lg font-bold text-neutral-900 tracking-tight">StatementBur</span>
+          <span className="text-lg font-bold text-neutral-900 tracking-tight">Recon<span className="text-blue-600">ex</span></span>
         </Link>
 
         <div className="rounded-2xl bg-white ring-1 ring-neutral-200 shadow-sm p-6">
           <Suspense fallback={
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-5 h-5 animate-spin text-indigo-600" />
+              <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
             </div>
           }>
             <ResetPasswordForm />
@@ -266,7 +266,7 @@ export default function ResetPasswordPage() {
         </div>
 
         <p className="mt-5 text-center text-sm text-neutral-500">
-          <Link href="/forgot-password" className="font-medium text-indigo-600 hover:text-indigo-700 transition-colors">
+          <Link href="/forgot-password" className="font-medium text-blue-600 hover:text-blue-700 transition-colors">
             Request a new reset link
           </Link>
         </p>

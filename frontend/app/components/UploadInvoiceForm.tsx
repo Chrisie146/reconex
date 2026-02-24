@@ -116,7 +116,7 @@ export default function UploadInvoiceForm({ sessionId, onUploaded }: { sessionId
     <>
       <div className="rounded-xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
         <div className="flex items-center gap-2 px-5 py-3.5 border-b border-neutral-100">
-          <Upload className="w-4 h-4 text-indigo-600" />
+          <Upload className="w-4 h-4 text-blue-600" />
           <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500">Upload Invoice</h3>
         </div>
 
@@ -128,7 +128,7 @@ export default function UploadInvoiceForm({ sessionId, onUploaded }: { sessionId
             onDrop={e => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files) }}
             onClick={() => !busy && fileInputRef.current?.click()}
             className={`relative rounded-xl border-2 border-dashed cursor-pointer transition-all ${
-              dragOver ? 'border-indigo-400 bg-indigo-50/50'
+              dragOver ? 'border-blue-400 bg-blue-50/50'
               : fileObj ? 'border-emerald-300 bg-emerald-50/30'
               : 'border-neutral-200 hover:border-neutral-300 hover:bg-neutral-50/50'
             } px-6 py-8 text-center`}
@@ -150,8 +150,8 @@ export default function UploadInvoiceForm({ sessionId, onUploaded }: { sessionId
               </div>
             ) : (
               <div className="flex flex-col items-center gap-2">
-                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-50">
-                  <Upload className="w-5 h-5 text-indigo-500" />
+                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-50">
+                  <Upload className="w-5 h-5 text-blue-500" />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-neutral-700">Drop invoice PDF here or click to browse</p>
@@ -173,7 +173,7 @@ export default function UploadInvoiceForm({ sessionId, onUploaded }: { sessionId
             <button
               onClick={submit}
               disabled={busy}
-              className="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50 transition-colors">
+              className="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors">
               {busy
                 ? <><Loader2 className="w-4 h-4 animate-spin" /> Extracting and matching...</>
                 : <><Sparkles className="w-4 h-4" /> Upload and Auto-Extract</>}
@@ -224,7 +224,7 @@ export default function UploadInvoiceForm({ sessionId, onUploaded }: { sessionId
                       type={f.type}
                       value={(extractedMeta as any)[f.key]}
                       onChange={e => setExtractedMeta({ ...extractedMeta, [f.key]: e.target.value })}
-                      className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300"
+                      className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300"
                     />
                   </div>
                 )

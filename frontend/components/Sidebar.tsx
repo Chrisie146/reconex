@@ -7,7 +7,7 @@ import {
   ChevronLeft, ChevronRight, BarChart3, Upload, MapPin, List,
   Archive, Eye, Tag, Zap, Sparkles, FileText, FileSpreadsheet,
   FolderOpen, ChevronDown, Receipt, Users, Download, Landmark,
-  Settings2, PanelLeftClose, PanelLeft, Loader2
+  Settings2, PanelLeftClose, PanelLeft, Loader2, CalendarRange, HardDrive
 } from 'lucide-react'
 import axios from '@/lib/axiosClient'
 import { toast } from 'sonner'
@@ -133,29 +133,29 @@ export default function Sidebar({ sessionId, selectedStatement = '', onStatement
      ══════════════════════════════════════════════════════════════════ */
   return (
     <div className={`fixed left-0 top-0 h-full z-50 flex flex-col
-      bg-neutral-900 text-neutral-100 border-r border-neutral-800
+      bg-slate-900 text-neutral-100 border-r border-slate-800
       transition-all duration-300 ease-in-out
       ${isCollapsed ? 'w-[60px]' : 'w-64'}`}>
 
       {/* ── Brand header ─────────────────────────────────────────── */}
-      <div className="flex items-center justify-between h-14 px-3 border-b border-neutral-800 shrink-0">
+      <div className="flex items-center justify-between h-14 px-3 border-b border-slate-800 shrink-0">
         {!isCollapsed && (
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-600">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-600">
               <Landmark className="w-4 h-4 text-white" />
             </div>
-            <span className="text-sm font-bold tracking-tight truncate">Statement<span className="text-indigo-400">Bur</span></span>
+            <span className="text-sm font-bold tracking-tight truncate">Recon<span className="text-blue-400">ex</span></span>
           </div>
         )}
         <button onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors shrink-0"
+          className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-slate-800 transition-colors shrink-0"
           title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
           {isCollapsed ? <PanelLeft className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
         </button>
       </div>
 
       {/* ── Client & Statement selectors ─────────────────────────── */}
-      <div className="shrink-0 border-b border-neutral-800">
+      <div className="shrink-0 border-b border-slate-800">
         {/* Client */}
         {isMounted && !isCollapsed && (
           <div className="px-3 pt-3 pb-2">
@@ -197,7 +197,7 @@ export default function Sidebar({ sessionId, selectedStatement = '', onStatement
             {!isCollapsed && (
               <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 px-3 pt-4 pb-1">Session</p>
             )}
-            {isCollapsed && <div className="my-1.5 mx-2 border-t border-neutral-800" />}
+            {isCollapsed && <div className="my-1.5 mx-2 border-t border-slate-800" />}
             {sessionNav.map(item => (
               <NavLink key={item.matchPrefix} href={item.href}
                 icon={item.icon} label={item.label}
@@ -206,7 +206,7 @@ export default function Sidebar({ sessionId, selectedStatement = '', onStatement
 
             {/* ── Exports ──────────────────────────────────────────── */}
             <SectionHeader label="Exports" open={exportsOpen} toggle={() => setExportsOpen(!exportsOpen)} collapsed={isCollapsed} />
-            {isCollapsed && <div className="my-1.5 mx-2 border-t border-neutral-800" />}
+            {isCollapsed && <div className="my-1.5 mx-2 border-t border-slate-800" />}
             {(exportsOpen || isCollapsed) && exportItems.map(item => (
               <ExportButton key={item.type}
                 icon={item.icon} label={item.label} title={item.title}
@@ -216,7 +216,7 @@ export default function Sidebar({ sessionId, selectedStatement = '', onStatement
 
             {/* ── Configuration ────────────────────────────────────── */}
             <SectionHeader label="Configuration" open={configOpen} toggle={() => setConfigOpen(!configOpen)} collapsed={isCollapsed} />
-            {isCollapsed && <div className="my-1.5 mx-2 border-t border-neutral-800" />}
+            {isCollapsed && <div className="my-1.5 mx-2 border-t border-slate-800" />}
             {(configOpen || isCollapsed) && configItems.map(item => (
               <NavLink key={item.label} href={item.href}
                 icon={item.icon} label={item.label}
@@ -227,21 +227,25 @@ export default function Sidebar({ sessionId, selectedStatement = '', onStatement
 
         {/* ── More ──────────────────────────────────────────────── */}
         <SectionHeader label="More" open={moreOpen} toggle={() => setMoreOpen(!moreOpen)} collapsed={isCollapsed} />
-        {isCollapsed && <div className="my-1.5 mx-2 border-t border-neutral-800" />}
+        {isCollapsed && <div className="my-1.5 mx-2 border-t border-slate-800" />}
         {(moreOpen || isCollapsed) && (
           <>
             <NavLink href="/clients" icon={<Users className="w-[18px] h-[18px]" />}
               label="Clients" active={isActive('/clients')} collapsed={isCollapsed} />
             <NavLink href="/sessions" icon={<Archive className="w-[18px] h-[18px]" />}
               label="All Statements" active={isActive('/sessions')} collapsed={isCollapsed} />
+            <NavLink href="/financial-years" icon={<CalendarRange className="w-[18px] h-[18px]" />}
+              label="Financial Years" active={isActive('/financial-years')} collapsed={isCollapsed} />
+            <NavLink href="/backups" icon={<HardDrive className="w-[18px] h-[18px]" />}
+              label="Backups" active={isActive('/backups')} collapsed={isCollapsed} />
           </>
         )}
       </nav>
 
       {/* ── Footer ──────────────────────────────────────────────── */}
       {!isCollapsed && (
-        <div className="shrink-0 border-t border-neutral-800 px-4 py-3">
-          <p className="text-[10px] text-neutral-600 text-center">Statement Analyzer v2.0</p>
+        <div className="shrink-0 border-t border-slate-800 px-4 py-3">
+          <p className="text-[10px] text-neutral-600 text-center">Reconex v2.0</p>
         </div>
       )}
 
@@ -264,13 +268,13 @@ function NavLink({
     <Link href={href} title={collapsed ? label : undefined}
       className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors relative
         ${active
-          ? 'bg-indigo-600/20 text-indigo-300'
-          : 'text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800'
+          ? 'bg-blue-600/20 text-blue-300'
+          : 'text-neutral-400 hover:text-neutral-100 hover:bg-slate-800'
         }
         ${collapsed ? 'justify-center px-0' : ''}
       `}>
-      {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-indigo-500" />}
-      <span className={`shrink-0 ${active ? 'text-indigo-400' : 'text-neutral-500 group-hover:text-neutral-300'}`}>{icon}</span>
+      {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-blue-500" />}
+      <span className={`shrink-0 ${active ? 'text-blue-400' : 'text-neutral-500 group-hover:text-neutral-300'}`}>{icon}</span>
       {!collapsed && <span className="truncate">{label}</span>}
     </Link>
   )
@@ -283,7 +287,7 @@ function ExportButton({
   return (
     <button onClick={onClick} disabled={loading} title={collapsed ? label : title}
       className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium w-full text-left transition-colors
-        text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed
+        text-neutral-400 hover:text-neutral-100 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed
         ${collapsed ? 'justify-center px-0' : ''}
       `}>
       <span className={`shrink-0 text-neutral-500 group-hover:text-neutral-300 ${loading ? 'animate-pulse' : ''}`}>

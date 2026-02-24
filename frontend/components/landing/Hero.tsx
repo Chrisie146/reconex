@@ -7,12 +7,12 @@ export default function Hero() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-32">
         <div className="text-center">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 ring-1 ring-indigo-400/30 mb-8">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 ring-1 ring-blue-400/30 mb-8">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
             </span>
-            <span className="text-[13px] font-medium text-indigo-200">
+            <span className="text-[13px] font-medium text-blue-200">
               Trusted by 500+ South African businesses
             </span>
           </div>
@@ -20,7 +20,7 @@ export default function Hero() {
           {/* Headline */}
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-6">
             Bank Statement Analysis
-            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-indigo-300 mt-2">
+            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-300 mt-2">
               Made Effortless
             </span>
           </h1>
@@ -35,7 +35,7 @@ export default function Hero() {
           <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
             <Link
               href="/register"
-              className="inline-flex items-center gap-2 px-7 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl transition-colors shadow-lg shadow-indigo-600/25 text-[15px]"
+              className="inline-flex items-center gap-2 px-7 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-colors shadow-lg shadow-blue-600/25 text-[15px]"
             >
               Get Started Free
               <ArrowRight className="w-4 h-4" />

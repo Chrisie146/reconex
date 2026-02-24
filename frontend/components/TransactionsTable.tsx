@@ -33,7 +33,7 @@ const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string
   'Utilities': { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200' },
   'Entertainment': { bg: 'bg-pink-50', text: 'text-pink-700', border: 'border-pink-200' },
   'Medical': { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
-  'Rent': { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200' },
+  'Rent': { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
   'Subscriptions': { bg: 'bg-fuchsia-50', text: 'text-fuchsia-700', border: 'border-fuchsia-200' },
   'Loan': { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
   'Loan Repayment': { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
@@ -748,7 +748,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
             <button
               onClick={handleRecalculateVAT}
               disabled={recalculatingVAT}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title="Recalculate VAT for all transactions across all statements"
             >
               {recalculatingVAT ? (

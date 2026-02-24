@@ -26,7 +26,7 @@ const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string
   'Utilities':       { bg: 'bg-cyan-50',     text: 'text-cyan-700',     border: 'border-cyan-200',     accent: 'bg-cyan-500' },
   'Entertainment':   { bg: 'bg-pink-50',     text: 'text-pink-700',     border: 'border-pink-200',     accent: 'bg-pink-500' },
   'Medical':         { bg: 'bg-red-50',      text: 'text-red-700',      border: 'border-red-200',      accent: 'bg-red-500' },
-  'Rent':            { bg: 'bg-indigo-50',   text: 'text-indigo-700',   border: 'border-indigo-200',   accent: 'bg-indigo-500' },
+  'Rent':            { bg: 'bg-blue-50',   text: 'text-blue-700',   border: 'border-blue-200',   accent: 'bg-blue-500' },
   'Subscriptions':   { bg: 'bg-fuchsia-50',  text: 'text-fuchsia-700',  border: 'border-fuchsia-200',  accent: 'bg-fuchsia-500' },
   'Loan':            { bg: 'bg-rose-50',     text: 'text-rose-700',     border: 'border-rose-200',     accent: 'bg-rose-500' },
   'Loan Repayment':  { bg: 'bg-rose-50',     text: 'text-rose-700',     border: 'border-rose-200',     accent: 'bg-rose-500' },
@@ -301,7 +301,7 @@ export default function MappingPage() {
       {/* ── Page Header ─────────────────────────────────────────── */}
       <div>
         <h2 className="text-2xl font-bold text-neutral-900 tracking-tight flex items-center gap-2">
-          <Tag className="w-6 h-6 text-indigo-500" />
+          <Tag className="w-6 h-6 text-blue-500" />
           Transaction Mapping
         </h2>
         <p className="text-sm text-neutral-500 mt-1">
@@ -312,7 +312,7 @@ export default function MappingPage() {
       {loading ? (
         /* ── Skeleton loader ──────────────────────────────────── */
         <div className="flex flex-col items-center justify-center h-[50vh] gap-3">
-          <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+          <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
           <p className="text-sm text-neutral-400">Loading transactions...</p>
         </div>
       ) : (
@@ -333,11 +333,11 @@ export default function MappingPage() {
                 <span className="text-neutral-300">|</span>
                 <span className="font-medium">{totalAll}</span> total
               </div>
-              <span className="text-xs font-semibold text-indigo-600">{progressPct}% complete</span>
+              <span className="text-xs font-semibold text-blue-600">{progressPct}% complete</span>
             </div>
             <div className="h-2 rounded-full bg-neutral-100 overflow-hidden">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-emerald-400 transition-all duration-500 ease-out"
+                className="h-full rounded-full bg-gradient-to-r from-blue-500 to-emerald-400 transition-all duration-500 ease-out"
                 style={{ width: `${progressPct}%` }}
               />
             </div>
@@ -360,7 +360,7 @@ export default function MappingPage() {
             </button>
 
             {selectedIds.length > 0 && (
-              <span className="rounded-full bg-indigo-100 text-indigo-700 px-2.5 py-0.5 text-xs font-semibold tabular-nums">
+              <span className="rounded-full bg-blue-100 text-blue-700 px-2.5 py-0.5 text-xs font-semibold tabular-nums">
                 {selectedIds.length} selected
               </span>
             )}
@@ -373,7 +373,7 @@ export default function MappingPage() {
               <select
                 value={bulkCategory}
                 onChange={e => setBulkCategory(e.target.value)}
-                className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs font-medium text-neutral-700 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs font-medium text-neutral-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
               >
                 {categories.map(c => {
                   const cs = getCatStyle(c)
@@ -387,7 +387,7 @@ export default function MappingPage() {
                   await applyCategoryToIds(selectedIds, bulkCategory)
                   setSelectedIds([])
                 }}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 <ArrowRight className="w-3.5 h-3.5" /> Apply
               </button>
@@ -428,7 +428,7 @@ export default function MappingPage() {
                       placeholder="Search transactions..."
                       value={searchQuery}
                       onChange={e => setSearchQuery(e.target.value)}
-                      className="w-full rounded-lg border border-neutral-200 bg-neutral-50 pl-8 pr-3 py-1.5 text-xs text-neutral-700 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 transition-colors"
+                      className="w-full rounded-lg border border-neutral-200 bg-neutral-50 pl-8 pr-3 py-1.5 text-xs text-neutral-700 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-colors"
                     />
                     {searchQuery && (
                       <button onClick={() => setSearchQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2">
@@ -462,11 +462,11 @@ export default function MappingPage() {
                               {...prov.dragHandleProps}
                               className={`group flex items-start gap-2 rounded-lg border bg-white cursor-grab active:cursor-grabbing transition-all duration-150 ${
                                 snap.isDragging
-                                  ? 'shadow-xl border-indigo-400 ring-2 ring-indigo-200 rotate-1 scale-[0.92] opacity-95 p-2'
+                                  ? 'shadow-xl border-blue-400 ring-2 ring-blue-200 rotate-1 scale-[0.92] opacity-95 p-2'
                                   : 'p-2.5 border-neutral-200 hover:border-neutral-300 hover:shadow-sm'
                               } ${
                                 selectedIds.includes(t.id)
-                                  ? 'ring-2 ring-indigo-400 bg-indigo-50/50 border-indigo-300'
+                                  ? 'ring-2 ring-blue-400 bg-blue-50/50 border-blue-300'
                                   : ''
                               }`}
                               onClick={(e) => toggleSelect(t.id, e.ctrlKey || e.metaKey)}
@@ -484,7 +484,7 @@ export default function MappingPage() {
                               {/* selection indicator */}
                               <div className="shrink-0 mt-0.5">
                                 {selectedIds.includes(t.id)
-                                  ? <CheckSquare className="w-4 h-4 text-indigo-500" />
+                                  ? <CheckSquare className="w-4 h-4 text-blue-500" />
                                   : <Square className="w-4 h-4 text-neutral-300 opacity-0 group-hover:opacity-100 transition-opacity" />
                                 }
                               </div>
@@ -519,9 +519,9 @@ export default function MappingPage() {
               <div className="flex-1 flex flex-col rounded-xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
                 {/* header */}
                 <div className="flex items-center gap-3 border-b border-neutral-100 bg-neutral-50/80 px-4 py-3">
-                  <FolderOpen className="w-5 h-5 text-indigo-500" />
+                  <FolderOpen className="w-5 h-5 text-blue-500" />
                   <h3 className="text-sm font-semibold text-neutral-800">Categories</h3>
-                  <span className="ml-auto rounded-full bg-indigo-100 text-indigo-700 px-2 py-0.5 text-[11px] font-bold tabular-nums">
+                  <span className="ml-auto rounded-full bg-blue-100 text-blue-700 px-2 py-0.5 text-[11px] font-bold tabular-nums">
                     {categories.length}
                   </span>
                 </div>
@@ -574,11 +574,11 @@ export default function MappingPage() {
                                             {...prov.dragHandleProps}
                                             className={`group flex items-center gap-1.5 rounded-md border bg-white cursor-grab active:cursor-grabbing text-xs transition-all duration-150 ${
                                               snap.isDragging
-                                                ? 'shadow-lg border-indigo-400 ring-2 ring-indigo-200 rotate-1 scale-95 p-1.5'
+                                                ? 'shadow-lg border-blue-400 ring-2 ring-blue-200 rotate-1 scale-95 p-1.5'
                                                 : 'p-1.5 border-neutral-150 hover:border-neutral-300 hover:shadow-sm'
                                             } ${
                                               selectedIds.includes(t.id)
-                                                ? 'ring-2 ring-indigo-400 bg-indigo-50/50 border-indigo-300'
+                                                ? 'ring-2 ring-blue-400 bg-blue-50/50 border-blue-300'
                                                 : ''
                                             }`}
                                             onClick={(e) => toggleSelect(t.id, e.ctrlKey || e.metaKey)}
@@ -590,7 +590,7 @@ export default function MappingPage() {
                                               </span>
                                             </div>
                                             {selectedIds.includes(t.id) && (
-                                              <CheckSquare className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                                              <CheckSquare className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                                             )}
                                           </div>
                                         )}

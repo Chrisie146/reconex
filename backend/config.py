@@ -42,6 +42,10 @@ class Config:
     # Frontend URL (used for password reset links)
     FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
+    # Resend email service
+    RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+    FROM_EMAIL = os.getenv("FROM_EMAIL", "onboarding@resend.dev")
+
     # Logging
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO" if ENVIRONMENT == "production" else "DEBUG")
     

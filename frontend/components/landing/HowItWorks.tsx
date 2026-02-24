@@ -31,7 +31,7 @@ export default function HowItWorks() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section header */}
         <div className="text-center mb-14">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-indigo-600 mb-3">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-blue-600 mb-3">
             How It Works
           </p>
           <h2 className="text-3xl sm:text-4xl font-bold text-neutral-900 mb-4">
@@ -45,21 +45,21 @@ export default function HowItWorks() {
         {/* Steps */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
           {/* Connection line (desktop) */}
-          <div className="hidden md:block absolute top-14 h-px bg-gradient-to-r from-indigo-200 via-indigo-300 to-indigo-200" style={{ left: '20%', right: '20%' }} />
+          <div className="hidden md:block absolute top-14 h-px bg-gradient-to-r from-blue-200 via-blue-300 to-blue-200" style={{ left: '20%', right: '20%' }} />
 
           {steps.map((step) => {
             const Icon = step.icon
             return (
               <div key={step.number} className="relative">
-                <div className="rounded-2xl border border-neutral-200 bg-white p-8 hover:shadow-md hover:border-indigo-200 transition-all duration-200">
+                <div className="rounded-2xl border border-neutral-200 bg-white p-8 hover:shadow-md hover:border-blue-200 transition-all duration-200">
                   {/* Number circle */}
-                  <div className="w-12 h-12 rounded-full bg-indigo-600 flex items-center justify-center text-white text-lg font-bold mx-auto mb-5 relative z-10">
+                  <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white text-lg font-bold mx-auto mb-5 relative z-10">
                     {step.number}
                   </div>
 
                   {/* Icon */}
-                  <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center mx-auto mb-5">
-                    <Icon className="w-5 h-5 text-indigo-600" />
+                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center mx-auto mb-5">
+                    <Icon className="w-5 h-5 text-blue-600" />
                   </div>
 
                   <h3 className="text-lg font-semibold text-neutral-900 mb-3 text-center">
@@ -78,7 +78,7 @@ export default function HowItWorks() {
         <div className="text-center mt-14">
           <Link
             href="/register"
-            className="inline-flex items-center gap-2 px-7 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl transition-colors shadow-sm text-[15px]"
+            className="inline-flex items-center gap-2 px-7 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-colors shadow-sm text-[15px]"
           >
             Start Analyzing Now
             <ArrowRight className="w-4 h-4" />

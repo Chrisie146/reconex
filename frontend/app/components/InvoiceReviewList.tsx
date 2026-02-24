@@ -144,8 +144,8 @@ export default function InvoiceReviewList({ sessionId }: { sessionId: string | n
       {/* ── Header ─────────────────────────────────────────────── */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-100">
-            <FileText className="w-5 h-5 text-indigo-600" />
+          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-100">
+            <FileText className="w-5 h-5 text-blue-600" />
           </div>
           <div>
             <h1 className="text-xl font-bold text-neutral-900">Invoice Management</h1>
@@ -155,7 +155,7 @@ export default function InvoiceReviewList({ sessionId }: { sessionId: string | n
         <div className="flex items-center gap-2">
           <button onClick={runMatch}
             disabled={matching || loading || !sessionId || total === 0}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
             {matching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
             {matching ? 'Matching...' : 'Run Matching'}
           </button>
@@ -187,7 +187,7 @@ export default function InvoiceReviewList({ sessionId }: { sessionId: string | n
       {/* ── Loading ────────────────────────────────────────────── */}
       {loading && total === 0 && (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" />
+          <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
         </div>
       )}
 
@@ -203,12 +203,12 @@ export default function InvoiceReviewList({ sessionId }: { sessionId: string | n
               return (
                 <button key={tab.key} onClick={() => setFilter(tab.key)}
                   className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${
-                    active ? 'bg-indigo-50 text-indigo-700' : 'text-neutral-500 hover:text-neutral-700 hover:bg-neutral-50'
+                    active ? 'bg-blue-50 text-blue-700' : 'text-neutral-500 hover:text-neutral-700 hover:bg-neutral-50'
                   }`}>
                   <Icon className="w-3.5 h-3.5" />
                   {tab.label}
                   <span className={`ml-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                    active ? 'bg-indigo-100 text-indigo-700' : 'bg-neutral-100 text-neutral-500'
+                    active ? 'bg-blue-100 text-blue-700' : 'bg-neutral-100 text-neutral-500'
                   }`}>{count}</span>
                 </button>
               )

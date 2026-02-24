@@ -90,8 +90,8 @@ export default function VATExportModal({ isOpen, onClose, sessionId, clientId }:
         {/* ── Header ───────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100">
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-100">
-              <FileSpreadsheet className="w-4 h-4 text-indigo-600" />
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100">
+              <FileSpreadsheet className="w-4 h-4 text-blue-600" />
             </div>
             <h2 className="text-base font-bold text-neutral-900">Export VAT Report</h2>
           </div>
@@ -112,7 +112,7 @@ export default function VATExportModal({ isOpen, onClose, sessionId, clientId }:
 
             <label className="flex items-center gap-2.5 cursor-pointer mb-3">
               <input type="checkbox" checked={useFullPeriod} onChange={e => setUseFullPeriod(e.target.checked)}
-                className="w-4 h-4 rounded border-neutral-300 text-indigo-600 focus:ring-indigo-300" />
+                className="w-4 h-4 rounded border-neutral-300 text-blue-600 focus:ring-blue-300" />
               <span className="text-sm text-neutral-700">Use full statement period</span>
             </label>
 
@@ -122,7 +122,7 @@ export default function VATExportModal({ isOpen, onClose, sessionId, clientId }:
                   <div key={f.label}>
                     <label className="block text-[11px] font-semibold text-neutral-500 mb-1">{f.label}</label>
                     <input type="date" value={f.val} onChange={e => f.set(e.target.value)}
-                      className="w-full rounded-lg border border-neutral-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300" />
+                      className="w-full rounded-lg border border-neutral-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300" />
                   </div>
                 ))}
               </div>
@@ -147,15 +147,15 @@ export default function VATExportModal({ isOpen, onClose, sessionId, clientId }:
                 <label key={t.value}
                   className={`flex items-start gap-3 cursor-pointer rounded-xl border-2 px-4 py-3 transition-colors ${
                     exportType === t.value
-                      ? 'border-indigo-500 bg-indigo-50/60'
+                      ? 'border-blue-500 bg-blue-50/60'
                       : 'border-neutral-100 hover:border-neutral-200 hover:bg-neutral-50'
                   }`}>
                   <input type="radio" name="exportType" value={t.value} checked={exportType === t.value}
                     onChange={() => setExportType(t.value)}
-                    className="mt-0.5 w-4 h-4 border-neutral-300 text-indigo-600 focus:ring-indigo-300" />
+                    className="mt-0.5 w-4 h-4 border-neutral-300 text-blue-600 focus:ring-blue-300" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <span className={exportType === t.value ? 'text-indigo-600' : 'text-neutral-400'}>{t.icon}</span>
+                      <span className={exportType === t.value ? 'text-blue-600' : 'text-neutral-400'}>{t.icon}</span>
                       <span className="text-sm font-semibold text-neutral-800">{t.label}</span>
                     </div>
                     <p className="text-[11px] text-neutral-500 mt-0.5">{t.desc}</p>
@@ -181,7 +181,7 @@ export default function VATExportModal({ isOpen, onClose, sessionId, clientId }:
             Cancel
           </button>
           <button onClick={handleExport} disabled={exporting || !dateFrom || !dateTo}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
             {exporting
               ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Exporting...</>
               : <><FileSpreadsheet className="w-3.5 h-3.5" /> Export Report</>}

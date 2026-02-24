@@ -288,6 +288,183 @@ class TaskStatus(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+# =============================================================================
+# FINANCIAL YEAR & ARCHIVE MODELS
+# =============================================================================
+
+
+class FinancialYear(Base):
+    """
+    Defines a financial year for a client. Users configure the start/end dates
+    and label. Once all work for the year is complete, the year can be archived
+    to keep the live tables lean while preserving all historical data.
+    """
+    __tablename__ = "financial_years"
+
+    id = Column(Integer, primary_key=True, index=True)
+    client_id = Column(Integer, ForeignKey("clients.id", ondelete="CASCADE"), index=True, nullable=False)
+    label = Column(String, nullable=False)       # e.g. "2024/2025" or "FY2025"
+    year_start = Column(Date, nullable=False)    # Inclusive start date
+    year_end = Column(Date, nullable=False)      # Inclusive end date
+    status = Column(String, default="open")      # "open" | "archived"
+    archived_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class ArchivedSession(Base):
+    """
+    Archive copy of a SessionState record. Includes client_id (not on the live
+    SessionState) so the archived record is self-contained.
+    """
+    __tablename__ = "archived_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    financial_year_id = Column(Integer, ForeignKey("financial_years.id", ondelete="CASCADE"), index=True, nullable=False)
+    original_id = Column(Integer, nullable=False)
+    client_id = Column(Integer, ForeignKey("clients.id", ondelete="CASCADE"), index=True, nullable=False)
+    session_id = Column(String, index=True, nullable=False)
+    locked = Column(Integer, default=0)
+    friendly_name = Column(String, nullable=True)
+    original_created_at = Column(DateTime, nullable=True)
+    archived_at = Column(DateTime, default=datetime.utcnow)
+
+
+class ArchivedTransaction(Base):
+    """
+    Archive copy of a Transaction record.
+    """
+    __tablename__ = "archived_transactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    financial_year_id = Column(Integer, ForeignKey("financial_years.id", ondelete="CASCADE"), index=True, nullable=False)
+    original_id = Column(Integer, nullable=False)
+    client_id = Column(Integer, ForeignKey("clients.id", ondelete="CASCADE"), index=True, nullable=False)
+    session_id = Column(String, index=True, nullable=False)
+    original_invoice_id = Column(Integer, nullable=True)
+    date = Column(Date, nullable=False)
+    description = Column(String, nullable=False)
+    amount = Column(Float, nullable=False)
+    category = Column(String, nullable=False)
+    vat_amount = Column(Float, nullable=True)
+    amount_excl_vat = Column(Float, nullable=True)
+    amount_incl_vat = Column(Float, nullable=True)
+    bank_source = Column(String, nullable=True)
+    balance_verified = Column(Integer, nullable=True)
+    balance_difference = Column(Float, nullable=True)
+    validation_message = Column(String, nullable=True)
+    original_created_at = Column(DateTime, nullable=True)
+    archived_at = Column(DateTime, default=datetime.utcnow)
+
+
+class ArchivedTransactionMerchant(Base):
+    """
+    Archive copy of a TransactionMerchant record.
+    """
+    __tablename__ = "archived_transaction_merchants"
+
+    id = Column(Integer, primary_key=True, index=True)
+    financial_year_id = Column(Integer, ForeignKey("financial_years.id", ondelete="CASCADE"), index=True, nullable=False)
+    original_id = Column(Integer, nullable=False)
+    original_transaction_id = Column(Integer, nullable=False)
+    session_id = Column(String, index=True, nullable=False)
+    merchant = Column(String, nullable=True)
+    original_created_at = Column(DateTime, nullable=True)
+    archived_at = Column(DateTime, default=datetime.utcnow)
+
+
+class ArchivedReconciliation(Base):
+    """
+    Archive copy of a Reconciliation record.
+    """
+    __tablename__ = "archived_reconciliations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    financial_year_id = Column(Integer, ForeignKey("financial_years.id", ondelete="CASCADE"), index=True, nullable=False)
+    original_id = Column(Integer, nullable=False)
+    session_id = Column(String, index=True, nullable=True)
+    client_id = Column(Integer, ForeignKey("clients.id", ondelete="CASCADE"), index=True, nullable=True)
+    month = Column(String, index=True)
+    opening_balance = Column(Float, nullable=True)
+    closing_balance = Column(Float, nullable=True)
+    original_created_at = Column(DateTime, nullable=True)
+    archived_at = Column(DateTime, default=datetime.utcnow)
+
+
+class ArchivedOverallReconciliation(Base):
+    """
+    Archive copy of an OverallReconciliation record.
+    """
+    __tablename__ = "archived_overall_reconciliations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    financial_year_id = Column(Integer, ForeignKey("financial_years.id", ondelete="CASCADE"), index=True, nullable=False)
+    original_id = Column(Integer, nullable=False)
+    session_id = Column(String, index=True, nullable=True)
+    client_id = Column(Integer, ForeignKey("clients.id", ondelete="CASCADE"), index=True, nullable=True)
+    system_opening_balance = Column(Float, nullable=True)
+    bank_closing_balance = Column(Float, nullable=True)
+    original_created_at = Column(DateTime, nullable=True)
+    archived_at = Column(DateTime, default=datetime.utcnow)
+
+
+class ArchivedInvoice(Base):
+    """
+    Archive copy of an Invoice record.
+    """
+    __tablename__ = "archived_invoices"
+
+    id = Column(Integer, primary_key=True, index=True)
+    financial_year_id = Column(Integer, ForeignKey("financial_years.id", ondelete="CASCADE"), index=True, nullable=False)
+    original_id = Column(Integer, nullable=False)
+    client_id = Column(Integer, ForeignKey("clients.id", ondelete="CASCADE"), index=True, nullable=False)
+    session_id = Column(String, index=True, nullable=False)
+    supplier_name = Column(String, nullable=False)
+    invoice_date = Column(Date, nullable=False)
+    invoice_number = Column(String, nullable=True)
+    total_amount = Column(Float, nullable=False)
+    vat_amount = Column(Float, nullable=True)
+    file_reference = Column(String, nullable=True)
+    original_created_at = Column(DateTime, nullable=True)
+    archived_at = Column(DateTime, default=datetime.utcnow)
+
+
+class ArchivedInvoiceMatch(Base):
+    """
+    Archive copy of an InvoiceMatch record. Stores original IDs for reference
+    since the live transaction/invoice rows are removed after archiving.
+    """
+    __tablename__ = "archived_invoice_matches"
+
+    id = Column(Integer, primary_key=True, index=True)
+    financial_year_id = Column(Integer, ForeignKey("financial_years.id", ondelete="CASCADE"), index=True, nullable=False)
+    original_id = Column(Integer, nullable=False)
+    original_invoice_id = Column(Integer, nullable=False)
+    original_transaction_id = Column(Integer, nullable=False)
+    confidence = Column(Integer, nullable=False)
+    explanation = Column(String, nullable=True)
+    status = Column(String, default="suggested")
+    suggested_at = Column(DateTime, nullable=True)
+    confirmed_at = Column(DateTime, nullable=True)
+    archived_at = Column(DateTime, default=datetime.utcnow)
+
+
+class BackupRecord(Base):
+    """
+    Audit log of user-triggered backup downloads. The actual backup is streamed
+    directly to the browser (pg_dump piped as HTTP response), so no file is stored
+    server-side. This table simply records who downloaded a backup and when.
+    """
+    __tablename__ = "backup_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    label = Column(String, nullable=False)        # e.g. "Full backup - 2025-03-15"
+    status = Column(String, default="completed")  # "completed" | "failed"
+    file_size_bytes = Column(Integer, nullable=True)
+    error_message = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+
 # Database setup using configuration
 from config import DATABASE_URL, ENVIRONMENT
 

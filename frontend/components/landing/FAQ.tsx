@@ -64,14 +64,14 @@ export default function FAQ() {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section header */}
         <div className="text-center mb-14">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-indigo-600 mb-3">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-blue-600 mb-3">
             FAQ
           </p>
           <h2 className="text-3xl sm:text-4xl font-bold text-neutral-900 mb-4">
             Frequently Asked Questions
           </h2>
           <p className="text-lg text-neutral-500">
-            Everything you need to know about StatementBur
+            Everything you need to know about Reconex
           </p>
         </div>
 
@@ -83,7 +83,7 @@ export default function FAQ() {
               <div
                 key={index}
                 className={`rounded-xl border transition-colors ${
-                  isOpen ? 'border-indigo-200 bg-indigo-50/40' : 'border-neutral-200 bg-white hover:border-neutral-300'
+                  isOpen ? 'border-blue-200 bg-blue-50/40' : 'border-neutral-200 bg-white hover:border-neutral-300'
                 }`}
               >
                 <button
@@ -94,7 +94,7 @@ export default function FAQ() {
                     {faq.question}
                   </span>
                   <ChevronDown
-                    className={`w-4 h-4 text-indigo-600 flex-shrink-0 transition-transform duration-200 ${
+                    className={`w-4 h-4 text-blue-600 flex-shrink-0 transition-transform duration-200 ${
                       isOpen ? 'rotate-180' : ''
                     }`}
                   />
@@ -117,7 +117,7 @@ export default function FAQ() {
           </p>
           <a
             href="#contact"
-            className="inline-block px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg transition-colors"
+            className="inline-block px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
           >
             Contact Support
           </a>

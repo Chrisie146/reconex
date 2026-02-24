@@ -37,7 +37,7 @@ export default function RegisterPage() {
 
       // Mark as new user so dashboard shows onboarding
       if (typeof window !== 'undefined') {
-        localStorage.setItem('statementbur_onboarding', 'pending')
+        localStorage.setItem('reconex_onboarding', 'pending')
       }
 
       router.push('/dashboard')
@@ -54,10 +54,10 @@ export default function RegisterPage() {
       <div className="w-full max-w-sm">
         {/* Brand */}
         <Link href="/" className="flex items-center justify-center gap-2.5 mb-8">
-          <div className="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center">
+          <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center">
             <Landmark className="w-[18px] h-[18px] text-white" />
           </div>
-          <span className="text-lg font-bold text-neutral-900 tracking-tight">StatementBur</span>
+          <span className="text-lg font-bold text-neutral-900 tracking-tight">Recon<span className="text-blue-600">ex</span></span>
         </Link>
 
         {/* Card */}
@@ -72,7 +72,7 @@ export default function RegisterPage() {
               </label>
               <input
                 type="email"
-                className="mt-1.5 w-full rounded-lg ring-1 ring-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
+                className="mt-1.5 w-full rounded-lg ring-1 ring-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
                 placeholder="you@company.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -85,7 +85,7 @@ export default function RegisterPage() {
               </label>
               <input
                 type="text"
-                className="mt-1.5 w-full rounded-lg ring-1 ring-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
+                className="mt-1.5 w-full rounded-lg ring-1 ring-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
                 placeholder="Jane Doe"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
@@ -97,7 +97,7 @@ export default function RegisterPage() {
               </label>
               <input
                 type="password"
-                className="mt-1.5 w-full rounded-lg ring-1 ring-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
+                className="mt-1.5 w-full rounded-lg ring-1 ring-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
                 placeholder="Min 8 characters"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -114,7 +114,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 py-2.5 text-sm font-semibold text-white transition-colors"
+              className="w-full flex items-center justify-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-60 py-2.5 text-sm font-semibold text-white transition-colors"
             >
               {loading ? (
                 <>
@@ -130,7 +130,7 @@ export default function RegisterPage() {
 
         <p className="mt-5 text-center text-sm text-neutral-500">
           Already have an account?{' '}
-          <Link href="/login" className="font-medium text-indigo-600 hover:text-indigo-700 transition-colors">
+          <Link href="/login" className="font-medium text-blue-600 hover:text-blue-700 transition-colors">
             Sign in
           </Link>
         </p>

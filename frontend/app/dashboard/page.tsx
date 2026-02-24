@@ -49,7 +49,7 @@ export default function Dashboard() {
 
     // Check if user should see onboarding
     if (typeof window !== 'undefined') {
-      const flag = localStorage.getItem('statementbur_onboarding')
+      const flag = localStorage.getItem('reconex_onboarding')
       if (flag === 'pending') {
         setShowOnboarding(true)
       }
@@ -288,7 +288,7 @@ export default function Dashboard() {
           onComplete={() => {
             setShowOnboarding(false)
             if (typeof window !== 'undefined') {
-              localStorage.removeItem('statementbur_onboarding')
+              localStorage.removeItem('reconex_onboarding')
             }
           }}
         />
@@ -296,7 +296,7 @@ export default function Dashboard() {
 
       <footer className="border-t border-neutral-200 bg-neutral-50 mt-16">
         <div className="max-w-6xl mx-auto px-4 py-6 text-center text-sm text-neutral-600">
-          <p>Bank Statement Analyzer v1.0 | © {new Date().getFullYear()} All Rights Reserved</p>
+          <p>Reconex v1.0 | © {new Date().getFullYear()} All Rights Reserved</p>
         </div>
       </footer>
     </main>

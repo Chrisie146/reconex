@@ -141,7 +141,7 @@ export default function Page() {
           {/* Content */}
           {loading ? (
             <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
+              <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
               <span className="ml-3 text-sm text-neutral-500">Loading statements...</span>
             </div>
           ) : !currentClient ? (
@@ -167,7 +167,7 @@ export default function Page() {
                   type="checkbox"
                   checked={selectedSessions.size === sessions.length && sessions.length > 0}
                   onChange={toggleSelectAll}
-                  className="h-4 w-4 rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                  className="h-4 w-4 rounded border-neutral-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                 />
                 <span className="text-sm font-medium text-neutral-600">
                   Select all ({sessions.length})
@@ -181,7 +181,7 @@ export default function Page() {
                   className={`
                     flex items-center gap-4 rounded-xl bg-white px-4 py-4 ring-1 shadow-sm transition-all
                     ${selectedSessions.has(s.session_id)
-                      ? 'ring-indigo-300 bg-indigo-50/40'
+                      ? 'ring-blue-300 bg-blue-50/40'
                       : 'ring-neutral-200 hover:ring-neutral-300'}
                   `}
                 >
@@ -189,7 +189,7 @@ export default function Page() {
                     type="checkbox"
                     checked={selectedSessions.has(s.session_id)}
                     onChange={() => toggleSessionSelect(s.session_id)}
-                    className="h-4 w-4 rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer flex-shrink-0"
+                    className="h-4 w-4 rounded border-neutral-300 text-blue-600 focus:ring-blue-500 cursor-pointer flex-shrink-0"
                   />
 
                   <div className="flex-1 min-w-0">
@@ -214,7 +214,7 @@ export default function Page() {
 
                     <a
                       href={`/dashboard?session_id=${encodeURIComponent(s.session_id)}`}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-indigo-700"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-blue-700"
                     >
                       <Eye className="w-3.5 h-3.5" />
                       View

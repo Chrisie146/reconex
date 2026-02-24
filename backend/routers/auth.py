@@ -18,7 +18,9 @@ from auth import (
     verify_password,
     verify_password_reset_token,
 )
-from config import ENVIRONMENT, FRONTEND_URL
+import resend
+
+from config import ENVIRONMENT, FRONTEND_URL, Config
 from exceptions import (
     AuthenticationError,
     AuthorizationError,
@@ -82,18 +84,99 @@ def _validate_password_strength(password: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Email helper (placeholder — replace with your SMTP / SendGrid / etc. logic)
+# Email helper — Resend
 # ---------------------------------------------------------------------------
-def _send_reset_email(to_email: str, reset_link: str) -> None:
-    """
-    Send a password-reset email to the user.
+def _build_reset_email_html(reset_link: str) -> str:
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reset Your Password</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;padding:40px 0;">
+    <tr>
+      <td align="center">
+        <table width="560" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;border:1px solid #e4e4e7;overflow:hidden;">
 
-    Replace the body of this function with your real email-sending logic
-    (e.g. boto3 SES, sendgrid, smtplib).  The function should be
-    fire-and-forget; any exceptions should be caught and logged, never
-    propagated to the caller.
-    """
-    logger.info(f"[EMAIL] Password reset link for {to_email}: {reset_link}")
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#2563eb;padding:32px 40px;text-align:center;">
+              <span style="font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.3px;">StatementBur</span>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px 40px 32px;">
+              <h1 style="margin:0 0 16px;font-size:20px;font-weight:600;color:#18181b;">Reset your password</h1>
+              <p style="margin:0 0 24px;font-size:15px;color:#52525b;line-height:1.6;">
+                We received a request to reset the password for your StatementBur account.
+                Click the button below to choose a new password.
+              </p>
+
+              <!-- Button -->
+              <table cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+                <tr>
+                  <td style="background-color:#2563eb;border-radius:6px;">
+                    <a href="{reset_link}"
+                       style="display:inline-block;padding:12px 28px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;">
+                      Reset My Password
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 8px;font-size:13px;color:#71717a;line-height:1.6;">
+                This link expires in <strong>15 minutes</strong>.
+                If you did not request a password reset, you can safely ignore this email — your password will not change.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Divider -->
+          <tr>
+            <td style="padding:0 40px;">
+              <hr style="border:none;border-top:1px solid #e4e4e7;margin:0;" />
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 40px;text-align:center;">
+              <p style="margin:0;font-size:12px;color:#a1a1aa;">
+                &copy; 2025 StatementBur. All rights reserved.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>"""
+
+
+def _send_reset_email(to_email: str, reset_link: str) -> None:
+    """Send a password-reset email via Resend. Fire-and-forget — never raises."""
+    api_key = Config.RESEND_API_KEY
+    if not api_key:
+        logger.warning("[EMAIL] RESEND_API_KEY not set — skipping email send")
+        return
+
+    try:
+        resend.api_key = api_key
+        resend.Emails.send({
+            "from": Config.FROM_EMAIL,
+            "to": [to_email],
+            "subject": "Reset your StatementBur password",
+            "html": _build_reset_email_html(reset_link),
+        })
+        logger.info(f"[EMAIL] Password reset email sent to {to_email}")
+    except Exception as exc:
+        logger.error(f"[EMAIL] Failed to send reset email to {to_email}: {exc}")
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -261,12 +344,11 @@ def forgot_password(
     reset_link = f"{FRONTEND_URL}/reset-password?token={token}"
 
     if ENVIRONMENT != "production":
-        # Development: print link to console so it's easy to test locally
+        # Always print the link in dev so it's easy to test without email
         logger.info(f"[DEV] Password reset link for {user.email}: {reset_link}")
         print(f"\n{'='*60}\nPassword Reset Link (dev only):\n{reset_link}\n{'='*60}\n", flush=True)
-    else:
-        _send_reset_email(user.email, reset_link)
-        logger.info(f"Password reset email sent to: {user.email}")
+
+    _send_reset_email(user.email, reset_link)
 
     return _GENERIC_RESET_RESPONSE
 

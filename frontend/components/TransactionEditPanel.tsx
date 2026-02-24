@@ -404,8 +404,8 @@ export default function TransactionEditPanel({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-neutral-200 bg-white px-6 py-4">
           <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-indigo-50 p-2">
-              <Pencil className="w-4 h-4 text-indigo-600" />
+            <div className="rounded-lg bg-blue-50 p-2">
+              <Pencil className="w-4 h-4 text-blue-600" />
             </div>
             <h2 className="text-lg font-semibold text-neutral-900">Edit Transaction</h2>
           </div>
@@ -439,7 +439,7 @@ export default function TransactionEditPanel({
                 <span className="text-xs font-medium text-neutral-500">Description</span>
                 <button
                   onClick={() => setEditingDescription(!editingDescription)}
-                  className="text-xs font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
+                  className="text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors"
                 >
                   {editingDescription ? 'Cancel' : 'Edit'}
                 </button>
@@ -449,7 +449,7 @@ export default function TransactionEditPanel({
                   <textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="w-full rounded-lg bg-white px-3 py-2 text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full rounded-lg bg-white px-3 py-2 text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     rows={3}
                   />
                   <div className="flex items-start gap-2 rounded-lg bg-amber-50 ring-1 ring-amber-200 p-2.5">
@@ -511,7 +511,7 @@ export default function TransactionEditPanel({
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full rounded-lg bg-white px-3 py-2.5 text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
+                className="w-full rounded-lg bg-white px-3 py-2.5 text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
               >
                 <option value="">(None)</option>
                 {categories.map((cat) => (
@@ -523,7 +523,7 @@ export default function TransactionEditPanel({
 
               <button
                 onClick={() => setShowCreateCategory(true)}
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Create New Category
@@ -537,7 +537,7 @@ export default function TransactionEditPanel({
                       type="checkbox"
                       checked={learnRule}
                       onChange={(e) => setLearnRule(e.target.checked)}
-                      className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500"
+                      className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
                     />
                     <div>
                       <span className="text-sm font-medium text-neutral-900">
@@ -559,7 +559,7 @@ export default function TransactionEditPanel({
                         value={keyword}
                         onChange={(e) => setKeyword(e.target.value.toUpperCase())}
                         placeholder="e.g., WOOLWORTHS, NETFLIX, UBER"
-                        className="w-full rounded-lg bg-white px-3 py-2 text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full rounded-lg bg-white px-3 py-2 text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                       <p className="text-xs text-neutral-500">
                         Will match all transactions containing this keyword
@@ -576,7 +576,7 @@ export default function TransactionEditPanel({
                     type="checkbox"
                     checked={applyCategorySimilar}
                     onChange={(e) => setApplyCategorySimilar(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500"
+                    className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
                   />
                   <div>
                     <span className="text-sm font-medium text-neutral-900">
@@ -598,7 +598,7 @@ export default function TransactionEditPanel({
                       value={categoryKeyword}
                       onChange={(e) => setCategoryKeyword(e.target.value.toUpperCase())}
                       placeholder="e.g., WOOLWORTHS, NETFLIX, UBER"
-                      className="w-full rounded-lg bg-white px-3 py-2 text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full rounded-lg bg-white px-3 py-2 text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <p className="text-xs text-neutral-500">
                       Will apply to all transactions containing this keyword
@@ -606,7 +606,7 @@ export default function TransactionEditPanel({
                     <button
                       onClick={handleApplyCategorySimilar}
                       disabled={loading || (category || '').trim().length === 0 || categoryKeyword.trim().length < 3}
-                      className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {loading ? (
                         <>
@@ -639,7 +639,7 @@ export default function TransactionEditPanel({
                   setCreateError('')
                 }}
                 placeholder="e.g., Pet Care, Subscriptions"
-                className="w-full rounded-lg bg-white px-3 py-2.5 text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full rounded-lg bg-white px-3 py-2.5 text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               {createError && (
                 <div className="flex items-start gap-2 text-sm text-red-700">
@@ -651,7 +651,7 @@ export default function TransactionEditPanel({
                 <button
                   onClick={handleCreateCategory}
                   disabled={loading || !newCategoryName.trim()}
-                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? (
                     <>
@@ -687,7 +687,7 @@ export default function TransactionEditPanel({
               value={merchant}
               onChange={(e) => setMerchant(e.target.value)}
               placeholder="e.g., Shell, Spar, FNB"
-              className="w-full rounded-lg bg-white px-3 py-2.5 text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
+              className="w-full rounded-lg bg-white px-3 py-2.5 text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
             />
             <p className="text-xs text-neutral-500">Optional: Helps track spending by vendor</p>
 
@@ -698,7 +698,7 @@ export default function TransactionEditPanel({
                   type="checkbox"
                   checked={applyMerchantSimilar}
                   onChange={(e) => setApplyMerchantSimilar(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500"
+                  className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
                 />
                 <div>
                   <span className="text-sm font-medium text-neutral-900">
@@ -720,7 +720,7 @@ export default function TransactionEditPanel({
                     value={merchantKeyword}
                     onChange={(e) => setMerchantKeyword(e.target.value.toUpperCase())}
                     placeholder="e.g., WOOLWORTHS, NETFLIX, UBER"
-                    className="w-full rounded-lg bg-white px-3 py-2 text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full rounded-lg bg-white px-3 py-2 text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <p className="text-xs text-neutral-500">
                     Will apply to all transactions containing this keyword
@@ -728,7 +728,7 @@ export default function TransactionEditPanel({
                   <button
                     onClick={handleApplyMerchantSimilar}
                     disabled={loading || (merchant || '').trim().length === 0 || merchantKeyword.trim().length < 3}
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {loading ? (
                       <>
@@ -767,7 +767,7 @@ export default function TransactionEditPanel({
           <button
             onClick={handleSave}
             disabled={loading || !hasChanges}
-            className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <>

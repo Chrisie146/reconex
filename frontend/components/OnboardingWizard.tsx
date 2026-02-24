@@ -29,8 +29,8 @@ export default function OnboardingWizard({ onComplete, userName }: OnboardingWiz
     /* ── Step 0 – Welcome ────────────────────────────────────────── */
     {
       title: `Welcome, ${greeting}!`,
-      subtitle: 'Let\u2019s walk through the basics so you can get the most out of StatementBur.',
-      icon: <Landmark className="w-6 h-6 text-indigo-600" />,
+      subtitle: 'Let\u2019s walk through the basics so you can get the most out of Reconex.',
+      icon: <Landmark className="w-6 h-6 text-blue-600" />,
       content: (
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -44,10 +44,10 @@ export default function OnboardingWizard({ onComplete, userName }: OnboardingWiz
               return (
                 <div
                   key={item.label}
-                  className="flex items-center gap-3 rounded-xl bg-indigo-50 ring-1 ring-indigo-100 p-3"
+                  className="flex items-center gap-3 rounded-xl bg-blue-50 ring-1 ring-blue-100 p-3"
                 >
                   <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center flex-shrink-0">
-                    <Icon className="w-4 h-4 text-indigo-600" />
+                    <Icon className="w-4 h-4 text-blue-600" />
                   </div>
                   <span className="text-sm text-neutral-700">{item.label}</span>
                 </div>
@@ -62,11 +62,11 @@ export default function OnboardingWizard({ onComplete, userName }: OnboardingWiz
     {
       title: 'Upload a Statement',
       subtitle: 'Drag & drop or browse for a CSV or PDF bank statement. We support FNB, Standard Bank, ABSA, Capitec and more.',
-      icon: <Upload className="w-6 h-6 text-indigo-600" />,
+      icon: <Upload className="w-6 h-6 text-blue-600" />,
       content: (
         <div className="rounded-xl bg-neutral-50 ring-1 ring-neutral-200 p-6 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center mx-auto mb-4">
-            <Upload className="w-7 h-7 text-indigo-500" />
+          <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto mb-4">
+            <Upload className="w-7 h-7 text-blue-500" />
           </div>
           <p className="text-sm font-semibold text-neutral-900 mb-1">
             Supported formats
@@ -92,7 +92,7 @@ export default function OnboardingWizard({ onComplete, userName }: OnboardingWiz
     {
       title: 'Auto-Categorize',
       subtitle: 'Transactions are automatically categorized using our rules engine. You can edit categories, create custom rules and bulk-update.',
-      icon: <Tag className="w-6 h-6 text-indigo-600" />,
+      icon: <Tag className="w-6 h-6 text-blue-600" />,
       content: (
         <div className="space-y-2">
           {[
@@ -116,7 +116,7 @@ export default function OnboardingWizard({ onComplete, userName }: OnboardingWiz
     {
       title: 'Analyze & Export',
       subtitle: 'View monthly summaries, category breakdowns and export accountant-ready Excel reports in one click.',
-      icon: <BarChart3 className="w-6 h-6 text-indigo-600" />,
+      icon: <BarChart3 className="w-6 h-6 text-blue-600" />,
       content: (
         <div className="grid grid-cols-3 gap-3">
           <div className="rounded-xl bg-emerald-50 ring-1 ring-emerald-200 p-4 text-center">
@@ -127,9 +127,9 @@ export default function OnboardingWizard({ onComplete, userName }: OnboardingWiz
             <p className="text-[10px] font-bold uppercase tracking-widest text-red-600 mb-1">Expenses</p>
             <p className="text-lg font-bold text-red-700">R 32,150</p>
           </div>
-          <div className="rounded-xl bg-indigo-50 ring-1 ring-indigo-200 p-4 text-center">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-600 mb-1">Net</p>
-            <p className="text-lg font-bold text-indigo-700">R 13,080</p>
+          <div className="rounded-xl bg-blue-50 ring-1 ring-blue-200 p-4 text-center">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-blue-600 mb-1">Net</p>
+            <p className="text-lg font-bold text-blue-700">R 13,080</p>
           </div>
         </div>
       ),
@@ -139,7 +139,7 @@ export default function OnboardingWizard({ onComplete, userName }: OnboardingWiz
     {
       title: 'Multi-Client Ready',
       subtitle: 'Managing multiple businesses? Create separate client workspaces and switch between them instantly from the sidebar.',
-      icon: <Users className="w-6 h-6 text-indigo-600" />,
+      icon: <Users className="w-6 h-6 text-blue-600" />,
       content: (
         <div className="rounded-xl bg-neutral-50 ring-1 ring-neutral-200 p-5">
           <div className="space-y-2">
@@ -147,15 +147,15 @@ export default function OnboardingWizard({ onComplete, userName }: OnboardingWiz
               <div
                 key={c}
                 className={`flex items-center gap-3 rounded-lg px-4 py-2.5 ${
-                  i === 0 ? 'bg-indigo-50 ring-1 ring-indigo-200' : 'bg-white ring-1 ring-neutral-200'
+                  i === 0 ? 'bg-blue-50 ring-1 ring-blue-200' : 'bg-white ring-1 ring-neutral-200'
                 }`}
               >
-                <div className={`w-2 h-2 rounded-full ${i === 0 ? 'bg-indigo-500' : 'bg-neutral-300'}`} />
-                <span className={`text-sm ${i === 0 ? 'font-semibold text-indigo-700' : 'text-neutral-600'}`}>
+                <div className={`w-2 h-2 rounded-full ${i === 0 ? 'bg-blue-500' : 'bg-neutral-300'}`} />
+                <span className={`text-sm ${i === 0 ? 'font-semibold text-blue-700' : 'text-neutral-600'}`}>
                   {c}
                 </span>
                 {i === 0 && (
-                  <span className="ml-auto text-[10px] font-bold uppercase tracking-widest text-indigo-500">
+                  <span className="ml-auto text-[10px] font-bold uppercase tracking-widest text-blue-500">
                     Active
                   </span>
                 )}
@@ -170,14 +170,14 @@ export default function OnboardingWizard({ onComplete, userName }: OnboardingWiz
     {
       title: 'You\u2019re All Set!',
       subtitle: 'Your workspace is ready. Upload your first statement to get started.',
-      icon: <Sparkles className="w-6 h-6 text-indigo-600" />,
+      icon: <Sparkles className="w-6 h-6 text-blue-600" />,
       content: (
         <div className="text-center py-4">
           <div className="w-16 h-16 rounded-2xl bg-emerald-50 ring-1 ring-emerald-200 flex items-center justify-center mx-auto mb-4">
             <CheckCircle2 className="w-8 h-8 text-emerald-500" />
           </div>
           <p className="text-sm text-neutral-600 max-w-xs mx-auto">
-            Head to the dashboard to upload your first bank statement and see StatementBur in action.
+            Head to the dashboard to upload your first bank statement and see Reconex in action.
           </p>
         </div>
       ),
@@ -193,7 +193,7 @@ export default function OnboardingWizard({ onComplete, userName }: OnboardingWiz
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-2">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
               {step.icon}
             </div>
             <div>
@@ -227,7 +227,7 @@ export default function OnboardingWizard({ onComplete, userName }: OnboardingWiz
               <div
                 key={i}
                 className={`w-2 h-2 rounded-full transition-colors ${
-                  i === current ? 'bg-indigo-600' : i < current ? 'bg-indigo-300' : 'bg-neutral-200'
+                  i === current ? 'bg-blue-600' : i < current ? 'bg-blue-300' : 'bg-neutral-200'
                 }`}
               />
             ))}
@@ -252,7 +252,7 @@ export default function OnboardingWizard({ onComplete, userName }: OnboardingWiz
                   setCurrent(current + 1)
                 }
               }}
-              className="flex items-center gap-1.5 px-5 py-2 rounded-lg text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+              className="flex items-center gap-1.5 px-5 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors"
             >
               {isLast ? 'Go to Dashboard' : 'Next'}
               {!isLast && <ArrowRight className="w-3.5 h-3.5" />}

@@ -20,11 +20,11 @@ export default function LandingNav() {
         <div className="flex items-center justify-between h-16">
           {/* Brand */}
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center">
               <Landmark className="w-[18px] h-[18px] text-white" />
             </div>
             <span className="text-lg font-bold text-neutral-900 hidden sm:block tracking-tight">
-              StatementBur
+              Recon<span className="text-blue-600">ex</span>
             </span>
           </Link>
 
@@ -34,7 +34,7 @@ export default function LandingNav() {
               <Link
                 key={l.href}
                 href={l.href}
-                className="text-[13px] font-medium text-neutral-500 hover:text-indigo-600 transition-colors"
+                className="text-[13px] font-medium text-neutral-500 hover:text-blue-600 transition-colors"
               >
                 {l.label}
               </Link>
@@ -45,13 +45,13 @@ export default function LandingNav() {
           <div className="hidden md:flex items-center gap-3">
             <Link
               href="/login"
-              className="text-[13px] font-medium text-neutral-600 hover:text-indigo-600 transition-colors"
+              className="text-[13px] font-medium text-neutral-600 hover:text-blue-600 transition-colors"
             >
               Sign in
             </Link>
             <Link
               href="/register"
-              className="px-4 py-2 text-[13px] font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-sm"
+              className="px-4 py-2 text-[13px] font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm"
             >
               Get Started
             </Link>
@@ -76,7 +76,7 @@ export default function LandingNav() {
                 key={l.href}
                 href={l.href}
                 onClick={() => setMobileOpen(false)}
-                className="block px-3 py-2.5 rounded-lg text-sm font-medium text-neutral-600 hover:bg-neutral-50 hover:text-indigo-600 transition-colors"
+                className="block px-3 py-2.5 rounded-lg text-sm font-medium text-neutral-600 hover:bg-neutral-50 hover:text-blue-600 transition-colors"
               >
                 {l.label}
               </Link>
@@ -92,7 +92,7 @@ export default function LandingNav() {
               <Link
                 href="/register"
                 onClick={() => setMobileOpen(false)}
-                className="px-3 py-2.5 rounded-lg text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors text-center"
+                className="px-3 py-2.5 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors text-center"
               >
                 Get Started
               </Link>

@@ -37,7 +37,7 @@ const CustomTooltip = ({ active, payload }: any) => {
   return (
     <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2 shadow-lg text-xs">
       <p className="font-semibold text-neutral-700 truncate max-w-[200px]">{d.merchant}</p>
-      <p className="text-indigo-600 font-bold">{fmtCurrency(d.total)}</p>
+      <p className="text-blue-600 font-bold">{fmtCurrency(d.total)}</p>
       <p className="text-neutral-500">{d.count} transactions  ·  Avg {fmtCurrency(d.average)}</p>
     </div>
   )
@@ -157,8 +157,8 @@ export default function MerchantAnalytics({ sessionId, currentClient }: Merchant
                 {visibleMerchants.map((m, i) => (
                   <tr
                     key={i}
-                    className={`border-b border-neutral-50 hover:bg-indigo-50 cursor-pointer transition-colors ${
-                      selectedMerchant?.merchant === m.merchant ? 'bg-indigo-50' : ''
+                    className={`border-b border-neutral-50 hover:bg-blue-50 cursor-pointer transition-colors ${
+                      selectedMerchant?.merchant === m.merchant ? 'bg-blue-50' : ''
                     }`}
                     onClick={() => setSelectedMerchant(selectedMerchant?.merchant === m.merchant ? null : m)}
                   >
@@ -179,7 +179,7 @@ export default function MerchantAnalytics({ sessionId, currentClient }: Merchant
           {merchants.length > 10 && (
             <button
               onClick={() => setExpanded(!expanded)}
-              className="mt-2 flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+              className="mt-2 flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium"
             >
               {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
               {expanded ? 'Show less' : `Show all ${merchants.length} merchants`}
@@ -192,7 +192,7 @@ export default function MerchantAnalytics({ sessionId, currentClient }: Merchant
       {selectedMerchant && selectedMerchant.trend.length > 1 && (
         <div className="border-t border-neutral-100 px-5 py-4">
           <div className="flex items-center gap-2 mb-3">
-            <TrendingUp className="w-3.5 h-3.5 text-indigo-500" />
+            <TrendingUp className="w-3.5 h-3.5 text-blue-500" />
             <p className="text-xs font-medium text-neutral-700">
               Monthly trend for <span className="font-bold">{selectedMerchant.merchant}</span>
             </p>

@@ -73,7 +73,7 @@ export default function Features() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section header */}
         <div className="text-center mb-14">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-indigo-600 mb-3">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-blue-600 mb-3">
             Capabilities
           </p>
           <h2 className="text-3xl sm:text-4xl font-bold text-neutral-900 mb-4">
@@ -92,12 +92,12 @@ export default function Features() {
             return (
               <div
                 key={f.title}
-                className="group rounded-xl border border-neutral-200 bg-white p-6 hover:shadow-md hover:border-indigo-200 transition-all duration-200"
+                className="group rounded-xl border border-neutral-200 bg-white p-6 hover:shadow-md hover:border-blue-200 transition-all duration-200"
               >
-                <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center mb-4 group-hover:bg-indigo-100 transition-colors">
-                  <Icon className="w-5 h-5 text-indigo-600" />
+                <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center mb-4 group-hover:bg-blue-100 transition-colors">
+                  <Icon className="w-5 h-5 text-blue-600" />
                 </div>
-                <h3 className="text-base font-semibold text-neutral-900 mb-2 group-hover:text-indigo-600 transition-colors">
+                <h3 className="text-base font-semibold text-neutral-900 mb-2 group-hover:text-blue-600 transition-colors">
                   {f.title}
                 </h3>
                 <p className="text-sm text-neutral-500 leading-relaxed">
@@ -112,7 +112,7 @@ export default function Features() {
         <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-6">
           {stats.map((s) => (
             <div key={s.label} className="text-center py-6 rounded-xl bg-neutral-50">
-              <div className="text-3xl font-bold text-indigo-600 mb-1">{s.value}</div>
+              <div className="text-3xl font-bold text-blue-600 mb-1">{s.value}</div>
               <div className="text-sm text-neutral-500">{s.label}</div>
             </div>
           ))}

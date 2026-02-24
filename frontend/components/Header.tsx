@@ -22,7 +22,7 @@ export default function Header() {
               <Upload className="w-6 h-6 text-neutral-900" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-neutral-900">Bank Statement Analyzer</h1>
+              <h1 className="text-3xl font-bold text-neutral-900">Reconex</h1>
               <p className="text-neutral-600 mt-1">Professional financial statement processing for small businesses</p>
             </div>
           </div>

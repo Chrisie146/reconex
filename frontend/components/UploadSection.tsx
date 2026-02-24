@@ -144,7 +144,7 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
         className={`
           relative rounded-2xl border-2 border-dashed p-12 text-center transition-all duration-200
           ${dragActive
-            ? 'border-indigo-400 bg-indigo-50/60 ring-4 ring-indigo-100'
+            ? 'border-blue-400 bg-blue-50/60 ring-4 ring-blue-100'
             : 'border-neutral-300 bg-neutral-50 hover:border-neutral-400 hover:bg-neutral-100/60'}
         `}
       >
@@ -152,9 +152,9 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
         <div className="flex justify-center mb-5">
           <div className={`
             rounded-xl p-3.5 transition-colors duration-200
-            ${dragActive ? 'bg-indigo-100' : 'bg-white ring-1 ring-neutral-200 shadow-sm'}
+            ${dragActive ? 'bg-blue-100' : 'bg-white ring-1 ring-neutral-200 shadow-sm'}
           `}>
-            <Upload className={`w-7 h-7 ${dragActive ? 'text-indigo-600' : 'text-neutral-700'}`} />
+            <Upload className={`w-7 h-7 ${dragActive ? 'text-blue-600' : 'text-neutral-700'}`} />
           </div>
         </div>
 
@@ -173,7 +173,7 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={loading || !currentClient}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? (
             <>
@@ -210,7 +210,7 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
                 key={bank}
                 className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-medium text-neutral-600 ring-1 ring-neutral-200"
               >
-                <Shield className="w-3 h-3 text-indigo-500" />
+                <Shield className="w-3 h-3 text-blue-500" />
                 {bank}
               </span>
             ))}
@@ -257,9 +257,9 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
 
       {/* Status: File Selected */}
       {fileName && (
-        <div className="flex items-start gap-3 rounded-xl bg-indigo-50 ring-1 ring-indigo-200 px-4 py-3">
-          <FileUp className="w-4 h-4 text-indigo-600 mt-0.5 flex-shrink-0" />
-          <p className="text-sm text-indigo-800">
+        <div className="flex items-start gap-3 rounded-xl bg-blue-50 ring-1 ring-blue-200 px-4 py-3">
+          <FileUp className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+          <p className="text-sm text-blue-800">
             Selected: <span className="font-medium">{fileName}</span>
           </p>
         </div>

@@ -4,7 +4,7 @@ import { ClientProvider } from '@/lib/clientContext'
 import { Toaster } from 'sonner'
 
 export const metadata: Metadata = {
-  title: 'Bank Statement Analyzer',
+  title: 'Reconex',
   description: 'Professional bank statement analysis for small businesses',
 }
 

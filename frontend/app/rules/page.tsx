@@ -42,7 +42,7 @@ export default function Page() {
           {/* ── Page header ─────────────────────────────────────── */}
           <div>
             <h1 className="text-2xl font-bold text-neutral-900 tracking-tight flex items-center gap-2.5">
-              <Settings2 className="w-6 h-6 text-indigo-500" />
+              <Settings2 className="w-6 h-6 text-blue-500" />
               Categories &amp; Rules
             </h1>
             <p className="text-sm text-neutral-500 mt-1">
@@ -63,7 +63,7 @@ export default function Page() {
                     isActive
                       ? t.accent === 'violet'
                         ? 'bg-violet-600 text-white shadow-sm'
-                        : 'bg-indigo-600 text-white shadow-sm'
+                        : 'bg-blue-600 text-white shadow-sm'
                       : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900'
                   }`}
                 >
@@ -90,7 +90,7 @@ export default function Page() {
                 </div>
               </div>
               <ol className="text-sm text-amber-700 space-y-1.5 list-decimal list-inside pl-8">
-                <li>Go to the <a href="/" className="font-medium text-indigo-600 hover:underline inline-flex items-center gap-0.5">Dashboard <ArrowRight className="w-3 h-3" /></a></li>
+                <li>Go to the <a href="/" className="font-medium text-blue-600 hover:underline inline-flex items-center gap-0.5">Dashboard <ArrowRight className="w-3 h-3" /></a></li>
                 <li>Upload a CSV or PDF file</li>
                 <li>Click &quot;Categories &amp; Rules&quot; in the sidebar</li>
               </ol>

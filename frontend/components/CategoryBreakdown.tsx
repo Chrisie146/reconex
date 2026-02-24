@@ -122,7 +122,7 @@ export default function CategoryBreakdown({ sessionId, currentClient }: Category
 
   const colors = [
     'bg-blue-500',
-    'bg-indigo-500',
+    'bg-blue-500',
     'bg-purple-500',
     'bg-pink-500',
     'bg-rose-500',

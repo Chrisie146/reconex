@@ -25,7 +25,7 @@ const EXPORTS = [
 type ExportKey = typeof EXPORTS[number]['key']
 
 const ACCENT: Record<string, { bg: string; text: string; ring: string; btn: string; btnHover: string }> = {
-  indigo:  { bg: 'bg-indigo-50',  text: 'text-indigo-600',  ring: 'ring-indigo-200',  btn: 'bg-indigo-600',  btnHover: 'hover:bg-indigo-700' },
+  indigo:  { bg: 'bg-blue-50',  text: 'text-blue-600',  ring: 'ring-blue-200',  btn: 'bg-blue-600',  btnHover: 'hover:bg-blue-700' },
   violet:  { bg: 'bg-violet-50',  text: 'text-violet-600',  ring: 'ring-violet-200',  btn: 'bg-violet-600',  btnHover: 'hover:bg-violet-700' },
   sky:     { bg: 'bg-sky-50',     text: 'text-sky-600',     ring: 'ring-sky-200',     btn: 'bg-sky-600',     btnHover: 'hover:bg-sky-700' },
   emerald: { bg: 'bg-emerald-50', text: 'text-emerald-600', ring: 'ring-emerald-200', btn: 'bg-emerald-600', btnHover: 'hover:bg-emerald-700' },
@@ -82,8 +82,8 @@ export default function ExportButtons({ sessionId, currentClient }: ExportButton
     <div className="rounded-xl border border-neutral-200 bg-white shadow-sm">
       {/* Header */}
       <div className="flex items-center gap-2.5 px-5 py-4 border-b border-neutral-100">
-        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-100">
-          <Download className="w-4 h-4 text-indigo-600" />
+        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100">
+          <Download className="w-4 h-4 text-blue-600" />
         </div>
         <div className="flex-1">
           <h3 className="text-sm font-bold text-neutral-900">Export Data</h3>
@@ -97,8 +97,8 @@ export default function ExportButtons({ sessionId, currentClient }: ExportButton
             role="switch"
             aria-checked={includeVAT}
             onClick={() => setIncludeVAT(!includeVAT)}
-            className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 ${
-              includeVAT ? 'bg-indigo-600' : 'bg-neutral-200'
+            className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
+              includeVAT ? 'bg-blue-600' : 'bg-neutral-200'
             }`}
           >
             <span
@@ -166,7 +166,7 @@ export default function ExportButtons({ sessionId, currentClient }: ExportButton
           <span className="font-medium text-neutral-600">Excel</span> files are formatted for accounting software.{' '}
           <span className="font-medium text-neutral-600">PDF</span> reports are print-ready with branding.{' '}
           <span className="font-medium text-neutral-600">CSV</span> files are compatible with any spreadsheet tool.{' '}
-          {includeVAT && <span className="font-medium text-indigo-600">VAT columns will be included in exports.</span>}
+          {includeVAT && <span className="font-medium text-blue-600">VAT columns will be included in exports.</span>}
         </p>
       </div>
     </div>
