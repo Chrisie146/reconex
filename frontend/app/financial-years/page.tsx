@@ -245,10 +245,10 @@ export default function FinancialYearsPage() {
                     {years.map(fy => (
                       <tr key={fy.id} className="hover:bg-neutral-50 transition-colors">
                         <td className="px-6 py-4 font-medium text-neutral-900">{fy.label}</td>
-                        <td className="px-6 py-4 text-neutral-600">
+                        <td className="px-6 py-4 text-neutral-600" suppressHydrationWarning>
                           {new Date(fy.year_start).toLocaleDateString('en-ZA')}
                         </td>
-                        <td className="px-6 py-4 text-neutral-600">
+                        <td className="px-6 py-4 text-neutral-600" suppressHydrationWarning>
                           {new Date(fy.year_end).toLocaleDateString('en-ZA')}
                         </td>
                         <td className="px-6 py-4">
@@ -256,7 +256,7 @@ export default function FinancialYearsPage() {
                             {fy.status === 'open' ? 'Open' : 'Archived'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-neutral-500 text-sm">
+                        <td className="px-6 py-4 text-neutral-500 text-sm" suppressHydrationWarning>
                           {fy.archived_at
                             ? new Date(fy.archived_at).toLocaleDateString('en-ZA')
                             : <span className="text-neutral-300 italic">—</span>}

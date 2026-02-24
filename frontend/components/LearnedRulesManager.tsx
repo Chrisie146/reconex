@@ -47,8 +47,6 @@ export default function LearnedRulesManager({ sessionId }: LearnedRulesManagerPr
   const [applyingRules, setApplyingRules] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://127.0.0.1:8000'
-
   useEffect(() => { fetchRules() }, [currentClient?.id])
 
   /* ── data ──────────────────────────────────────────────────────── */
@@ -56,7 +54,7 @@ export default function LearnedRulesManager({ sessionId }: LearnedRulesManagerPr
     try {
       setLoading(true); setError(null)
       const cpFirst = currentClient?.id ? `?client_id=${currentClient.id}` : ''
-      const data = await apiFetch(`${API_BASE}/learned-rules${cpFirst}`)
+      const data = await apiFetch(`/learned-rules${cpFirst}`)
       setRules(data.rules || [])
     } catch (err) { setError(err instanceof Error ? err.message : 'Failed to load learned rules') }
     finally { setLoading(false) }
@@ -64,7 +62,7 @@ export default function LearnedRulesManager({ sessionId }: LearnedRulesManagerPr
 
   const updateRule = async (ruleId: number, updates: Partial<LearnedRule>) => {
     try {
-      await apiFetch(`${API_BASE}/learned-rules/${ruleId}`, {
+      await apiFetch(`/learned-rules/${ruleId}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updates)
       })
       await fetchRules(); setEditingRule(null)
@@ -73,7 +71,7 @@ export default function LearnedRulesManager({ sessionId }: LearnedRulesManagerPr
 
   const deleteRule = async (ruleId: number) => {
     if (!confirm('Delete this learned pattern?')) return
-    try { await apiFetch(`${API_BASE}/learned-rules/${ruleId}`, { method: 'DELETE' }); await fetchRules() }
+    try { await apiFetch(`/learned-rules/${ruleId}`, { method: 'DELETE' }); await fetchRules() }
     catch (err) { toast.error(err instanceof Error ? err.message : 'Failed to delete rule') }
   }
 
@@ -88,7 +86,7 @@ export default function LearnedRulesManager({ sessionId }: LearnedRulesManagerPr
       const sessionParam = sessionId ? `session_id=${sessionId}` : ''
       const clientParam = currentClient?.id ? `client_id=${currentClient.id}` : ''
       const params = [sessionParam, clientParam].filter(Boolean).join('&')
-      const data = await apiFetch(`${API_BASE}/learned-rules/apply?${params}`, { method: 'POST' })
+      const data = await apiFetch(`/learned-rules/apply?${params}`, { method: 'POST' })
       toast.success(data.message); window.location.reload()
     } catch (err) { toast.error(err instanceof Error ? err.message : 'Failed to apply rules') }
     finally { setApplyingRules(false) }
@@ -98,7 +96,7 @@ export default function LearnedRulesManager({ sessionId }: LearnedRulesManagerPr
     if (!confirm(`Delete ALL ${rules.length} learned patterns${currentClient ? ` for ${currentClient.name}` : ''}? This cannot be undone.`)) return
     try {
       const cp = currentClient?.id ? `?client_id=${currentClient.id}` : ''
-      await apiFetch(`${API_BASE}/learned-rules/all${cp}`, { method: 'DELETE' })
+      await apiFetch(`/learned-rules/all${cp}`, { method: 'DELETE' })
       toast.success('All learned rules deleted')
       await fetchRules()
     } catch (err) { toast.error(err instanceof Error ? err.message : 'Failed to delete rules') }

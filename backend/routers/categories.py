@@ -34,32 +34,38 @@ def get_categories(
     db: Session = Depends(get_db),
 ):
     """Get list of available transaction categories with transaction counts"""
-    # Verify client ownership if client_id provided
-    if client_id is not None:
-        client = db.query(Client).filter(Client.id == client_id, Client.user_id == current_user.id).first()
-        if not client:
-            raise HTTPException(status_code=404, detail="Client not found")
+    try:
+        # Verify client ownership if client_id provided
+        if client_id is not None:
+            client = db.query(Client).filter(Client.id == client_id, Client.user_id == current_user.id).first()
+            if not client:
+                raise HTTPException(status_code=404, detail="Client not found")
 
-    if session_id:
-        ensure_session_access(session_id, current_user, db)
-        categories = categories_service.get_all_categories(session_id, client_id=client_id)
+        if session_id:
+            ensure_session_access(session_id, current_user, db)
+            categories = categories_service.get_all_categories(session_id, client_id=client_id)
 
-        category_counts = (
-            db.query(Transaction.category, func.count(Transaction.id).label("count"))
-            .filter(Transaction.session_id == session_id)
-            .group_by(Transaction.category)
-            .all()
-        )
-        count_map = {cat: count for cat, count in category_counts}
+            category_counts = (
+                db.query(Transaction.category, func.count(Transaction.id).label("count"))
+                .filter(Transaction.session_id == session_id)
+                .group_by(Transaction.category)
+                .all()
+            )
+            count_map = {cat: count for cat, count in category_counts}
 
-        categories_with_counts = [
-            {"name": cat, "transaction_count": count_map.get(cat, 0)} for cat in categories
-        ]
-        return {"categories": categories_with_counts}
-    else:
-        categories = categories_service.get_all_categories(client_id=client_id)
-        categories_with_counts = [{"name": cat, "transaction_count": 0} for cat in categories]
-        return {"categories": categories_with_counts}
+            categories_with_counts = [
+                {"name": cat, "transaction_count": count_map.get(cat, 0)} for cat in categories
+            ]
+            return {"categories": categories_with_counts}
+        else:
+            categories = categories_service.get_all_categories(client_id=client_id)
+            categories_with_counts = [{"name": cat, "transaction_count": 0} for cat in categories]
+            return {"categories": categories_with_counts}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[categories] Unexpected error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to get categories: {str(e)}")
 
 
 @router.post("/categories")
@@ -163,6 +169,8 @@ def get_categories_with_vat(
                 raise HTTPException(status_code=404, detail="Client not found")
         categories = categories_service.get_all_categories_with_vat(session_id, client_id=client_id)
         return {"categories": categories}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to get categories: {str(e)}")
 

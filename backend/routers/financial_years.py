@@ -337,7 +337,7 @@ def archive_financial_year(
             db.add(ArchivedInvoice(
                 financial_year_id=fy.id,
                 original_id=inv.id,
-                client_id=inv.client_id,
+                client_id=inv.client_id if inv.client_id is not None else fy.client_id,
                 session_id=inv.session_id,
                 supplier_name=inv.supplier_name,
                 invoice_date=inv.invoice_date,
