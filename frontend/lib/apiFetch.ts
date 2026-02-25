@@ -1,6 +1,5 @@
 import { getToken, clearToken, clearAuthUser } from './auth'
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+import { API_BASE_URL } from './apiBase'
 
 export async function apiFetch(input: string, init: RequestInit = {}): Promise<any> {
   const token = getToken()

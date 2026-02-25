@@ -4,7 +4,7 @@ import { X, Loader2, AlertCircle, CheckCircle, AlertTriangle, Plus, Pencil, Tag,
 import { useState, useEffect } from 'react'
 import axios from '@/lib/axiosClient'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+import { API_BASE_URL } from '@/lib/apiBase'
 
 // Helper function to clean NaN-like values
 const cleanDescription = (desc: string | null | undefined): string => {

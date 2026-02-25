@@ -15,7 +15,7 @@ import TransactionEditPanel from './TransactionEditPanel'
 import { getAuthUser } from '@/lib/auth'
 import { useClient } from '@/lib/clientContext'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+import { API_BASE_URL } from '@/lib/apiBase'
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const
 const DEFAULT_PAGE_SIZE = 50
 

@@ -143,6 +143,28 @@ services:
       # - key: SENTRY_ENVIRONMENT
       #   value: production
 
+      # Email (Resend) — Required for password reset and welcome emails
+      # Obtain at: https://resend.com/api-keys
+      - key: RESEND_API_KEY
+        sync: false  # Set in Render dashboard (keep secret)
+
+      # "From" address — must be from a verified Resend domain
+      - key: FROM_EMAIL
+        value: noreply@reconex.app  # Update to your verified sending domain
+
+      - key: FROM_NAME
+        value: Reconex
+
+      # Frontend URL — used in password-reset email links
+      - key: FRONTEND_URL
+        value: https://reconex-frontend.onrender.com  # Update if using custom domain
+
+      # PostHog Product Analytics (Optional — backend telemetry)
+      # - key: POSTHOG_API_KEY
+      #   sync: false  # Set in Render dashboard
+      # NOTE: For the Next.js frontend, add NEXT_PUBLIC_POSTHOG_KEY and
+      #       NEXT_PUBLIC_SITE_URL as build-time env vars in the frontend service.
+
 # Optional: Add Redis for caching and background jobs
 # Uncomment to enable:
 #

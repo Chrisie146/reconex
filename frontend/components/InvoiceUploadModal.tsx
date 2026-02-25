@@ -4,7 +4,7 @@ import { useState, useRef } from 'react'
 import { X, Upload, AlertCircle, CheckCircle, FileUp, Loader2, Calendar, Receipt } from 'lucide-react'
 import axios from '@/lib/axiosClient'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+import { API_BASE_URL } from '@/lib/apiBase'
 
 interface InvoiceUploadModalProps {
   isOpen: boolean

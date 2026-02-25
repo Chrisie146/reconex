@@ -8,7 +8,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Header from '@/components/Header'
 import Sidebar from '@/components/Sidebar'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+import { API_BASE_URL } from '@/lib/apiBase'
 
 type Tab = 'overview' | 'transactions' | 'sessions' | 'reconciliation' | 'invoices'
 

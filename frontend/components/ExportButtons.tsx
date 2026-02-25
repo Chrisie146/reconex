@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { posthog } from '@/lib/posthog'
 import type { Client } from '@/lib/clientContext'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+import { API_BASE_URL } from '@/lib/apiBase'
 
 interface ExportButtonsProps {
   sessionId: string | null

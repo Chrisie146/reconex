@@ -9,7 +9,7 @@ import Header from '@/components/Header'
 import Sidebar from '@/components/Sidebar'
 import { useClient } from '@/lib/clientContext'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+import { API_BASE_URL } from '@/lib/apiBase'
 
 interface FinancialYear {
   id: number

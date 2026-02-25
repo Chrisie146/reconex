@@ -8,7 +8,7 @@ import BulkCategoryModal from '@/components/BulkCategoryModal'
 import axios from '@/lib/axiosClient'
 import { useClient } from '@/lib/clientContext'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+import { API_BASE_URL } from '@/lib/apiBase'
 
 export default function Page() {
   // Keep server and initial client render identical (no session id),

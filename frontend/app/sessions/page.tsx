@@ -6,7 +6,7 @@ import { Trash2, FileText, CheckCircle, AlertCircle, Loader2, Lock, Unlock, Eye,
 import { apiFetch } from '@/lib/apiFetch'
 import { useClient } from '@/lib/clientContext'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+import { API_BASE_URL as API_BASE } from '@/lib/apiBase'
 
 export default function Page() {
   const [sessions, setSessions] = React.useState<any[]>([])

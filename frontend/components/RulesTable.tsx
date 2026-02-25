@@ -5,9 +5,9 @@ import { apiFetch } from '@/lib/apiFetch'
 import { toast } from 'sonner'
 import RuleEditor from './RuleEditor'
 import PreviewModal from './PreviewModal'
+import { API_BASE_URL as API_BASE } from '@/lib/apiBase'
 
 export default function RulesTable() {
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
   const [rules, setRules] = React.useState<any[]>([])
   const [loading, setLoading] = React.useState(true)
   const [editing, setEditing] = React.useState<any>(null)

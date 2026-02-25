@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import axios from '@/lib/axiosClient'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+import { API_BASE_URL } from '@/lib/apiBase'
 import Header from '@/components/Header'
 import UploadSection from '@/components/UploadSection'
 import TransactionsTable from '@/components/TransactionsTable'

@@ -42,18 +42,42 @@ from schemas import (
 )
 
 # ---------------------------------------------------------------------------
-# In-memory rate limiter for password reset requests
-# Key: client IP, Value: list of UNIX timestamps for requests in current window
-# NOTE: For multi-worker / multi-server deployments, replace with a Redis-backed
-#       rate limiter so state is shared across all processes.
+# Rate limiter for password reset requests
+#
+# Uses Redis fixed-window counters when CACHE_ENABLED=true so the limit is
+# enforced correctly across all worker processes.  Falls back to an
+# in-memory sliding window when Redis is unavailable.
 # ---------------------------------------------------------------------------
-_RESET_WINDOW_SECONDS = 900   # 15-minute sliding window
+_RESET_WINDOW_SECONDS = 900   # 15-minute window
 _RESET_MAX_REQUESTS = 3       # max 3 attempts per IP per window
-_reset_tracker: dict = defaultdict(list)
+_reset_tracker: dict = defaultdict(list)  # in-memory fallback store
 
 
 def _is_rate_limited(ip: str) -> bool:
-    """Return True when the caller has exceeded the reset-request limit."""
+    """Return True when the caller has exceeded the password-reset rate limit."""
+    # --- Try Redis (shared across workers) ---
+    if Config.CACHE_ENABLED:
+        try:
+            import redis as redis_lib
+            r = redis_lib.from_url(
+                Config.REDIS_CACHE_URL,
+                decode_responses=True,
+                socket_connect_timeout=2,
+                socket_timeout=2,
+            )
+            key = f"pwd_reset_rl:{ip}"
+            pipe = r.pipeline()
+            pipe.incr(key)
+            pipe.expire(key, _RESET_WINDOW_SECONDS)
+            count, _ = pipe.execute()
+            # Only set expiry on first request so the window starts from the first attempt
+            if int(count) > _RESET_MAX_REQUESTS:
+                return True
+            return False
+        except Exception as exc:
+            logger.warning(f"[Auth] Redis unavailable for reset rate limit, using in-memory: {exc}")
+
+    # --- In-memory fallback (per-worker) ---
     now = time()
     cutoff = now - _RESET_WINDOW_SECONDS
     _reset_tracker[ip] = [t for t in _reset_tracker[ip] if t > cutoff]
@@ -61,6 +85,7 @@ def _is_rate_limited(ip: str) -> bool:
         return True
     _reset_tracker[ip].append(now)
     return False
+
 
 
 # ---------------------------------------------------------------------------
@@ -169,10 +194,10 @@ def _send_reset_email(to_email: str, reset_link: str) -> None:
     try:
         resend.api_key = api_key
         resend.Emails.send({
-            "from": Config.FROM_EMAIL,
-            "to": [to_email],
-            "subject": "Reset your Reconex password",
-            "html": _build_reset_email_html(reset_link),
+          "from": f"{Config.FROM_NAME} <{Config.FROM_EMAIL}>",
+          "to": [to_email],
+          "subject": "Reset your Reconex password",
+          "html": _build_reset_email_html(reset_link),
         })
         logger.info(f"[EMAIL] Password reset email sent to {to_email}")
     except Exception as exc:
@@ -256,10 +281,10 @@ def _send_welcome_email(to_email: str, name: str) -> None:
     try:
         resend.api_key = api_key
         resend.Emails.send({
-            "from": Config.FROM_EMAIL,
-            "to": [to_email],
-            "subject": "Welcome to Reconex Beta \U0001F680",
-            "html": _build_welcome_email_html(name),
+          "from": f"{Config.FROM_NAME} <{Config.FROM_EMAIL}>",
+          "to": [to_email],
+          "subject": "Welcome to Reconex Beta \U0001F680",
+          "html": _build_welcome_email_html(name),
         })
         logger.info(f"[EMAIL] Welcome email sent to {to_email}")
     except Exception as exc:

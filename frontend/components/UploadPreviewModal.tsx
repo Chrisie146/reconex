@@ -7,7 +7,7 @@ import { useClient } from '@/lib/clientContext'
 import { posthog } from '@/lib/posthog'
 import { X, Check, Loader2, FileText, AlertCircle, Plus, Trash2, ArrowUpRight, ArrowDownRight, Scale, ChevronDown, ChevronUp } from 'lucide-react'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+import { API_BASE_URL } from '@/lib/apiBase'
 
 interface ParsedRow {
   date: string

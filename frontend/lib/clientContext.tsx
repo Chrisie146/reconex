@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react'
 import { apiFetch } from './apiFetch'
 import { isAuthenticated } from './auth'
+import { API_BASE_URL as API_BASE } from './apiBase'
 import ClientSwitchingOverlay from '@/components/ClientSwitchingOverlay'
 
 export interface Client {
@@ -35,7 +36,6 @@ export function ClientProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const switchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isInitialLoad = useRef(true)
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
   // Wrapped setter — shows overlay when switching between two real clients
   const setCurrentClient = (client: Client | null) => {

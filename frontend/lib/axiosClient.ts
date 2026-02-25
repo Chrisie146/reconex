@@ -1,7 +1,6 @@
 import axios from 'axios'
 import { getToken, clearToken, clearAuthUser } from './auth'
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+import { API_BASE_URL } from './apiBase'
 
 const client = axios.create({
   baseURL: API_BASE_URL,

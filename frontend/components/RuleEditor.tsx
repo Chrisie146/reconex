@@ -3,11 +3,11 @@
 import React from 'react'
 import { apiFetch } from '@/lib/apiFetch'
 import { toast } from 'sonner'
+import { API_BASE_URL as API_BASE } from '@/lib/apiBase'
 
 type Condition = { field: string; op: string; value: string }
 
 export default function RuleEditor({ rule, onSave, onClose }: any) {
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
   const [name, setName] = React.useState(rule?.name || '')
   const [enabled, setEnabled] = React.useState(rule?.enabled ?? true)
   const [priority, setPriority] = React.useState(rule?.priority ?? 100)

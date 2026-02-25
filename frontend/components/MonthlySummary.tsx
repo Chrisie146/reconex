@@ -8,7 +8,7 @@ import { toast } from 'sonner'
 import type { Client } from '@/lib/clientContext'
 import MonthlyTransactionsModal from './MonthlyTransactionsModal'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+import { API_BASE_URL } from '@/lib/apiBase'
 
 interface MonthlySummaryProps {
   sessionId: string | null

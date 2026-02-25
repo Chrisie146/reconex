@@ -45,6 +45,8 @@ class Config:
     # Resend email service
     RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
     FROM_EMAIL = os.getenv("FROM_EMAIL", "onboarding@resend.dev")
+    # Display name for outgoing emails (used together with FROM_EMAIL)
+    FROM_NAME = os.getenv("FROM_NAME", "Reconex")
 
     # Logging
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO" if ENVIRONMENT == "production" else "DEBUG")

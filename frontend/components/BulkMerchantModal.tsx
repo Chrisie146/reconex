@@ -3,8 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import axios from '@/lib/axiosClient'
 import { toast } from 'sonner'
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+import { API_BASE_URL } from '@/lib/apiBase'
 
 interface Props {
   isOpen: boolean
