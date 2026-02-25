@@ -173,6 +173,7 @@ def _apply_rules_and_save(
             txn = db.query(Transaction).filter(Transaction.id == txn_id).first()
             if txn:
                 txn.category = cat
+                categories_found.add(cat)  # reflect learned categories in response
                 updated_ids.append(txn_id)
 
         if suggestions:
@@ -180,8 +181,12 @@ def _apply_rules_and_save(
             for txn_id in updated_ids:
                 vat_service.apply_vat_to_transaction(txn_id, session_id, force=False)
             print(f"✓ Auto-categorized {len(suggestions)} transaction(s) using learned rules")
+        else:
+            print("ℹ️  No learned rules matched transactions in this upload")
     except Exception as learn_error:
+        import traceback
         print(f"Warning: Failed to apply learned rules: {learn_error}")
+        traceback.print_exc()
 
     return categories_found
 
@@ -478,11 +483,16 @@ def save_parsed_transactions(
                 txn = db.query(Transaction).filter(Transaction.id == txn_id).first()
                 if txn:
                     txn.category = cat
+                    categories_found.add(cat)  # reflect learned categories in response
             if suggestions:
                 db.commit()
                 print(f"✓ Auto-categorized {len(suggestions)} transaction(s) using learned rules")
+            else:
+                print("ℹ️  No learned rules matched transactions in this upload")
         except Exception as learn_error:
+            import traceback
             print(f"Warning: Failed to apply learned rules: {learn_error}")
+            traceback.print_exc()
 
         return sanitize_response_data({
             "session_id": session_id,

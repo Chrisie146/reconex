@@ -136,7 +136,7 @@ def update_transaction_category(
     request: dict,
     session_id: str,
     current_user: User = Depends(get_current_user),
-    learn_rule: bool = False,
+    learn_rule: bool = True,
     keyword: Optional[str] = Query(default=None),
     db: Session = Depends(get_db),
 ):
@@ -200,7 +200,7 @@ def update_transaction_category(
             # Refresh to get VAT updates from the service's separate session
             db.refresh(transaction)
 
-        if learn_rule and category:
+        if category:
             try:
                 merchant = None
                 tm = db.query(TransactionMerchant).filter(TransactionMerchant.transaction_id == transaction_id).first()
