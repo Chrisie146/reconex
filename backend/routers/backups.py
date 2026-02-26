@@ -184,7 +184,13 @@ def _pg_restore(db_url: str, gz_data: bytes) -> None:
     """
     Restore a PostgreSQL database from a RECONEX_V1 gzip backup.
     Uses psycopg2 COPY FROM STDIN — no psql binary required.
+
+    Does NOT require superuser — only table-ownership (the Render user owns
+    all tables because Alembic migrations created them).
     """
+    import logging
+    logger = logging.getLogger(__name__)
+
     raw = gzip.decompress(gz_data).decode("utf-8")
     lines = raw.split("\n")
 
@@ -208,8 +214,10 @@ def _pg_restore(db_url: str, gz_data: bytes) -> None:
         conn.autocommit = False
         cur = conn.cursor()
 
-        # Bypass FK / trigger checks so we can load tables in any order
-        cur.execute("SET session_replication_role = 'replica'")
+        # Disable FK-constraint triggers on every table.  This only requires
+        # table ownership (not superuser), so it works on Render's managed PG.
+        for t in tables:
+            cur.execute(f'ALTER TABLE "{t}" DISABLE TRIGGER ALL')
 
         # Wipe all tables in one shot (CASCADE handles FK order)
         if tables:
@@ -234,6 +242,7 @@ def _pg_restore(db_url: str, gz_data: bytes) -> None:
                     cur.copy_expert(
                         f'COPY "{table}" FROM STDIN WITH (FORMAT TEXT)', copy_buf
                     )
+                    logger.info("Restored table %s (%d rows of COPY data)", table, len(copy_lines))
             else:
                 i += 1
 
@@ -244,10 +253,14 @@ def _pg_restore(db_url: str, gz_data: bytes) -> None:
                     f"SELECT setval('{seq_name}', %s, true)", (last_val,)
                 )
 
-        # Re-enable FK / trigger checks
-        cur.execute("SET session_replication_role = 'DEFAULT'")
+        # Re-enable triggers on every table
+        for t in tables:
+            cur.execute(f'ALTER TABLE "{t}" ENABLE TRIGGER ALL')
+
         conn.commit()
-    except Exception:
+        logger.info("PostgreSQL restore committed successfully")
+    except Exception as exc:
+        logger.error("PostgreSQL restore failed: %s", exc, exc_info=True)
         conn.rollback()
         raise
     finally:
