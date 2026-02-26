@@ -1,14 +1,22 @@
 """
 Backup routes.
 
-Provides a streaming backup download (pg_dump / SQLite copy piped directly
-to the HTTP response — no file stored server-side) and a history of
-user-triggered downloads for audit purposes.
+Provides a streaming backup download and restore using pure Python / psycopg2
+(no pg_dump / psql binaries required — works on Render and any Python runtime).
+
+Backup format: gzip-compressed custom text format
+  Line 1: RECONEX_V1
+  Line 2: JSON metadata (tables list, sequence values, timestamp)
+  Line 3: DATA
+  Per table:
+    TABLE <name>\n
+    <psycopg2 COPY TEXT output>\n
+    \.\n          ← end-of-table marker
 """
 
 import io
+import json
 import os
-import subprocess
 import gzip
 import shutil
 from datetime import datetime
@@ -16,6 +24,7 @@ from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from auth import get_current_user
@@ -25,53 +34,70 @@ from models import BackupRecord, User, get_db, engine
 router = APIRouter(tags=["Backups"])
 
 
-def _get_pg_env(db_url: str) -> tuple[dict, str]:
-    """
-    Parse a PostgreSQL URL and return (env_dict, database_name).
-    The env dict sets PGPASSWORD so pg_dump doesn't prompt.
-    """
+# ---------------------------------------------------------------------------
+# PostgreSQL helpers — pure psycopg2, no external binaries
+# ---------------------------------------------------------------------------
+
+def _pg_connect(db_url: str):
+    """Open a psycopg2 connection from a postgresql:// URL."""
+    import psycopg2  # already in requirements.txt
     parsed = urlparse(db_url)
-    env = os.environ.copy()
-    if parsed.password:
-        env["PGPASSWORD"] = parsed.password
-    return env, (parsed.path.lstrip("/") or "statementbur")
+    return psycopg2.connect(
+        host=parsed.hostname,
+        port=parsed.port or 5432,
+        user=parsed.username,
+        password=parsed.password,
+        dbname=parsed.path.lstrip("/"),
+        connect_timeout=30,
+    )
 
 
-def _pg_dump_stream(db_url: str):
-    """Generator that yields gzip-compressed pg_dump output in chunks."""
-    env, db_name = _get_pg_env(db_url)
-    parsed = urlparse(db_url)
+def _pg_backup_stream(db_url: str):
+    """
+    Generator that yields a gzip-compressed RECONEX_V1 backup.
+    Uses psycopg2 COPY TO STDOUT — no pg_dump binary required.
+    """
+    conn = _pg_connect(db_url)
+    try:
+        # Repeatable-read snapshot for consistency across tables
+        conn.set_session(readonly=True, isolation_level="REPEATABLE READ")
+        cur = conn.cursor()
 
-    cmd = ["pg_dump", "--no-password", "-Fp", "--clean", "--if-exists"]  # plain-text SQL, restorable
-    if parsed.hostname:
-        cmd += ["-h", parsed.hostname]
-    if parsed.port:
-        cmd += ["-p", str(parsed.port)]
-    if parsed.username:
-        cmd += ["-U", parsed.username]
-    cmd.append(db_name)
+        # Tables in alphabetical order (FK-safe because we disable triggers on restore)
+        cur.execute(
+            "SELECT tablename FROM pg_tables "
+            "WHERE schemaname = 'public' ORDER BY tablename"
+        )
+        tables = [row[0] for row in cur.fetchall()]
 
-    with subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        env=env,
-    ) as proc:
+        # Current sequence values so restore can reset them correctly
+        cur.execute(
+            "SELECT sequencename, last_value FROM pg_sequences "
+            "WHERE schemaname = 'public'"
+        )
+        sequences = {row[0]: row[1] for row in cur.fetchall()}
+
         buf = io.BytesIO()
         with gzip.GzipFile(fileobj=buf, mode="wb") as gz:
-            total_bytes = 0
-            while True:
-                chunk = proc.stdout.read(65536)
-                if not chunk:
-                    break
-                gz.write(chunk)
-                total_bytes += len(chunk)
+            gz.write(b"RECONEX_V1\n")
+            meta = {
+                "format": "reconex_v1",
+                "exported_at": datetime.utcnow().isoformat(),
+                "tables": tables,
+                "sequences": sequences,
+            }
+            gz.write((json.dumps(meta) + "\n").encode())
+            gz.write(b"DATA\n")
 
-        stderr_output = proc.stderr.read()
-        if proc.returncode and proc.returncode != 0:
-            raise RuntimeError(
-                f"pg_dump exited with code {proc.returncode}: {stderr_output.decode()[:500]}"
-            )
+            for table in tables:
+                gz.write(f"TABLE {table}\n".encode())
+                copy_buf = io.BytesIO()
+                cur.copy_expert(
+                    f'COPY "{table}" TO STDOUT WITH (FORMAT TEXT)', copy_buf
+                )
+                copy_buf.seek(0)
+                gz.write(copy_buf.read())
+                gz.write(b"\\.\n")  # end-of-table marker (pg COPY convention)
 
         buf.seek(0)
         while True:
@@ -79,6 +105,8 @@ def _pg_dump_stream(db_url: str):
             if not chunk:
                 break
             yield chunk
+    finally:
+        conn.close()
 
 
 def _sqlite_stream(db_url: str):
@@ -153,32 +181,77 @@ def _sqlite_restore(db_url: str, gz_data: bytes) -> None:
 
 
 def _pg_restore(db_url: str, gz_data: bytes) -> None:
-    """Restore a PostgreSQL database from a gzip-compressed SQL dump."""
-    env, db_name = _get_pg_env(db_url)
-    parsed = urlparse(db_url)
+    """
+    Restore a PostgreSQL database from a RECONEX_V1 gzip backup.
+    Uses psycopg2 COPY FROM STDIN — no psql binary required.
+    """
+    raw = gzip.decompress(gz_data).decode("utf-8")
+    lines = raw.split("\n")
 
-    sql_bytes = gzip.decompress(gz_data)
+    if not lines or lines[0] != "RECONEX_V1":
+        raise ValueError(
+            "Unrecognised backup format. "
+            "Only backups created by this application (RECONEX_V1) can be restored here."
+        )
 
-    cmd = ["psql", "--single-transaction", "--no-password"]
-    if parsed.hostname:
-        cmd += ["-h", parsed.hostname]
-    if parsed.port:
-        cmd += ["-p", str(parsed.port)]
-    if parsed.username:
-        cmd += ["-U", parsed.username]
-    cmd.append(db_name)
+    meta = json.loads(lines[1])
+    tables: list = meta["tables"]
+    sequences: dict = meta.get("sequences", {})
 
-    result = subprocess.run(
-        cmd,
-        input=sql_bytes,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        env=env,
-        timeout=300,
-    )
-    if result.returncode != 0:
-        stderr = result.stderr.decode("utf-8", errors="ignore")
-        raise RuntimeError(f"psql restore failed: {stderr[:500]}")
+    try:
+        data_idx = lines.index("DATA") + 1
+    except ValueError:
+        raise ValueError("Backup file is corrupt: missing DATA section.")
+
+    conn = _pg_connect(db_url)
+    try:
+        conn.autocommit = False
+        cur = conn.cursor()
+
+        # Bypass FK / trigger checks so we can load tables in any order
+        cur.execute("SET session_replication_role = 'replica'")
+
+        # Wipe all tables in one shot (CASCADE handles FK order)
+        if tables:
+            truncate_expr = ", ".join(f'"{t}"' for t in tables)
+            cur.execute(f"TRUNCATE {truncate_expr} RESTART IDENTITY CASCADE")
+
+        # Parse table blocks and COPY data back in
+        i = data_idx
+        while i < len(lines):
+            line = lines[i]
+            if line.startswith("TABLE "):
+                table = line[6:].strip()
+                i += 1
+                copy_lines = []
+                while i < len(lines) and lines[i] != "\\.":
+                    copy_lines.append(lines[i])
+                    i += 1
+                i += 1  # skip the \. marker
+                if copy_lines:
+                    copy_data = "\n".join(copy_lines) + "\n"
+                    copy_buf = io.BytesIO(copy_data.encode())
+                    cur.copy_expert(
+                        f'COPY "{table}" FROM STDIN WITH (FORMAT TEXT)', copy_buf
+                    )
+            else:
+                i += 1
+
+        # Reset sequences to their backed-up values
+        for seq_name, last_val in sequences.items():
+            if last_val is not None:
+                cur.execute(
+                    f"SELECT setval('{seq_name}', %s, true)", (last_val,)
+                )
+
+        # Re-enable FK / trigger checks
+        cur.execute("SET session_replication_role = 'DEFAULT'")
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 # ---------------------------------------------------------------------------
@@ -202,7 +275,12 @@ def download_backup(
     """
     now = datetime.utcnow()
     timestamp = now.strftime("%Y%m%d_%H%M%S")
-    filename = f"statementbur_backup_{timestamp}.sql.gz"
+    # Filename depends on DB type: SQL dump for PostgreSQL, binary DB file for SQLite
+    url_check = DATABASE_URL
+    if url_check.startswith("postgres://"):
+        url_check = url_check.replace("postgres://", "postgresql://", 1)
+    _ext = "bak.gz" if url_check.startswith("postgresql") else "db.gz"
+    filename = f"reconex_backup_{timestamp}.{_ext}"
 
     # Normalise URL
     url = DATABASE_URL
@@ -229,7 +307,7 @@ def download_backup(
 
     try:
         if is_postgres:
-            stream = _pg_dump_stream(url)
+            stream = _pg_backup_stream(url)
         else:
             stream = _sqlite_stream(url)
 
@@ -290,8 +368,35 @@ async def restore_backup(
         raise HTTPException(status_code=500, detail="Unsupported database type for restore")
 
     try:
-        # Close the session held by this request before we replace the DB
+        # --- Drain ALL connections before replacing the DB ---
+        # render.yaml starts uvicorn with --workers 2, so there are (at least) two
+        # separate OS processes each with their own SQLAlchemy connection pool.
+        # engine.dispose() only drains the current worker's pool; the other worker
+        # keeps its connections alive and holds table-level locks.  When psql then
+        # replays the --clean dump and runs DROP TABLE the locks cause every DROP to
+        # fail inside --single-transaction, which rolls the entire restore back
+        # without raising an error visible to the caller.
+        #
+        # Fix: use pg_terminate_backend to forcibly close every OTHER backend
+        # connected to this database (across all workers / external tools) BEFORE
+        # we close our own session and dispose the pool.
+        if is_postgres:
+            try:
+                db.execute(
+                    text(
+                        "SELECT pg_terminate_backend(pid) "
+                        "FROM pg_stat_activity "
+                        "WHERE datname = current_database() "
+                        "  AND pid <> pg_backend_pid()"
+                    )
+                )
+                db.commit()
+            except Exception:
+                # Non-fatal — best effort; dispose will still run
+                pass
+
         db.close()
+        engine.dispose()
 
         if is_sqlite:
             _sqlite_restore(url, content)

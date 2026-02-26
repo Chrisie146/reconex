@@ -76,7 +76,7 @@ export default function BackupsPage() {
       // Extract filename from Content-Disposition header or build one
       const disposition = response.headers.get('Content-Disposition') || ''
       const match = disposition.match(/filename="?([^"]+)"?/)
-      const filename = match?.[1] ?? `reconex_backup_${Date.now()}.sql.gz`
+      const filename = match?.[1] ?? `reconex_backup_${Date.now()}.gz`
 
       const blob = await response.blob()
       const url = URL.createObjectURL(blob)
@@ -148,7 +148,8 @@ export default function BackupsPage() {
             <div>
               <h2 className="text-lg font-semibold text-neutral-900 mb-1">Full Database Backup</h2>
               <p className="text-sm text-neutral-600 mb-1">
-                Exports the complete database in compressed SQL format (<code className="bg-white px-1 rounded text-xs">.sql.gz</code>).
+                Exports the complete database in compressed format (<code className="bg-white px-1 rounded text-xs">.bak.gz</code> for PostgreSQL,{' '}
+                <code className="bg-white px-1 rounded text-xs">.db.gz</code> for SQLite).
               </p>
               <p className="text-sm text-neutral-500">
                 Includes all clients, transactions, sessions, invoices, categories, rules, and reconciliation records.
@@ -171,8 +172,8 @@ export default function BackupsPage() {
               <div>
                 <h2 className="text-lg font-semibold text-neutral-900 mb-1">Restore from Backup</h2>
                 <p className="text-sm text-neutral-600">
-                  Upload a <code className="bg-white px-1 rounded text-xs">.sql.gz</code> or{' '}
-                  <code className="bg-white px-1 rounded text-xs">.db.gz</code> backup file to restore
+                  Upload a <code className="bg-white px-1 rounded text-xs">.bak.gz</code> (PostgreSQL) or{' '}
+                  <code className="bg-white px-1 rounded text-xs">.db.gz</code> (SQLite) backup file to restore
                   the database to that point in time.
                 </p>
                 <p className="text-sm text-amber-700 font-medium mt-1">
