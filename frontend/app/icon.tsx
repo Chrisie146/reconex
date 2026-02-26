@@ -36,7 +36,6 @@ export default function Icon() {
     ),
     {
       ...size,
-      fonts: [], // prevent auto-loading font files (fixes Windows path resolution bug in @vercel/og)
     }
   )
 }
