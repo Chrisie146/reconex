@@ -194,7 +194,11 @@ class CategoriesService:
             return True, f"Category '{category_name}' created as {cat_type}"
         except Exception as e:
             db.rollback()
-            return False, f"Failed to create category: {str(e)}"
+            # Catch duplicate-name violations and surface a friendly message
+            err_str = str(e)
+            if "UniqueViolation" in err_str or "unique constraint" in err_str.lower() or "duplicate key" in err_str.lower():
+                return False, f"Category '{category_name}' already exists"
+            return False, f"Failed to create category: {err_str}"
         finally:
             db.close()
     

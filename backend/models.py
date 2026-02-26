@@ -3,7 +3,7 @@ Database models for Bank Statement Analyzer
 Handles storage of transactions and session data
 """
 
-from sqlalchemy import Column, Integer, String, Float, Date, DateTime, create_engine, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, String, Float, Date, DateTime, create_engine, ForeignKey, Boolean, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
@@ -222,8 +222,10 @@ class CustomCategory(Base):
     """
     __tablename__ = "custom_categories"
     __table_args__ = (
-        # Unique category name per client (replaces old global unique on name)
-        # client_id=NULL entries are legacy/global and still allowed
+        # Unique category name per client (replaces old global unique on name).
+        # NULL client_id values (legacy/global rows) are each treated as distinct
+        # by PostgreSQL's standard NULL semantics, so they do not conflict.
+        UniqueConstraint("client_id", "name", name="uq_custom_categories_client_name"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
