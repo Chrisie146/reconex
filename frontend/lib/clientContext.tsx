@@ -67,9 +67,12 @@ export function ClientProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('auth:login', handleLogin)
   }, [])
 
-  // Save current client to localStorage whenever it changes
+  // Save current client to localStorage whenever it changes.
+  // Guard against deleting the saved client during initial load (currentClient is null
+  // until refreshClients resolves, but we don't want to wipe localStorage before that).
   useEffect(() => {
     if (typeof window === 'undefined') return
+    if (isInitialLoad.current) return  // don't touch localStorage before first load completes
     if (currentClient) {
       localStorage.setItem('selected_client', JSON.stringify(currentClient))
     } else {

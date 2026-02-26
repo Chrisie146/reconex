@@ -6,10 +6,13 @@ Provides endpoints to define financial years per client, archive completed years
 manner. Users can also unarchive (restore) a year back to live tables.
 """
 
+import csv
+import io
 from datetime import datetime, date
 from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -552,7 +555,7 @@ def get_archived_transactions(
     if search:
         q = q.filter(ArchivedTransaction.description.ilike(f"%{search}%"))
     if category:
-        q = q.filter(ArchivedTransaction.category == category)
+        q = q.filter(ArchivedTransaction.category.ilike(f"%{category}%"))
 
     total = q.count()
     items = q.order_by(ArchivedTransaction.date.desc()).offset((page - 1) * page_size).limit(page_size).all()
@@ -579,6 +582,81 @@ def get_archived_transactions(
             for t in items
         ],
     }
+
+
+@router.get("/financial-years/{fy_id}/export")
+def export_archived_transactions_csv(
+    fy_id: int,
+    search: Optional[str] = Query(default=None),
+    category: Optional[str] = Query(default=None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Export all archived transactions for a financial year as a CSV file."""
+    fy = _get_fy_or_404(fy_id, current_user, db)
+    client = db.query(Client).filter(Client.id == fy.client_id).first()
+    client_name = client.name if client else None
+
+    q = db.query(ArchivedTransaction).filter(ArchivedTransaction.financial_year_id == fy.id)
+    if search:
+        q = q.filter(ArchivedTransaction.description.ilike(f"%{search}%"))
+    if category:
+        q = q.filter(ArchivedTransaction.category.ilike(f"%{category}%"))
+
+    rows = q.order_by(ArchivedTransaction.date.asc()).all()
+
+    def generate():
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        # Metadata comments
+        if client_name:
+            writer.writerow([f"# Client: {client_name}"])
+        writer.writerow([f"# Period: {fy.label}"])
+        writer.writerow([f"# Generated: {datetime.utcnow().strftime('%Y-%m-%d')}"])
+        if search:
+            writer.writerow([f"# Description filter: {search}"])
+        if category:
+            writer.writerow([f"# Category filter: {category}"])
+        writer.writerow([f"# Total rows: {len(rows)}"])
+        yield output.getvalue()
+        output.seek(0); output.truncate(0)
+
+        # Header
+        writer.writerow(["Date", "Description", "Amount", "Category", "VAT Amount",
+                         "Amount Excl VAT", "Amount Incl VAT", "Bank Source", "Session ID"])
+        yield output.getvalue()
+        output.seek(0); output.truncate(0)
+
+        # Data rows (yield in batches for memory efficiency)
+        for i, t in enumerate(rows):
+            writer.writerow([
+                t.date.isoformat(),
+                t.description,
+                t.amount,
+                t.category or "",
+                t.vat_amount if t.vat_amount is not None else "",
+                t.amount_excl_vat if t.amount_excl_vat is not None else "",
+                t.amount_incl_vat if t.amount_incl_vat is not None else "",
+                t.bank_source or "",
+                t.session_id,
+            ])
+            if (i + 1) % 500 == 0:
+                yield output.getvalue()
+                output.seek(0); output.truncate(0)
+
+        # Flush remaining
+        remaining = output.getvalue()
+        if remaining:
+            yield remaining
+
+    client_slug = (client_name or "").replace(" ", "_")[:24]
+    filename = f"{client_slug}_{fy.label}_transactions.csv".replace(" ", "_")
+    return StreamingResponse(
+        generate(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/financial-years/{fy_id}/sessions")

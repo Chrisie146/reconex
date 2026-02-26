@@ -79,9 +79,13 @@ export default function Sidebar({ sessionId, selectedStatement = '', onStatement
 
   useEffect(() => { setIsMounted(true) }, [])
 
-  /* ── export handler ────────────────────────────────────────────── */
+  // Use URL/upload sessionId first; fall back to the statement selected in the dropdown
+  // so navigation and exports work even when the page hasn't set sessionId yet.
+  const effectiveSessionId = sessionId || selectedStatement || null
+
+  /* ── export handler ────────────────────────────────── */
   const handleExport = useCallback(async (type: 'transactions' | 'summary' | 'categories' | 'accountant' | 'vat') => {
-    if (!sessionId && !currentClient?.id) return
+    if (!effectiveSessionId && !currentClient?.id) return
     if (type === 'vat')        { setShowVATModal(true); return }
     if (type === 'categories') { setShowCategoriesModal(true); return }
 
@@ -89,12 +93,12 @@ export default function Sidebar({ sessionId, selectedStatement = '', onStatement
     try {
       const params: any = { format: 'excel' }
       if (currentClient?.id) { params.client_id = currentClient.id }
-      else if (sessionId) { params.session_id = sessionId }
+      else if (effectiveSessionId) { params.session_id = effectiveSessionId }
       // Always include VAT columns for applicable exports
       if (['transactions', 'summary', 'accountant'].includes(type)) {
         params.include_vat = true
       }
-      const filename = `${type}_${sessionId?.substring(0, 8) || currentClient?.id || 'export'}.xlsx`
+      const filename = `${type}_${effectiveSessionId?.substring(0, 8) || currentClient?.id || 'export'}.xlsx`
       const response = await axios.get(`${API_BASE_URL}/export/${type}`, {
         params,
         responseType: 'blob',
@@ -107,7 +111,7 @@ export default function Sidebar({ sessionId, selectedStatement = '', onStatement
       posthog.capture('export_triggered', { type, format: 'xlsx' })
     } catch { toast.error('Export failed. Please try again.') }
     finally { setExporting(false) }
-  }, [sessionId, currentClient])
+  }, [effectiveSessionId, currentClient])
 
   /* ── active helpers ────────────────────────────────────────────── */
   const isActive = (prefix: string) => {
@@ -116,11 +120,19 @@ export default function Sidebar({ sessionId, selectedStatement = '', onStatement
   }
 
   /* ── nav items ─────────────────────────────────────────────────── */
-  const sessionNav: NavItem[] = sessionId ? [
-    { href: `/dashboard?session_id=${sessionId}`, icon: <BarChart3 className="w-[18px] h-[18px]" />, label: 'Dashboard',        matchPrefix: '/dashboard' },
-    { href: `/transactions?session_id=${sessionId}`, icon: <List className="w-[18px] h-[18px]" />,     label: 'Transactions',     matchPrefix: '/transactions' },
-    { href: `/invoices?session_id=${sessionId}`,     icon: <Eye className="w-[18px] h-[18px]" />,      label: 'Invoices',         matchPrefix: '/invoices' },
-    { href: `/mapping?session_id=${sessionId}`,      icon: <MapPin className="w-[18px] h-[18px]" />,   label: 'Map Transactions', matchPrefix: '/mapping' },
+  // Build query string suffix — include session_id when one is active
+  const sessionQS = effectiveSessionId ? `?session_id=${effectiveSessionId}` : ''
+
+  // Always visible when a client is selected (no session required)
+  const clientNav: NavItem[] = currentClient ? [
+    { href: `/transactions${sessionQS}`,  icon: <List className="w-[18px] h-[18px]" />,   label: 'Transactions',     matchPrefix: '/transactions' },
+  ] : []
+
+  // Only visible when a session is known
+  const sessionNav: NavItem[] = effectiveSessionId ? [
+    { href: `/dashboard?session_id=${effectiveSessionId}`, icon: <BarChart3 className="w-[18px] h-[18px]" />, label: 'Dashboard',        matchPrefix: '/dashboard' },
+    { href: `/invoices?session_id=${effectiveSessionId}`,  icon: <Eye className="w-[18px] h-[18px]" />,      label: 'Invoices',         matchPrefix: '/invoices' },
+    { href: `/mapping?session_id=${effectiveSessionId}`,   icon: <MapPin className="w-[18px] h-[18px]" />,   label: 'Map Transactions', matchPrefix: '/mapping' },
   ] : []
 
   const exportItems = [
@@ -131,10 +143,10 @@ export default function Sidebar({ sessionId, selectedStatement = '', onStatement
     { type: 'vat'          as const, icon: <Receipt className="w-[18px] h-[18px]" />,         label: 'VAT Report',      title: 'VAT report with calculations' },
   ]
 
-  const configItems: NavItem[] = sessionId ? [
-    { href: `/rules?session_id=${sessionId}`,              icon: <Tag className="w-[18px] h-[18px]" />,      label: 'Categories',       matchPrefix: '/rules' },
-    { href: `/rules?session_id=${sessionId}&tab=rules`,    icon: <Zap className="w-[18px] h-[18px]" />,      label: 'Manual Rules',     matchPrefix: '/rules' },
-    { href: `/rules?session_id=${sessionId}&tab=learned`,  icon: <Sparkles className="w-[18px] h-[18px]" />, label: 'Learned Patterns', matchPrefix: '/rules' },
+  const configItems: NavItem[] = effectiveSessionId ? [
+    { href: `/rules?session_id=${effectiveSessionId}`,              icon: <Tag className="w-[18px] h-[18px]" />,      label: 'Categories',       matchPrefix: '/rules' },
+    { href: `/rules?session_id=${effectiveSessionId}&tab=rules`,    icon: <Zap className="w-[18px] h-[18px]" />,      label: 'Manual Rules',     matchPrefix: '/rules' },
+    { href: `/rules?session_id=${effectiveSessionId}&tab=learned`,  icon: <Sparkles className="w-[18px] h-[18px]" />, label: 'Learned Patterns', matchPrefix: '/rules' },
   ] : []
 
   /* ══════════════════════════════════════════════════════════════════
@@ -197,13 +209,24 @@ export default function Sidebar({ sessionId, selectedStatement = '', onStatement
           active={isActive('/dashboard')}
           collapsed={isCollapsed} />
 
-        {/* Session links */}
-        {isMounted && sessionId && sessionNav.length > 0 && (
+        {/* Client-level nav — always visible when a client is selected */}
+        {isMounted && clientNav.length > 0 && (
           <>
             {!isCollapsed && (
-              <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 px-3 pt-4 pb-1">Session</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 px-3 pt-4 pb-1">Navigate</p>
             )}
             {isCollapsed && <div className="my-1.5 mx-2 border-t border-slate-800" />}
+            {clientNav.map(item => (
+              <NavLink key={item.matchPrefix} href={item.href}
+                icon={item.icon} label={item.label}
+                active={isActive(item.matchPrefix)} collapsed={isCollapsed} />
+            ))}
+          </>
+        )}
+
+        {/* Session links — visible when a specific session is selected */}
+        {isMounted && sessionNav.length > 0 && (
+          <>
             {sessionNav.map(item => (
               <NavLink key={item.matchPrefix} href={item.href}
                 icon={item.icon} label={item.label}

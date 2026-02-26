@@ -87,6 +87,8 @@ export default function ArchivedYearPage() {
   const [txnCategory, setTxnCategory]     = useState('')
   const [sessions, setSessions]           = useState<ArchivedSession[]>([])
   const [reconciliation, setReconciliation] = useState<ReconciliationData | null>(null)
+  const [reconciliationLoading, setReconciliationLoading] = useState(false)
+  const [reconciliationError, setReconciliationError]     = useState<string | null>(null)
   const [invoices, setInvoices]           = useState<ArchivedInvoice[]>([])
 
   const [loading, setLoading]             = useState(true)
@@ -146,11 +148,16 @@ export default function ArchivedYearPage() {
   }
 
   const loadReconciliation = async () => {
+    setReconciliationLoading(true)
+    setReconciliationError(null)
     try {
       const res = await axios.get(`${API_BASE_URL}/financial-years/${fyId}/reconciliation`)
       setReconciliation(res.data)
     } catch {
+      setReconciliationError('Failed to load reconciliation data.')
       toast.error('Failed to load reconciliation data.')
+    } finally {
+      setReconciliationLoading(false)
     }
   }
 
@@ -172,41 +179,23 @@ export default function ArchivedYearPage() {
     if (!fyId) return
     setDownloading(true)
     try {
-      const token = typeof window !== 'undefined'
-        ? localStorage.getItem('statement_analyzer_auth_token') : null
-      const response = await fetch(
-        `${API_BASE_URL}/financial-years/${fyId}/transactions?page=1&page_size=10000`,
-        { headers: { Authorization: `Bearer ${token}` } }
+      const response = await axios.get(
+        `${API_BASE_URL}/financial-years/${fyId}/export`,
+        {
+          params: {
+            search: txnSearch || undefined,
+            category: txnCategory || undefined,
+          },
+          responseType: 'blob',
+        }
       )
-      const data = await response.json()
-      const rows = data.transactions as ArchivedTransaction[]
-
-      // Build CSV
-      const headers = ['Date', 'Description', 'Amount', 'Category', 'VAT Amount', 'Bank Source', 'Session ID']
-      const meta = [
-        clientName ? `Client: ${clientName}` : null,
-        `Period: ${fy?.label ?? 'archive'}`,
-        `Generated: ${new Date().toLocaleDateString('en-ZA')}`,
-      ].filter(Boolean)
-      const lines = [
-        ...meta.map(m => `# ${m}`),
-        headers.join(','),
-        ...rows.map(t => [
-          t.date,
-          `"${t.description.replace(/"/g, '""')}"`,
-          t.amount,
-          t.category,
-          t.vat_amount ?? '',
-          t.bank_source ?? '',
-          t.session_id,
-        ].join(','))
-      ]
-      const blob = new Blob([lines.join('\n')], { type: 'text/csv' })
+      const blob = new Blob([response.data], { type: 'text/csv' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
       const clientSlug = clientName ? clientName.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 24) + '_' : ''
-      a.download = `${clientSlug}${fy?.label ?? 'archive'}_transactions.csv`
+      const filterSuffix = (txnSearch || txnCategory) ? '_filtered' : ''
+      a.download = `${clientSlug}${fy?.label ?? 'archive'}${filterSuffix}_transactions.csv`
       document.body.appendChild(a); a.click()
       document.body.removeChild(a); URL.revokeObjectURL(url)
       toast.success('CSV downloaded.')
@@ -353,17 +342,36 @@ export default function ArchivedYearPage() {
                   />
                   <input
                     type="text"
+                    list="category-options"
                     placeholder="Category filter..."
                     value={txnCategory}
                     onChange={e => setTxnCategory(e.target.value)}
-                    className="px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-44"
+                    className="px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-48"
                   />
+                  {summary && (
+                    <datalist id="category-options">
+                      {summary.by_category
+                        .sort((a, b) => a.category.localeCompare(b.category))
+                        .map(c => (
+                          <option key={c.category} value={c.category} />
+                        ))}
+                    </datalist>
+                  )}
                   <button
                     type="submit"
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
                   >
                     Search
                   </button>
+                  {(txnSearch || txnCategory) && (
+                    <button
+                      type="button"
+                      onClick={() => { setTxnSearch(''); setTxnCategory(''); loadTransactions(1, '', '') }}
+                      className="px-3 py-2 border border-neutral-200 text-neutral-500 rounded-lg text-sm hover:bg-neutral-50 transition-colors"
+                    >
+                      Clear
+                    </button>
+                  )}
                 </form>
                 <button
                   onClick={handleDownloadCSV}
@@ -391,7 +399,7 @@ export default function ArchivedYearPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-100">
-                      {transactions.map(t => (
+                      {transactions.length > 0 ? transactions.map(t => (
                         <tr key={t.id} className="hover:bg-neutral-50">
                           <td className="px-6 py-3 text-neutral-600 whitespace-nowrap">{fmtDate(t.date)}</td>
                           <td className="px-6 py-3 text-neutral-900 max-w-xs truncate">{t.description}</td>
@@ -407,7 +415,13 @@ export default function ArchivedYearPage() {
                             {t.vat_amount != null ? fmt(t.vat_amount) : '—'}
                           </td>
                         </tr>
-                      ))}
+                      )) : (
+                        <tr>
+                          <td colSpan={5} className="text-center py-12 text-neutral-400">
+                            No transactions match your search.
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -471,58 +485,118 @@ export default function ArchivedYearPage() {
           )}
 
           {/* ── Reconciliation ───────────────────────────────────────────── */}
-          {tab === 'reconciliation' && reconciliation && (
+          {tab === 'reconciliation' && (
             <div className="space-y-6">
-              <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden shadow-sm">
-                <div className="px-6 py-4 border-b border-neutral-100">
-                  <h3 className="font-semibold text-neutral-900">Monthly Balances</h3>
+              {reconciliationLoading && (
+                <div className="flex items-center justify-center py-16">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
                 </div>
-                <table className="w-full text-sm">
-                  <thead className="bg-neutral-50 border-b border-neutral-100">
-                    <tr className="text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">
-                      <th className="px-6 py-3">Month</th>
-                      <th className="px-6 py-3">Session</th>
-                      <th className="px-6 py-3 text-right">Opening</th>
-                      <th className="px-6 py-3 text-right">Closing</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-100">
-                    {reconciliation.monthly.map((r, i) => (
-                      <tr key={i} className="hover:bg-neutral-50">
-                        <td className="px-6 py-3 font-medium text-neutral-900">{r.month}</td>
-                        <td className="px-6 py-3 text-neutral-500 text-xs font-mono">{r.session_id}</td>
-                        <td className="px-6 py-3 text-right text-neutral-700">{r.opening_balance != null ? fmt(r.opening_balance) : '—'}</td>
-                        <td className="px-6 py-3 text-right text-neutral-700">{r.closing_balance != null ? fmt(r.closing_balance) : '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              )}
 
-              {reconciliation.overall.length > 0 && (
-                <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden shadow-sm">
-                  <div className="px-6 py-4 border-b border-neutral-100">
-                    <h3 className="font-semibold text-neutral-900">Overall Reconciliation</h3>
-                  </div>
-                  <table className="w-full text-sm">
-                    <thead className="bg-neutral-50 border-b border-neutral-100">
-                      <tr className="text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">
-                        <th className="px-6 py-3">Session</th>
-                        <th className="px-6 py-3 text-right">Opening Balance</th>
-                        <th className="px-6 py-3 text-right">Bank Closing</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-neutral-100">
-                      {reconciliation.overall.map((o, i) => (
-                        <tr key={i} className="hover:bg-neutral-50">
-                          <td className="px-6 py-3 text-neutral-500 text-xs font-mono">{o.session_id}</td>
-                          <td className="px-6 py-3 text-right text-neutral-700">{o.system_opening_balance != null ? fmt(o.system_opening_balance) : '—'}</td>
-                          <td className="px-6 py-3 text-right text-neutral-700">{o.bank_closing_balance != null ? fmt(o.bank_closing_balance) : '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              {!reconciliationLoading && reconciliationError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+                  <p className="text-red-600 text-sm font-medium">{reconciliationError}</p>
+                  <button
+                    onClick={loadReconciliation}
+                    className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition-colors"
+                  >
+                    Retry
+                  </button>
                 </div>
+              )}
+
+              {!reconciliationLoading && !reconciliationError && reconciliation && (
+                <>
+                  {reconciliation.monthly.length === 0 && reconciliation.overall.length === 0 ? (
+                    <div className="bg-white border border-neutral-200 rounded-lg p-12 text-center">
+                      <CalendarRange className="mx-auto text-neutral-300 mb-3" size={40} />
+                      <p className="text-neutral-500 font-medium">No reconciliation data</p>
+                      <p className="text-neutral-400 text-sm mt-1">
+                        Reconciliation records are only stored for sessions that were fully contained within this financial year.
+                        Sessions spanning multiple years may not have reconciliation data here.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      {reconciliation.monthly.length > 0 && (
+                        <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden shadow-sm">
+                          <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
+                            <h3 className="font-semibold text-neutral-900">Monthly Balances</h3>
+                            <span className="text-xs text-neutral-400">{reconciliation.monthly.length} records</span>
+                          </div>
+                          <table className="w-full text-sm">
+                            <thead className="bg-neutral-50 border-b border-neutral-100">
+                              <tr className="text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">
+                                <th className="px-6 py-3">Month</th>
+                                <th className="px-6 py-3">Session</th>
+                                <th className="px-6 py-3 text-right">Opening</th>
+                                <th className="px-6 py-3 text-right">Closing</th>
+                                <th className="px-6 py-3 text-right">Difference</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-neutral-100">
+                              {reconciliation.monthly.map((r, i) => {
+                                const diff = (r.closing_balance != null && r.opening_balance != null)
+                                  ? r.closing_balance - r.opening_balance
+                                  : null
+                                return (
+                                  <tr key={i} className="hover:bg-neutral-50">
+                                    <td className="px-6 py-3 font-medium text-neutral-900">{r.month}</td>
+                                    <td className="px-6 py-3 text-neutral-500 text-xs font-mono truncate max-w-[160px]" title={r.session_id}>{r.session_id}</td>
+                                    <td className="px-6 py-3 text-right text-neutral-700">{r.opening_balance != null ? fmt(r.opening_balance) : '—'}</td>
+                                    <td className="px-6 py-3 text-right text-neutral-700">{r.closing_balance != null ? fmt(r.closing_balance) : '—'}</td>
+                                    <td className={`px-6 py-3 text-right font-medium ${
+                                      diff == null ? 'text-neutral-400' : diff >= 0 ? 'text-emerald-600' : 'text-red-600'
+                                    }`}>
+                                      {diff != null ? fmt(diff) : '—'}
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+
+                      {reconciliation.overall.length > 0 && (
+                        <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden shadow-sm">
+                          <div className="px-6 py-4 border-b border-neutral-100">
+                            <h3 className="font-semibold text-neutral-900">Overall Reconciliation</h3>
+                          </div>
+                          <table className="w-full text-sm">
+                            <thead className="bg-neutral-50 border-b border-neutral-100">
+                              <tr className="text-left text-xs font-semibold text-neutral-600 uppercase tracking-wider">
+                                <th className="px-6 py-3">Session</th>
+                                <th className="px-6 py-3 text-right">Opening Balance</th>
+                                <th className="px-6 py-3 text-right">Bank Closing</th>
+                                <th className="px-6 py-3 text-right">Variance</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-neutral-100">
+                              {reconciliation.overall.map((o, i) => {
+                                const variance = (o.system_opening_balance != null && o.bank_closing_balance != null)
+                                  ? o.bank_closing_balance - o.system_opening_balance
+                                  : null
+                                return (
+                                  <tr key={i} className="hover:bg-neutral-50">
+                                    <td className="px-6 py-3 text-neutral-500 text-xs font-mono truncate max-w-[200px]" title={o.session_id}>{o.session_id}</td>
+                                    <td className="px-6 py-3 text-right text-neutral-700">{o.system_opening_balance != null ? fmt(o.system_opening_balance) : '—'}</td>
+                                    <td className="px-6 py-3 text-right text-neutral-700">{o.bank_closing_balance != null ? fmt(o.bank_closing_balance) : '—'}</td>
+                                    <td className={`px-6 py-3 text-right font-medium ${
+                                      variance == null ? 'text-neutral-400' : Math.abs(variance) < 0.01 ? 'text-emerald-600' : 'text-red-600'
+                                    }`}>
+                                      {variance != null ? fmt(variance) : '—'}
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
               )}
             </div>
           )}
