@@ -39,17 +39,16 @@ router = APIRouter(tags=["Backups"])
 # ---------------------------------------------------------------------------
 
 def _pg_connect(db_url: str):
-    """Open a psycopg2 connection from a postgresql:// URL."""
+    """
+    Open a psycopg2 connection from a postgresql:// URL.
+
+    We pass the URL string directly to psycopg2 so that ALL query-string
+    parameters (including ?sslmode=require that Render appends) are preserved.
+    Manual URL-parsing would silently drop those params and cause an SSL
+    rejection on Render's managed PostgreSQL.
+    """
     import psycopg2  # already in requirements.txt
-    parsed = urlparse(db_url)
-    return psycopg2.connect(
-        host=parsed.hostname,
-        port=parsed.port or 5432,
-        user=parsed.username,
-        password=parsed.password,
-        dbname=parsed.path.lstrip("/"),
-        connect_timeout=30,
-    )
+    return psycopg2.connect(db_url, connect_timeout=30)
 
 
 def _pg_backup_stream(db_url: str):
@@ -180,13 +179,66 @@ def _sqlite_restore(db_url: str, gz_data: bytes) -> None:
         raise
 
 
+def _fk_sorted_tables(cur, tables: list) -> list:
+    """
+    Return `tables` sorted so that parent tables come before their children.
+    Uses a simple Kahn topological sort on FK references found in
+    information_schema — no superuser required, no trigger manipulation.
+    Tables not referenced by any FK come first in alphabetical order.
+    """
+    table_set = set(tables)
+
+    # Build adjacency: child -> set of parents it depends on
+    cur.execute(
+        """
+        SELECT  tc.table_name          AS child,
+                ccu.table_name         AS parent
+        FROM    information_schema.table_constraints       tc
+        JOIN    information_schema.referential_constraints rc
+                    ON rc.constraint_name = tc.constraint_name
+                   AND rc.constraint_schema = tc.table_schema
+        JOIN    information_schema.constraint_column_usage ccu
+                    ON ccu.constraint_name = rc.unique_constraint_name
+                   AND ccu.table_schema    = tc.table_schema
+        WHERE   tc.constraint_type = 'FOREIGN KEY'
+          AND   tc.table_schema    = 'public'
+        """
+    )
+    deps: dict[str, set] = {t: set() for t in tables}
+    for child, parent in cur.fetchall():
+        if child in table_set and parent in table_set and child != parent:
+            deps[child].add(parent)
+
+    # Kahn's algorithm
+    in_degree = {t: len(deps[t]) for t in tables}
+    # Start with tables that have no dependencies (sorted for determinism)
+    queue = sorted(t for t in tables if in_degree[t] == 0)
+    result = []
+    while queue:
+        node = queue.pop(0)
+        result.append(node)
+        # Find tables that depend on `node` and reduce their in-degree
+        for t in tables:
+            if node in deps[t]:
+                deps[t].discard(node)
+                in_degree[t] -= 1
+                if in_degree[t] == 0:
+                    queue.append(t)
+                    queue.sort()
+
+    # Append any remaining tables (shouldn't happen unless circular FKs)
+    for t in tables:
+        if t not in result:
+            result.append(t)
+    return result
+
+
 def _pg_restore(db_url: str, gz_data: bytes) -> None:
     """
     Restore a PostgreSQL database from a RECONEX_V1 gzip backup.
     Uses psycopg2 COPY FROM STDIN — no psql binary required.
-
-    Does NOT require superuser — only table-ownership (the Render user owns
-    all tables because Alembic migrations created them).
+    No superuser or DISABLE TRIGGER needed: tables are loaded in FK-dependency
+    order so constraints are satisfied naturally.
     """
     import logging
     logger = logging.getLogger(__name__)
@@ -209,53 +261,53 @@ def _pg_restore(db_url: str, gz_data: bytes) -> None:
     except ValueError:
         raise ValueError("Backup file is corrupt: missing DATA section.")
 
+    # Parse all table data blocks first (before opening DB connection)
+    table_data: dict[str, str] = {}
+    i = data_idx
+    while i < len(lines):
+        line = lines[i]
+        if line.startswith("TABLE "):
+            table = line[6:].strip()
+            i += 1
+            copy_lines = []
+            while i < len(lines) and lines[i] != "\\.":
+                copy_lines.append(lines[i])
+                i += 1
+            i += 1  # skip the \. marker
+            table_data[table] = "\n".join(copy_lines) + "\n" if copy_lines else ""
+        else:
+            i += 1
+
     conn = _pg_connect(db_url)
     try:
         conn.autocommit = False
         cur = conn.cursor()
 
-        # Disable FK-constraint triggers on every table.  This only requires
-        # table ownership (not superuser), so it works on Render's managed PG.
-        for t in tables:
-            cur.execute(f'ALTER TABLE "{t}" DISABLE TRIGGER ALL')
+        # Compute FK-safe load order (parents before children)
+        load_order = _fk_sorted_tables(cur, tables)
 
-        # Wipe all tables in one shot (CASCADE handles FK order)
+        # Wipe in REVERSE dependency order so FK constraints are satisfied
+        # TRUNCATE … CASCADE handles this automatically
         if tables:
             truncate_expr = ", ".join(f'"{t}"' for t in tables)
             cur.execute(f"TRUNCATE {truncate_expr} RESTART IDENTITY CASCADE")
 
-        # Parse table blocks and COPY data back in
-        i = data_idx
-        while i < len(lines):
-            line = lines[i]
-            if line.startswith("TABLE "):
-                table = line[6:].strip()
-                i += 1
-                copy_lines = []
-                while i < len(lines) and lines[i] != "\\.":
-                    copy_lines.append(lines[i])
-                    i += 1
-                i += 1  # skip the \. marker
-                if copy_lines:
-                    copy_data = "\n".join(copy_lines) + "\n"
-                    copy_buf = io.BytesIO(copy_data.encode())
-                    cur.copy_expert(
-                        f'COPY "{table}" FROM STDIN WITH (FORMAT TEXT)', copy_buf
-                    )
-                    logger.info("Restored table %s (%d rows of COPY data)", table, len(copy_lines))
-            else:
-                i += 1
+        # Load tables in FK-dependency order — no trigger manipulation needed
+        for table in load_order:
+            data = table_data.get(table, "")
+            if data.strip():
+                copy_buf = io.BytesIO(data.encode())
+                cur.copy_expert(
+                    f'COPY "{table}" FROM STDIN WITH (FORMAT TEXT)', copy_buf
+                )
+                logger.info("Restored table: %s", table)
 
         # Reset sequences to their backed-up values
         for seq_name, last_val in sequences.items():
             if last_val is not None:
                 cur.execute(
-                    f"SELECT setval('{seq_name}', %s, true)", (last_val,)
+                    "SELECT setval(%s, %s, true)", (seq_name, last_val)
                 )
-
-        # Re-enable triggers on every table
-        for t in tables:
-            cur.execute(f'ALTER TABLE "{t}" ENABLE TRIGGER ALL')
 
         conn.commit()
         logger.info("PostgreSQL restore committed successfully")
