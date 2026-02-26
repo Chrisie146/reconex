@@ -1,115 +1,71 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
-import {
-  Building2,
-  FileText,
-  Bot,
-  Receipt,
-  Download,
-  FileSearch,
-  Users,
-  PenLine,
-  BarChart3,
-  Calendar,
-  Scale,
-  Settings2,
-} from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 
 const features = [
   {
-    icon: Building2,
     title: 'Multi-Bank Support',
     description:
       'Auto-detects and parses statements from FNB, Standard Bank, ABSA, Capitec, Nedbank and Investec. Manual column mapping available for any other bank.',
-    gradient: 'from-blue-500 to-cyan-500',
   },
   {
-    icon: FileText,
     title: 'CSV & PDF Upload',
     description:
       'Upload CSV exports or PDF statements. OCR-powered extraction handles scanned PDFs with support for Afrikaans and English formats.',
-    gradient: 'from-violet-500 to-purple-500',
   },
   {
-    icon: Bot,
     title: 'Auto-Categorization',
     description:
       'Rule-based engine with a built-in South African merchant database. 15 default categories, custom categories, and learned patterns that improve over time.',
-    gradient: 'from-emerald-500 to-teal-500',
   },
   {
-    icon: Receipt,
     title: 'VAT Calculation',
     description:
       'Automatic 15% SA VAT computation per transaction. Configure VAT per category. Export VAT Input and Output reports with date range filtering.',
-    gradient: 'from-orange-500 to-amber-500',
   },
   {
-    icon: Download,
     title: 'Excel & PDF Export',
     description:
       'Export categorized transactions, monthly summaries, per-category breakdowns and accountant reports. Available in Excel, PDF and CSV.',
-    gradient: 'from-pink-500 to-rose-500',
   },
   {
-    icon: FileSearch,
     title: 'Invoice Matching',
     description:
       'Upload invoices and auto-match them to bank transactions using supplier name similarity, amount matching and date proximity scoring.',
-    gradient: 'from-indigo-500 to-blue-500',
   },
   {
-    icon: Users,
     title: 'Multi-Client Management',
     description:
       'Manage multiple clients from a single account. Each client has isolated transactions, rules, categories, invoices and financial years.',
-    gradient: 'from-cyan-500 to-blue-500',
   },
   {
-    icon: PenLine,
     title: 'Inline Editing',
     description:
       'Edit transactions, categories and merchants directly in the table. Bulk-categorize by keyword or selection. Undo bulk actions instantly.',
-    gradient: 'from-fuchsia-500 to-pink-500',
   },
   {
-    icon: BarChart3,
     title: 'Analytics Dashboard',
     description:
-      'Cash flow charts, income vs expense trends, category breakdowns, merchant analytics and recurring transaction detection — all in one view.',
-    gradient: 'from-blue-500 to-indigo-500',
+      'Cash flow charts, income vs expense trends, category breakdowns, merchant analytics and recurring transaction detection  all in one view.',
   },
   {
-    icon: Calendar,
     title: 'Financial Years',
     description:
       'Define financial year periods per client. Archive completed years and access historical data in read-only mode at any time.',
-    gradient: 'from-teal-500 to-emerald-500',
   },
   {
-    icon: Scale,
     title: 'Reconciliation',
     description:
       'Set opening and closing balances. Running balance validation with deterministic arithmetic verification and 1-cent tolerance.',
-    gradient: 'from-amber-500 to-orange-500',
   },
   {
-    icon: Settings2,
     title: 'Custom Rules Engine',
     description:
       'Create keyword-based categorization rules with priority ordering. Clone rules across clients. Auto-apply on every upload.',
-    gradient: 'from-purple-500 to-violet-500',
   },
 ]
 
-function FeatureCard({
-  feature,
-  index,
-}: {
-  feature: (typeof features)[0]
-  index: number
-}) {
+function FeatureCard({ feature, index }: { feature: typeof features[0]; index: number }) {
   const ref = useRef<HTMLDivElement>(null)
   const [visible, setVisible] = useState(false)
 
@@ -121,68 +77,46 @@ function FeatureCard({
           observer.disconnect()
         }
       },
-      { threshold: 0.1 }
+      { threshold: 0.15 }
     )
     if (ref.current) observer.observe(ref.current)
     return () => observer.disconnect()
   }, [])
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    e.currentTarget.style.setProperty('--mouse-x', `${x}px`)
-    e.currentTarget.style.setProperty('--mouse-y', `${y}px`)
-  }, [])
-
-  const Icon = feature.icon
-
   return (
     <div
       ref={ref}
-      onMouseMove={handleMouseMove}
-      className={`spotlight-card group relative rounded-2xl border border-neutral-200/80 bg-white p-6 transition-all duration-500 hover:border-neutral-300 hover:shadow-lg hover:shadow-neutral-200/50 hover:-translate-y-1 ${
-        visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+      className={`group relative rounded-xl border border-neutral-200 bg-white p-6 transition-all duration-500 hover:border-neutral-300 hover:shadow-sm ${
+        visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
       }`}
-      style={{ transitionDelay: `${index * 50}ms` }}
+      style={{ transitionDelay: `${index * 60}ms` }}
     >
-      {/* Icon with gradient background */}
-      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center mb-4 shadow-lg shadow-${feature.gradient.split(' ')[0].replace('from-', '')}/20 transition-transform duration-300 group-hover:scale-110`}>
-        <Icon className="w-5 h-5 text-white" />
+      <div className="w-8 h-8 rounded-lg bg-neutral-100 flex items-center justify-center mb-4 text-[13px] font-bold text-neutral-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+        {String(index + 1).padStart(2, '0')}
       </div>
-
-      <h3 className="text-[15px] font-semibold text-neutral-900 mb-2 group-hover:text-neutral-800">
+      <h3 className="text-[15px] font-semibold text-neutral-900 mb-2">
         {feature.title}
       </h3>
       <p className="text-sm text-neutral-500 leading-relaxed">
         {feature.description}
       </p>
-
-      {/* Subtle gradient line at bottom on hover */}
-      <div className={`absolute bottom-0 left-6 right-6 h-[2px] bg-gradient-to-r ${feature.gradient} opacity-0 group-hover:opacity-40 transition-opacity duration-500 rounded-full`} />
     </div>
   )
 }
 
 export default function Features() {
   return (
-    <section id="features" className="py-28 bg-white relative">
-      {/* Subtle top gradient */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-neutral-200 to-transparent" />
-
+    <section id="features" className="py-24 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section header */}
         <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 mb-5">
-            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-            <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-blue-600">
-              Features
-            </span>
-          </div>
-          <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold text-neutral-900 mb-4 tracking-tight">
+          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-3">
+            What it does
+          </p>
+          <h2 className="text-3xl sm:text-4xl font-bold text-neutral-900 mb-4">
             Every feature, real and working
           </h2>
-          <p className="text-base sm:text-lg text-neutral-500 max-w-xl mx-auto leading-relaxed">
+          <p className="text-base text-neutral-500 max-w-xl mx-auto">
             No vaporware. Every capability listed here is built, tested, and ready to use today.
           </p>
         </div>

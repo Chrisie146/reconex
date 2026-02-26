@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import axios from '@/lib/axiosClient'
 import { setToken, setAuthUser } from '@/lib/auth'
-import { Landmark, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { posthog } from '@/lib/posthog'
 
 export default function RegisterPage() {
@@ -52,20 +52,29 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-950 px-4">
-      <div className="w-full max-w-sm">
+    <div className="relative min-h-screen flex items-center justify-center bg-neutral-950 px-4 overflow-hidden">
+      {/* Subtle background glow — static, no animation */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-indigo-600/[0.07] rounded-full blur-[120px] pointer-events-none" />
+
+      <div className="relative w-full max-w-sm">
         {/* Brand */}
-        <Link href="/" className="flex items-center justify-center gap-2.5 mb-8">
-          <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center">
-            <Landmark className="w-[18px] h-[18px] text-white" />
+        <Link href="/" className="flex items-center justify-center gap-2.5 mb-8 group">
+          <div className="relative">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <span className="text-white font-bold text-sm">R</span>
+            </div>
+            <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-blue-400 to-indigo-500 blur-md opacity-0 group-hover:opacity-40 transition-opacity duration-300" />
           </div>
-          <span className="text-lg font-bold text-neutral-900 tracking-tight">Recon<span className="text-blue-600">ex</span></span>
+          <span className="text-lg font-bold text-white tracking-tight">
+            recon<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">ex</span>
+          </span>
         </Link>
 
         {/* Card */}
-        <div className="rounded-2xl bg-white dark:bg-neutral-900 ring-1 ring-neutral-200 dark:ring-neutral-700 shadow-sm p-6">
-          <h1 className="text-xl font-bold text-neutral-900 dark:text-white">Create account</h1>
-          <p className="text-sm text-neutral-500 mt-1">Start analyzing bank statements securely.</p>
+        <div className="rounded-2xl bg-neutral-900/80 border border-neutral-800 backdrop-blur-xl shadow-2xl shadow-black/40 p-6">
+          <h1 className="text-xl font-bold text-white">Create account</h1>
+          <p className="text-sm text-neutral-500 mt-1">Start analyzing bank statements for free.</p>
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div>
@@ -74,7 +83,7 @@ export default function RegisterPage() {
               </label>
               <input
                 type="email"
-                className="mt-1.5 w-full rounded-lg ring-1 ring-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
+                className="mt-1.5 w-full rounded-lg border border-neutral-700/80 bg-neutral-800/50 px-3 py-2 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-blue-500/70 focus:ring-1 focus:ring-blue-500/50 transition-all"
                 placeholder="you@company.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -87,7 +96,7 @@ export default function RegisterPage() {
               </label>
               <input
                 type="text"
-                className="mt-1.5 w-full rounded-lg ring-1 ring-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
+                className="mt-1.5 w-full rounded-lg border border-neutral-700/80 bg-neutral-800/50 px-3 py-2 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-blue-500/70 focus:ring-1 focus:ring-blue-500/50 transition-all"
                 placeholder="Jane Doe"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
@@ -99,7 +108,7 @@ export default function RegisterPage() {
               </label>
               <input
                 type="password"
-                className="mt-1.5 w-full rounded-lg ring-1 ring-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
+                className="mt-1.5 w-full rounded-lg border border-neutral-700/80 bg-neutral-800/50 px-3 py-2 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-blue-500/70 focus:ring-1 focus:ring-blue-500/50 transition-all"
                 placeholder="Min 8 characters"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -108,7 +117,7 @@ export default function RegisterPage() {
             </div>
 
             {error && (
-              <div className="rounded-lg bg-red-50 ring-1 ring-red-200 px-3 py-2 text-sm text-red-600">
+              <div className="rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-2 text-sm text-red-400">
                 {error}
               </div>
             )}
@@ -116,12 +125,12 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-60 py-2.5 text-sm font-semibold text-white transition-colors"
+              className="w-full flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 py-2.5 text-sm font-semibold text-white transition-all duration-200 shadow-lg shadow-blue-600/20"
             >
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Creating...
+                  Creating…
                 </>
               ) : (
                 'Create account'
@@ -130,9 +139,9 @@ export default function RegisterPage() {
           </form>
         </div>
 
-        <p className="mt-5 text-center text-sm text-neutral-500">
+        <p className="mt-5 text-center text-sm text-neutral-600">
           Already have an account?{' '}
-          <Link href="/login" className="font-medium text-blue-600 hover:text-blue-700 transition-colors">
+          <Link href="/login" className="font-medium text-blue-400 hover:text-blue-300 transition-colors">
             Sign in
           </Link>
         </p>

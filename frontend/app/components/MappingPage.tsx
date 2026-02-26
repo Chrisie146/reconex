@@ -277,8 +277,9 @@ export default function MappingPage() {
   }
 
   function selectAll() {
-    const allIds = [...uncategorized.map(t => t.id), ...Object.values(byCategory).flat().map(t => t.id)]
-    setSelectedIds(Array.from(new Set(allIds)))
+    // Only select uncategorized transactions (respecting active search filter)
+    const idsToSelect = filteredUncategorized.map(t => t.id)
+    setSelectedIds(Array.from(new Set(idsToSelect)))
   }
 
   /* ── no session guard ──────────────────────────────────────────── */
@@ -350,7 +351,7 @@ export default function MappingPage() {
               onClick={selectAll}
               className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs font-medium text-neutral-600 hover:bg-neutral-100 transition-colors"
             >
-              <CheckSquare className="w-3.5 h-3.5" /> Select all
+              <CheckSquare className="w-3.5 h-3.5" /> Select all uncategorized
             </button>
             <button
               onClick={() => setSelectedIds([])}

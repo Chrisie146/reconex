@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { ChevronDown } from 'lucide-react'
 
 const faqs = [
@@ -56,58 +56,114 @@ const faqs = [
   },
 ]
 
+function FAQItem({ faq, index, isOpen, onToggle }: {
+  faq: (typeof faqs)[0]
+  index: number
+  isOpen: boolean
+  onToggle: () => void
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [visible, setVisible] = useState(false)
+  const contentRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true)
+          observer.disconnect()
+        }
+      },
+      { threshold: 0.1 }
+    )
+    if (ref.current) observer.observe(ref.current)
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <div
+      ref={ref}
+      className={`transition-all duration-500 ${
+        visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+      }`}
+      style={{ transitionDelay: `${index * 50}ms` }}
+    >
+      <div
+        className={`rounded-xl border transition-all duration-300 ${
+          isOpen
+            ? 'border-blue-200/60 bg-blue-50/30 shadow-sm shadow-blue-100/50'
+            : 'border-neutral-200/80 bg-white hover:border-neutral-300 hover:shadow-sm'
+        }`}
+      >
+        <button
+          onClick={onToggle}
+          className="w-full px-6 py-5 text-left flex items-center justify-between gap-4 group"
+        >
+          <span className={`text-[15px] font-semibold transition-colors ${
+            isOpen ? 'text-blue-900' : 'text-neutral-900 group-hover:text-neutral-700'
+          }`}>
+            {faq.question}
+          </span>
+          <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
+            isOpen ? 'bg-blue-500 rotate-180' : 'bg-neutral-100 group-hover:bg-neutral-200'
+          }`}>
+            <ChevronDown
+              className={`w-4 h-4 transition-colors ${
+                isOpen ? 'text-white' : 'text-neutral-400'
+              }`}
+            />
+          </div>
+        </button>
+        <div
+          ref={contentRef}
+          className={`overflow-hidden transition-all duration-300 ease-in-out ${
+            isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+          }`}
+        >
+          <div className="px-6 pb-5 text-sm text-neutral-600 leading-relaxed">
+            {faq.answer}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function FAQ() {
   const [openIndex, setOpenIndex] = useState<number | null>(0)
 
   return (
-    <section id="faq" className="py-24 bg-white">
+    <section id="faq" className="py-28 bg-white relative">
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-neutral-200 to-transparent" />
+
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section header */}
         <div className="text-center mb-14">
-          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-3">
-            FAQ
-          </p>
-          <h2 className="text-3xl sm:text-4xl font-bold text-neutral-900 mb-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-cyan-50 border border-cyan-100 mb-5">
+            <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
+            <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-cyan-600">
+              FAQ
+            </span>
+          </div>
+          <h2 className="text-3xl sm:text-4xl lg:text-[2.75rem] font-bold text-neutral-900 mb-4 tracking-tight">
             Common questions
           </h2>
+          <p className="text-base text-neutral-500 max-w-md mx-auto leading-relaxed">
+            Everything you need to know about Reconex
+          </p>
         </div>
 
         {/* Accordion */}
-        <div className="space-y-2">
-          {faqs.map((faq, index) => {
-            const isOpen = openIndex === index
-            return (
-              <div
-                key={index}
-                className={`rounded-xl border transition-all duration-200 ${
-                  isOpen ? 'border-neutral-300 bg-neutral-50' : 'border-neutral-200 bg-white hover:border-neutral-300'
-                }`}
-              >
-                <button
-                  onClick={() => setOpenIndex(isOpen ? null : index)}
-                  className="w-full px-5 py-4 text-left flex items-center justify-between gap-4"
-                >
-                  <span className="text-sm font-semibold text-neutral-900">
-                    {faq.question}
-                  </span>
-                  <ChevronDown
-                    className={`w-4 h-4 text-neutral-400 flex-shrink-0 transition-transform duration-200 ${
-                      isOpen ? 'rotate-180' : ''
-                    }`}
-                  />
-                </button>
-                <div
-                  className={`overflow-hidden transition-all duration-200 ${
-                    isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
-                  }`}
-                >
-                  <div className="px-5 pb-4 text-sm text-neutral-500 leading-relaxed">
-                    {faq.answer}
-                  </div>
-                </div>
-              </div>
-            )
-          })}
+        <div className="space-y-3">
+          {faqs.map((faq, index) => (
+            <FAQItem
+              key={index}
+              faq={faq}
+              index={index}
+              isOpen={openIndex === index}
+              onToggle={() => setOpenIndex(openIndex === index ? null : index)}
+            />
+          ))}
         </div>
       </div>
     </section>

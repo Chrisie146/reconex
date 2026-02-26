@@ -46,6 +46,10 @@ class ABSAPlugin(BankPlugin):
         return ABSAAdapter()
 
     def parse_pdf(self, text, pdf_obj=None, statement_year=None):
-        from services.pdf_parser import _parse_absa_text
+        from services.pdf_parser import _parse_absa_text, _parse_absa_cheq_text, is_absa_cheq_format
+        # Route to the Cheque Account parser if the text matches that sub-format
+        if is_absa_cheq_format(text):
+            parsed = _parse_absa_cheq_text(text, pdf_obj)
+            return parsed or None
         parsed = _parse_absa_text(text, pdf_obj)
         return parsed or None

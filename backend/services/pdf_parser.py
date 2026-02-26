@@ -1522,6 +1522,407 @@ def _parse_absa_text(text: str, pdf=None) -> List[List[str]]:
     return rows
 
 
+def _parse_absa_cheq_text(text: str, pdf=None) -> List[List[str]]:
+    """
+    Parse ABSA Cheque Account bank statement OCR text.
+
+    Format:
+    - Date: DD/MM/YYYY (OCR artefacts: D/MM/YYYY, DDMM/YYYY possible)
+    - Columns: Date | Transaction Description | [Charge T/A/C] | [Debit Amount] |
+               [Credit Amount] | Balance
+    - "Full" pages:  all columns on one OCR line per transaction
+    - "Split" pages: Tax-Invoice layout; only Charge + Debit Amount appear on the
+                     left OCR section; Credit Amount + Balance appear in an orphan
+                     right-side section without dates.
+
+    Amount disambiguation:
+      • 3 amounts on line  → charge, main_txn, balance
+      • 2 amounts + T/A/C flag between them, FULL mode → main_txn, balance
+        (small fee whose amount == the transaction amount)
+      • 2 amounts + flag, SPLIT mode → charge, debit (no balance present)
+      • 2 amounts, no flag → main_txn, balance
+      • 1 amount → balance only; skip
+
+    Sign is determined by keywords in the description:
+      negative (debit): DEBIT, DT (Debit Transfer), fees, charges, IMDTE DIGITAL PMT …
+      positive (credit): CREDIT, CR (Credit), CARDLESS CASH DEP, DEPOSIT …
+    """
+    rows: List[List[str]] = []
+
+    # ── OCR cleanup ──────────────────────────────────────────────────────────
+    def _clean(t: str) -> str:
+        t = t.replace('º', '9')              # degree sign → digit 9
+        t = re.sub(r'\$(\d)', r'5\1', t)     # $N → 5N (OCR digit confusion)
+        return t
+
+    text = _clean(text)
+    lines = text.split('\n')
+
+    # ── Amount helpers ────────────────────────────────────────────────────────
+    # Match numbers like 3151.00 / 491 213.25 / 3 151,00 / 3,983.00 / 6535.44
+    # \d{1,4} supports 4-digit integers without thousands separator (e.g. 6535)
+    # [,\s] allows both space and comma as thousands separators
+    # (?<![/\d.]) prevents matching digits-after-decimal as new number (e.g. .00 343→343338)
+    _AMT_RE = re.compile(r'(?<![/\d.])(-?\d{1,4}(?:[,\s]\d{3})*[.,]\d{2})(?![\d/])')
+
+    def _parse_num(s: str):
+        s = re.sub(r'\s+', '', s)
+        if ',' in s and '.' in s:
+            s = s.replace(',', '')       # comma = thousands sep
+        else:
+            s = s.replace(',', '.')      # comma = decimal sep
+        try:
+            return float(s)
+        except ValueError:
+            return None
+
+    # ── Date helpers ──────────────────────────────────────────────────────────
+    # Normal: DD/MM/YYYY or D/MM/YYYY (with optional leading noise)
+    _DATE_RE = re.compile(r'^[^\d]*?(\d{1,2}[/\.]\d{2}[/\.]\d{4})\s*(.*?)$')
+    # Missing first slash: "1402/2024 …" → day=14 month=02 year=2024
+    _DATE_NOSLASH_RE = re.compile(r'^[^\d]*?(\d{2})(\d{2})/(\d{4})\s+(.*?)$')
+
+    def _norm_date(s: str):
+        """DD/MM/YYYY or D/MM/YYYY → YYYYMMDD, or None on failure."""
+        s = s.replace('.', '/')
+        p = s.split('/')
+        if len(p) != 3 or len(p[2]) != 4:
+            return None
+        day = int(p[0])
+        month = int(p[1])
+        # Basic validation: month 1-12, day 1-31
+        if not (1 <= month <= 12) or not (1 <= day <= 31):
+            return None
+        return f"{p[2]}{p[1].zfill(2)}{p[0].zfill(2)}"
+
+    # ── Sign determination ────────────────────────────────────────────────────
+    def _sign(d: str) -> int:
+        """Return +1 (credit) or -1 (debit)."""
+        u = d.upper()
+        # Normalise common OCR misreads before matching
+        u = u.replace('-', ' ')  # "Proof-Of" → "Proof Of"
+        DEBIT_WORDS = (
+            'DEBIT', 'DIGITAL PAYMENT DT', 'DIGITAL PAYMENT OT',
+            'DIGITAL PAYMENT DR', 'IMDTE DIGITAL', 'IMDLE DIGITAL',
+            'IMMEDIATE PMT DT', 'IMMEDIATE TRF DT',
+            'MONTHLY ACC FEE', 'MONTHLY FEE', 'MONTHLY ACCT FEE',
+            'TRANSACTION CHARGE', 'ADMIN CHARGE', 'BANK CHARGE',
+            'MANAGEMENT FEE', 'PROOF OF PMT', 'PROOF OF PAYMT',
+            'PROOF OF PYM', 'LEDGER FEE', 'SERVICE FEE',
+        )
+        CREDIT_WORDS = (
+            'CREDIT', 'DIGITAL PAYMENT CR', 'IMMEDIATE TRF CR',
+            'IMMEDIATE PMT CR', 'CARDLESS CASH DEP', 'DEPOSIT',
+        )
+        if any(w in u for w in DEBIT_WORDS):
+            return -1
+        if re.search(r'\b[DO]T\b', u) and re.search(r'\b(PAYMENT|TRANSFER|PMT|TRF|SETTLEMENT)\b', u):
+            return -1
+        if any(w in u for w in CREDIT_WORDS):
+            return 1
+        if re.search(r'\bCR\b', u) and re.search(r'\b(PAYMENT|TRANSFER|PMT|TRF)\b', u):
+            return 1
+        if u.startswith('ACB DEBIT') or ':EXTERNAL' in u or ':INTERNAL' in u:
+            return -1
+        # Default: most ACB/settlement lines are credits
+        return 1
+
+    def _desc_before_amounts(rest: str) -> str:
+        """Return the portion of rest before the first digit sequence."""
+        m = re.search(r'-?\d', rest)
+        return rest[:m.start()].strip() if m else rest.strip()
+
+    def _build_desc(main: str, conts) -> str:
+        parts = [re.sub(r'^[^A-Za-z0-9]+', '', main).strip()]
+        for c in conts[:2]:
+            c = c.strip()
+            if not c:
+                continue
+            if re.match(r'^\(?Effective\b', c, re.IGNORECASE):
+                continue
+            if not re.search(r'[A-Za-z]', c):
+                continue
+            parts.append(c)
+        result = ' '.join(p for p in parts if p)
+        return re.sub(r'\s+', ' ', result).strip()
+
+    # ── Skip keywords for header/footer lines ─────────────────────────────────
+    _SKIP = (
+        'registration number', 'vat reg', 'estamp', 'privacy notice',
+        'absa bank ltd', 'absa bank limited', 'general enquiries',
+        'private bag', 'return address', 'tax invoice', 'tax invoko',
+        'tax invol', 'tax invle', 'tax invo',
+        'authorised financial', 'authorized financial', 'authorsd',
+        'authords', 'athodsed', 'athords', 'csp00', 'cspoo', 'cgolf',
+        '08600', 'cheque account number', 'cheque account',
+        'balance brought forward', 'bal brought forward',
+        'sundry credits', 'sundry debits', 'charges .',
+        'account summary', 'account type', 'statement no', 'client vat',
+        'overdratt', 'overdraft', 'absa capital', 'reg. no.', 'ncrcp',
+        'ncacp', 'your transactions', 'page', 'regstration', 'regsstation',
+        'regstiation', 'regatration', 'registration',
+        'financial services provider', 'financial srvices',
+        'financial sandces', 'credit provider',
+        'issued on:',
+    )
+
+    # ── Main parsing loop ─────────────────────────────────────────────────────
+    page_mode = "full"     # "full" or "split"
+    current_txn = None
+    transactions = []      # list of dicts: date, rest, continuations, mode
+
+    # For split-page orphan matching
+    in_orphan = False
+    orphan_lines_buf: List[str] = []
+    pending_credits: List[tuple] = []   # (date, desc) with no amounts in split mode
+
+    for raw in lines:
+        line = raw.strip()
+        if not line:
+            if current_txn:
+                transactions.append(current_txn)
+                current_txn = None
+            continue
+
+        ll = line.lower()
+
+        # ── Detect header → page mode ─────────────────────────────────────
+        if ('date transaction desc' in ll and 'charge' in ll) or ('dale transaction desc' in ll):
+            # Use fuzzy match for 'balance' to handle OCR typos: belance, balence, etc.
+            has_balance_col = ('credit amount' in ll) and bool(
+                re.search(r'b[ae]l[ae]nce', ll)
+            )
+            page_mode = "full" if has_balance_col else "split"
+            in_orphan = False
+            continue
+
+        # ── Detect start of orphan (Tax Invoice) section ─────────────────
+        if ll in ('credit amount', 'æcredit amount', 'balance', 'æbalance',
+                  'credit amount balance', 'redit amount balance'):
+            in_orphan = True
+            continue
+
+        # ── Skip footer / legal lines ─────────────────────────────────────
+        if any(p in ll for p in _SKIP):
+            if current_txn:
+                transactions.append(current_txn)
+                current_txn = None
+            in_orphan = False
+            continue
+
+        # ── Collect orphan amounts ─────────────────────────────────────────
+        if in_orphan:
+            orphan_lines_buf.append(line)
+            continue
+
+        # ── Try to match a date line ──────────────────────────────────────
+        date_str = rest_text = None
+        dm = _DATE_RE.match(line)
+        if dm:
+            date_str = dm.group(1)
+            rest_text = dm.group(2)
+        else:
+            dm2 = _DATE_NOSLASH_RE.match(line)
+            if dm2:
+                date_str = f"{dm2.group(1)}/{dm2.group(2)}/{dm2.group(3)}"
+                rest_text = dm2.group(4)
+
+        if date_str and rest_text is not None:
+            d = _norm_date(date_str)
+            if d:
+                rest_stripped = rest_text.strip()
+                # Skip ABSA logo / eStamp lines: "02/04/2024 {absa}" or "02/04/2024"
+                if not rest_stripped:
+                    continue  # Date-only line (page stamp address)
+                if rest_stripped.startswith('{') or rest_stripped.startswith('['):
+                    continue  # ABSA logo bracket: "{absa}", "{a bs a]", etc.
+                # Check if rest is just the ABSA brand (e.g. "absa", "a b sa", "abs a")
+                rest_alpha = re.sub(r'[^a-z]', '', rest_stripped.lower())
+                if rest_alpha and len(rest_alpha) <= 5 and 'absa' in rest_alpha:
+                    continue  # Pure brand-name noise
+                if current_txn:
+                    transactions.append(current_txn)
+                current_txn = {
+                    'date': d,
+                    'rest': rest_text,
+                    'continuations': [],
+                    'mode': page_mode,
+                }
+                continue
+
+        # If we're inside a transaction, collect continuation lines
+        if current_txn is not None:
+            if not re.match(r'^\(?Effective\s+\d', line, re.IGNORECASE):
+                current_txn['continuations'].append(line)
+
+    if current_txn:
+        transactions.append(current_txn)
+
+    # ── Parse each collected transaction ─────────────────────────────────────
+    for txn in transactions:
+        date_yyyymmdd = txn['date']
+        rest = txn['rest']
+        mode = txn['mode']
+        conts = txn['continuations']
+
+        # Clean leading OCR noise from rest
+        rest = re.sub(r'^[=\-+\s;:,.ùôæ_*\u00ba\u00f9\u00f8]+', '', rest).strip()
+
+        # Skip balance-forward lines
+        if re.search(r'bal.{0,8}brought|bal.{0,8}forward|balance\s+brought', rest, re.I):
+            continue
+
+        # Detect T / A / C charge flag between amounts
+        flag_m = re.search(r'(\d[.,]\d{2})\s*[.,]*\s*([TAC])\s+(-?\d)', rest)
+        has_flag = flag_m is not None
+
+        # Extract all amounts from rest
+        amt_matches = list(_AMT_RE.finditer(rest))
+        amounts = []
+        for m in amt_matches:
+            v = _parse_num(m.group(1))
+            if v is not None:
+                amounts.append(v)
+
+        # Description = text before first amount (or full rest if no amounts)
+        desc_raw = _desc_before_amounts(rest)
+        # Remove trailing flag character
+        desc_raw = re.sub(r'\s+[TAC]\s*$', '', desc_raw).strip()
+        desc = _build_desc(desc_raw, conts)
+        if not desc:
+            desc = "Transaction"
+
+        # --- Amount resolution ---
+        txn_amount: Optional[float] = None
+
+        if mode == "full":
+            if len(amounts) >= 3:
+                # charge [flag] main_txn balance  OR  a b c (3 plain) – use middle
+                raw_mid = amounts[-2]
+                desc_for_sign = _desc_before_amounts(rest)
+                sign = _sign(desc_for_sign)
+                if has_flag:
+                    # Definitely a debit (charge + debit + balance)
+                    txn_amount = -abs(raw_mid)
+                else:
+                    txn_amount = sign * abs(raw_mid)
+            elif len(amounts) == 2:
+                raw_first, raw_second = amounts[0], amounts[1]
+                desc_for_sign = _desc_before_amounts(rest)
+                sign = _sign(desc_for_sign)
+                if has_flag:
+                    # Small fee: first = fee/txn amount, second = balance
+                    txn_amount = sign * abs(raw_first)
+                else:
+                    txn_amount = sign * abs(raw_first)
+            else:
+                # 1 or 0 amounts → only balance or nothing; skip
+                continue
+
+        else:  # split mode
+            if len(amounts) >= 2:
+                if has_flag:
+                    # charge [flag] debit [balance?]  – balance may or may not be present
+                    # If 3 amounts: charge, debit, balance → use middle (amounts[-2])
+                    # If 2 amounts: charge, debit → use last (amounts[-1])
+                    if len(amounts) >= 3:
+                        txn_amount = -abs(amounts[-2])
+                    else:
+                        txn_amount = -abs(amounts[-1])
+                else:
+                    # credit_amount  (possibly 2 values but only first is credit)
+                    txn_amount = abs(amounts[0])
+            elif len(amounts) == 1:
+                if has_flag:
+                    # charge only → record as small debit fee
+                    txn_amount = -abs(amounts[0])
+                else:
+                    # Could be credit amount alone
+                    txn_amount = abs(amounts[0])
+            else:
+                # No amounts: pending credit; try orphan matching later
+                pending_credits.append((date_yyyymmdd, desc))
+                continue
+
+        if txn_amount is None or txn_amount == 0.0:
+            continue
+
+        rows.append([date_yyyymmdd, desc, str(round(txn_amount, 2))])
+
+    # ── Orphan credit matching ─────────────────────────────────────────────────
+    if pending_credits and orphan_lines_buf:
+        _ORF_RE = re.compile(r'(?<![/\d.])(-?\d{1,4}(?:[,\s]\d{3})*[.,]\d{2})(?![\d/])')
+
+        def _parse_orf(s):
+            s = re.sub(r'\s+', '', s)
+            if ',' in s and '.' in s:
+                s = s.replace(',', '')
+            else:
+                s = s.replace(',', '.')
+            try:
+                return float(s)
+            except ValueError:
+                return None
+
+        orphan_credits: List[float] = []
+        for ol in orphan_lines_buf:
+            ol = ol.strip()
+            if not ol:
+                continue
+            # Skip lines with 4+ letter words (headers / narrative)
+            if re.search(r'[A-Za-z]{4,}', ol):
+                continue
+            nums = _ORF_RE.findall(ol)
+            if len(nums) >= 2:
+                # 2+ amounts: first = credit amount, second = balance
+                v = _parse_orf(nums[0])
+                if v and v > 0:
+                    orphan_credits.append(v)
+                # else: single-amount lines are balance-only rows → skip for credit matching
+
+        for i, (d, desc) in enumerate(pending_credits):
+            if i < len(orphan_credits):
+                rows.append([d, desc, str(round(orphan_credits[i], 2))])
+
+    # ── Deduplicate Tax Invoice copies ─────────────────────────────────────────
+    # ABSA Cheque Account PDFs have 2 physical pages per statement page (main +
+    # Tax Invoice copy).  OCR extracts the same transactions from both pages.
+    # Duplicate rows share (date, rounded_amount) and very similar descriptions.
+    # Genuine same-day same-amount transactions have different payee names.
+
+    def _words(s):
+        return set(re.sub(r'[^A-Za-z0-9]+', ' ', s).upper().split())
+
+    def _desc_similar(a, b, threshold=0.65):
+        wa, wb = _words(a), _words(b)
+        if not wa or not wb:
+            return True
+        overlap = len(wa & wb)
+        smaller = min(len(wa), len(wb))
+        return overlap / smaller >= threshold if smaller else True
+
+    from collections import defaultdict
+    seen_groups: dict = defaultdict(list)
+    deduped: List[List[str]] = []
+    for row in rows:
+        key = (row[0], str(round(float(row[2]), 2)))
+        group = seen_groups[key]
+        if not group or not any(_desc_similar(row[1], g[1]) for g in group):
+            deduped.append(row)
+        group.append(row)
+
+    return deduped
+
+
+def is_absa_cheq_format(text: str) -> bool:
+    """Return True if OCR/extracted text looks like an ABSA Cheque Account statement."""
+    tl = text.lower()
+    return bool(
+        ('cheque account' in tl or 'cheque acc' in tl)
+        and ('absa' in tl or 'absacapital' in tl)
+    )
+
+
 def _parse_standard_bank_business_text(text: str, pdf, statement_year: int = None) -> List[List[str]]:
     """
     Parse Standard Bank Business Account PDF text format
@@ -2055,9 +2456,13 @@ def pdf_to_csv_bytes(file_content: bytes, explain_amounts: Optional[List[float]]
                 import traceback
                 traceback.print_exc()
         elif detected_bank == 'absa':
-            # ABSA parsing: use _parse_absa_text which handles OCR text
+            # ABSA parsing: route to Cheque Account parser or standard ABSA parser
             try:
-                parsed = _parse_absa_text(ocr_text, pdf_obj)
+                if is_absa_cheq_format(ocr_text):
+                    print("[OCR] Detected ABSA Cheque Account format")
+                    parsed = _parse_absa_cheq_text(ocr_text, pdf_obj)
+                else:
+                    parsed = _parse_absa_text(ocr_text, pdf_obj)
                 if parsed:
                     rows.extend(parsed)
             except Exception as e:
@@ -2376,7 +2781,11 @@ def pdf_to_csv_bytes(file_content: bytes, explain_amounts: Optional[List[float]]
             elif 'absa' in text_lower or 'absacapital' in text_lower:
                 detected_bank = 'absa'
                 try:
-                    parsed = _parse_absa_text(full_text, pdf_obj)
+                    if is_absa_cheq_format(full_text):
+                        print("[PDF] Detected ABSA Cheque Account format")
+                        parsed = _parse_absa_cheq_text(full_text, pdf_obj)
+                    else:
+                        parsed = _parse_absa_text(full_text, pdf_obj)
                     if parsed:
                         rows.extend(parsed)
                 except Exception as e:
