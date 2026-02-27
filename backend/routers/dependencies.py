@@ -355,15 +355,22 @@ def apply_learned_rules_to_session(
     """Apply learned categorization rules to a session's transactions. Returns count of updates."""
     try:
         all_transactions = db.query(Transaction).filter(Transaction.session_id == session_id).all()
+        if not all_transactions:
+            return 0
         effective_user_id = str(current_user.id)
+        # Derive client_id from transactions so rules are strictly scoped per-client
+        client_id = all_transactions[0].client_id if all_transactions else None
         # override_existing=True so learned rules beat the built-in keyword categorizer
-        suggestions = learning_service.apply_learned_rules(effective_user_id, all_transactions, db, override_existing=True)
+        suggestions = learning_service.apply_learned_rules(
+            effective_user_id, all_transactions, db, client_id=client_id, override_existing=True
+        )
 
         updated_ids = []
         for txn_id, category in suggestions.items():
             txn = db.query(Transaction).filter(Transaction.id == txn_id).first()
             if txn:
                 txn.category = category
+                txn.suggested_category = None  # learned = confirmed, clear any suggestion
                 updated_ids.append(txn_id)
 
         if suggestions:

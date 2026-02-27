@@ -642,21 +642,56 @@ def get_unusual_transactions(
                 merchant_map[m.transaction_id] = m.merchant or ""
 
         # ── Pre-compute for recurring check ────────────────────────
-        # Key: (normalised description, rounded amount) → list of transaction ids
+        # Uses the same smart normalization as detect_recurring_transactions():
+        # strips dates/refs, applies 10% amount tolerance, requires multi-month presence.
         from collections import defaultdict
-        recur_groups: dict = defaultdict(list)
+        import re as _re
+
+        def _normalize_desc(desc: str) -> str:
+            s = desc.upper().strip()
+            s = _re.sub(r'\d{4}[-/]\d{2}[-/]\d{2}', '', s)  # dates
+            s = _re.sub(r'\b\d{6,}\b', '', s)               # long ref numbers
+            s = _re.sub(r'\*+\d+', '', s)                   # masked card numbers
+            s = _re.sub(r'\bREF\s*:?\s*\w+', '', s)         # REF: xxx
+            s = _re.sub(r'\s+', ' ', s).strip()
+            return s
+
+        recurring_ids: set = set()
         if recurring:
+            # Group transactions by normalised description
+            norm_groups: dict = defaultdict(list)
             for t in txns:
-                key = (t.description.strip().lower(), round(abs(t.amount), 2))
-                recur_groups[key].append(t.id)
-            recurring_ids = {
-                tid
-                for ids in recur_groups.values()
-                if len(ids) >= recurring_min_count
-                for tid in ids
-            }
-        else:
-            recurring_ids = set()
+                key = _normalize_desc(t.description)
+                if key:
+                    norm_groups[key].append(t)
+
+            for _pattern, _group in norm_groups.items():
+                if len(_group) < recurring_min_count:
+                    continue
+
+                # Must span at least recurring_min_count distinct months
+                months_seen = set(t.date.strftime("%Y-%m") for t in _group)
+                if len(months_seen) < 2:
+                    continue
+
+                # Apply 10% amount tolerance: keep only same-sign sub-groups
+                _signs = set(1 if t.amount >= 0 else -1 for t in _group)
+                for _sign in _signs:
+                    sub = [t for t in _group if (1 if t.amount >= 0 else -1) == _sign]
+                    if len(sub) < recurring_min_count:
+                        continue
+                    _amounts = [abs(t.amount) for t in sub]
+                    _avg = sum(_amounts) / len(_amounts)
+                    if _avg < 1:
+                        continue
+                    _max_dev = max(abs(a - _avg) / _avg for a in _amounts)
+                    if _max_dev > 0.10:
+                        continue
+                    _sub_months = set(t.date.strftime("%Y-%m") for t in sub)
+                    if len(_sub_months) < 2:
+                        continue
+                    for t in sub:
+                        recurring_ids.add(t.id)
 
         # ── Pre-compute for duplicates check ───────────────────────
         duplicate_ids: set = set()

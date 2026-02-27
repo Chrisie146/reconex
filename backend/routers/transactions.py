@@ -112,6 +112,7 @@ async def get_transactions(
                 "description": t.description,
                 "amount": t.amount,
                 "category": t.category,
+                "suggested_category": t.suggested_category,
                 "invoice_id": t.invoice_id,
                 "merchant": (
                     db.query(TransactionMerchant)
@@ -175,6 +176,7 @@ def update_transaction_category(
 
         if category:
             transaction.category = category
+            transaction.suggested_category = None  # User confirmed a category — clear any pending suggestion
         if new_description is not None and new_description != transaction.description:
             transaction.description = new_description
             print(f"⚠️  Description updated for transaction {transaction_id}")
@@ -202,25 +204,22 @@ def update_transaction_category(
 
         if category:
             try:
-                merchant = None
-                tm = db.query(TransactionMerchant).filter(TransactionMerchant.transaction_id == transaction_id).first()
-                if tm:
-                    merchant = tm.merchant
-
-                learned_rules = learning_service.learn_from_categorization(
-                    user_id=str(current_user.id),
-                    session_id=session_id,
-                    description=transaction.description,
-                    category=category,
-                    merchant=merchant,
-                    keyword=keyword,
-                    db=db,
-                    client_id=transaction.client_id,
-                )
-                if learned_rules:
-                    print(f"✓ Learned {len(learned_rules)} new categorization pattern(s)")
-
                 if keyword and len(keyword.strip()) >= 3:
+                    # Save keyword as a persistent 'contains' rule for future uploads
+                    learned_rules = learning_service.learn_from_categorization(
+                        user_id=str(current_user.id),
+                        session_id=session_id,
+                        description=transaction.description,
+                        category=category,
+                        merchant=None,
+                        keyword=keyword,
+                        db=db,
+                        client_id=transaction.client_id,
+                    )
+                    if learned_rules:
+                        print(f"✓ Saved keyword rule: '{keyword.strip().upper()}' \u2192 {category}")
+
+                    # Apply keyword to all similar transactions in the current statement
                     keyword_upper = keyword.strip().upper()
                     matching_transactions = db.query(Transaction).filter(
                         Transaction.session_id == session_id,
@@ -239,7 +238,7 @@ def update_transaction_category(
                             vat_service.apply_vat_to_transaction(txn.id, session_id, force=False)
                         print(f"  ✓ Also updated {updated_count} matching transaction(s)")
             except Exception as learn_error:
-                print(f"Warning: Failed to learn from categorization: {learn_error}")
+                print(f"Warning: Failed to save keyword rule: {learn_error}")
 
         transaction = db.query(Transaction).filter(
             Transaction.id == transaction_id,
@@ -512,26 +511,6 @@ def bulk_categorize_by_ids(
 
         # Expire all objects to reload with VAT updates from the service's session
         db.expire_all()
-
-        try:
-            if txns_db:
-                representative_txn = txns_db[0]
-                merchant = None
-                tm = db.query(TransactionMerchant).filter(TransactionMerchant.transaction_id == representative_txn.id).first()
-                if tm:
-                    merchant = tm.merchant
-                learning_service.learn_from_categorization(
-                    user_id=str(current_user.id),
-                    session_id=representative_txn.session_id,
-                    description=representative_txn.description,
-                    category=category,
-                    merchant=merchant,
-                    keyword=None,
-                    db=db,
-                    client_id=representative_txn.client_id,
-                )
-        except Exception as e:
-            print(f"Warning: Failed to learn from bulk categorization: {e}")
 
         try:
             from services.bulk_categorizer import BulkAction

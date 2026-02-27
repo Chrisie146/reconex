@@ -209,42 +209,77 @@ MERCHANT_MAPPINGS = [
     },
     
     # =========================================================================
-    # RETAIL STORES - South African
+    # RETAIL STORES / CLOTHING - South African
     # =========================================================================
-    {
-        "merchant": "TakeAlot",
-        "patterns": ["takealot", "take alot", "takealot.com"],
-        "category": "Other"
-    },
     {
         "merchant": "Mr Price",
         "patterns": ["mr price", "mrp ", "mr price home", "mr price sport"],
-        "category": "Other"
+        "category": "Clothing"
     },
     {
         "merchant": "Edgars",
         "patterns": ["edgars", "edgars stores"],
-        "category": "Other"
+        "category": "Clothing"
     },
     {
         "merchant": "Truworths",
         "patterns": ["truworths"],
-        "category": "Other"
+        "category": "Clothing"
     },
     {
-        "merchant": "Woolworths",
+        "merchant": "Woolworths Clothing",
         "patterns": ["woolworths fashion", "woolworths clothing"],
-        "category": "Other"
+        "category": "Clothing"
     },
     {
         "merchant": "Ackermans",
         "patterns": ["ackermans", "ackerman"],
-        "category": "Other"
+        "category": "Clothing"
     },
     {
         "merchant": "PEP",
-        "patterns": ["pep stores", "pep cell"],
-        "category": "Other"
+        "patterns": ["pep stores", "pep clothing", "pep cell"],
+        "category": "Clothing"
+    },
+    {
+        "merchant": "Jet",
+        "patterns": ["jet stores", "jet fashion", "jet clothing"],
+        "category": "Clothing"
+    },
+    {
+        "merchant": "Foschini",
+        "patterns": ["foschini", "relay jeans", "totalsports"],
+        "category": "Clothing"
+    },
+    {
+        "merchant": "Cotton On",
+        "patterns": ["cotton on"],
+        "category": "Clothing"
+    },
+    {
+        "merchant": "H&M",
+        "patterns": ["h&m ", "hennes mauritz"],
+        "category": "Clothing"
+    },
+    {
+        "merchant": "Zara",
+        "patterns": ["zara "],
+        "category": "Clothing"
+    },
+    {
+        "merchant": "TakeAlot",
+        "patterns": ["takealot", "take alot", "takealot.com"],
+        "category": "Shopping"
+    },
+    {
+        "merchant": "Builders Warehouse",
+        "patterns": ["builders warehouse", "builders express"],
+        "category": "Shopping"
+    },
+    {
+        "merchant": "Lewis Stores",
+        "patterns": ["lewis stores", "lewis furniture"],
+        "category": "Shopping"
     },
     {
         "merchant": "CNA",
@@ -308,46 +343,64 @@ MERCHANT_MAPPINGS = [
     
     # =========================================================================
     # BANKS - South African
+    # IMPORTANT: Only specific, unambiguous patterns here.
+    # Generic bank names alone (nedbank, absa...) cannot determine category —
+    # they appear in home loans, fees, transfers, insurance, etc.
     # =========================================================================
+    # Home loans / bonds
     {
-        "merchant": "FNB",
-        "patterns": ["fnb ", "first national bank"],
-        "category": "Fees & Charges"
+        "merchant": "Home Loan",
+        "patterns": ["home loan", "bond repayment", "bond instalment", "bond payment",
+                     "sa home loans", "ooba home", "mortgage repayment"],
+        "category": "Loan Repayment"
     },
     {
-        "merchant": "Standard Bank",
-        "patterns": ["standard bank", "standardbank"],
-        "category": "Fees & Charges"
+        "merchant": "Nedbank Home Loan",
+        "patterns": ["nedbank home", "nedbank bond", "nedbank hl"],
+        "category": "Loan Repayment"
     },
     {
-        "merchant": "ABSA",
-        "patterns": ["absa", "absa bank"],
-        "category": "Fees & Charges"
+        "merchant": "FNB Home Loan",
+        "patterns": ["fnb home loan", "fnb bond", "fnb hl "],
+        "category": "Loan Repayment"
     },
     {
-        "merchant": "Nedbank",
-        "patterns": ["nedbank"],
-        "category": "Fees & Charges"
+        "merchant": "ABSA Home Loan",
+        "patterns": ["absa home loan", "absa bond", "absa hl "],
+        "category": "Loan Repayment"
     },
     {
-        "merchant": "Capitec",
-        "patterns": ["capitec", "capitec bank"],
-        "category": "Fees & Charges"
+        "merchant": "Standard Bank Home Loan",
+        "patterns": ["standard bank home", "sbsa home loan", "std bank bond"],
+        "category": "Loan Repayment"
+    },
+    # Vehicle / personal loans
+    {
+        "merchant": "WesBank",
+        "patterns": ["wesbank", "wes bank"],
+        "category": "Loan Repayment"
     },
     {
-        "merchant": "Discovery Bank",
-        "patterns": ["discovery bank"],
-        "category": "Fees & Charges"
+        "merchant": "Vehicle Finance",
+        "patterns": ["vehicle finance", "car finance", "auto finance"],
+        "category": "Loan Repayment"
     },
     {
-        "merchant": "TymeBank",
-        "patterns": ["tymebank", "tyme bank"],
-        "category": "Fees & Charges"
+        "merchant": "Personal Loan",
+        "patterns": ["personal loan", "loan repayment", "loan instalment"],
+        "category": "Loan Repayment"
     },
     {
         "merchant": "African Bank",
-        "patterns": ["african bank"],
-        "category": "Fees & Charges"
+        "patterns": ["african bank loan", "abil "],
+        "category": "Loan Repayment"
+    },
+    # Credit cards
+    {
+        "merchant": "Credit Card Payment",
+        "patterns": ["credit card payment", "credit card debit", "visa payment",
+                     "mastercard payment", "american express payment"],
+        "category": "Transfers"
     },
     
     # =========================================================================
@@ -541,13 +594,28 @@ MERCHANT_MAPPINGS = [
     # =========================================================================
     {
         "merchant": "Curro",
-        "patterns": ["curro schools", "curro holdings"],
-        "category": "Other"
+        "patterns": ["curro schools", "curro holdings", "curro education"],
+        "category": "Education"
     },
     {
         "merchant": "ADvTECH",
-        "patterns": ["advtech", "crawford"],
-        "category": "Other"
+        "patterns": ["advtech", "crawford school"],
+        "category": "Education"
+    },
+    {
+        "merchant": "Varsity College",
+        "patterns": ["varsity college", "iie "],
+        "category": "Education"
+    },
+    {
+        "merchant": "Wits",
+        "patterns": ["wits university", "university of the witwatersrand"],
+        "category": "Education"
+    },
+    {
+        "merchant": "UCT",
+        "patterns": ["uct fees", "university of cape town"],
+        "category": "Education"
     },
     
     # =========================================================================
@@ -598,115 +666,161 @@ DEFAULT_CATEGORIES = [
 # =============================================================================
 
 CATEGORIZATION_RULES = [
-    # RENT - landlord, lease, rent, property management
+    # LOAN REPAYMENTS - home loans, personal loans, vehicle finance
+    # Keep BEFORE Fees & Charges so specific loan patterns win
+    {
+        "category": "Loan Repayment",
+        "keywords": [
+            "home loan", "bond repayment", "bond instalment", "bond payment",
+            "personal loan", "loan repayment", "loan instalment",
+            "vehicle finance", "car finance", "auto finance",
+            "wesbank", "sa home loans", "mortgage",
+        ],
+        "exclude_keywords": []
+    },
+
+    # RENT - must match as standalone word (not "re-entry", "current")
     {
         "category": "Rent",
-        "keywords": ["rent", "landlord", "lease", "property mgmt", "property management"],
-        "exclude_keywords": []
+        "keywords": ["rent", "landlord", "lease", "property mgmt", "property management", "rental"],
+        "exclude_keywords": ["car rental", "vehicle rental", "budget rent", "avis rent"]
     },
-    
-    # UTILITIES - electricity, water, gas, internet, phone
+
+    # UTILITIES - electricity, water, internet, phone, airtime/data
     {
         "category": "Utilities",
-        "keywords": ["electricity", "eskom", "water", "gas", "internet", "isp", "dstv", "fibre", "vodacom", "telkom"],
+        "keywords": [
+            "electricity", "eskom", "water", "gas bill", "internet", "fibre", "broadband",
+            "airtime", "recharge", "data bundle", "prepaid airtime", "topup", "top-up",
+            "vodacom", "mtn", "cell c", "telkom", "isp",
+        ],
         "exclude_keywords": []
     },
-    
-    # FUEL - petrol, diesel, fuel, transport
+
+    # FUEL - only unambiguous fuel keywords
     {
         "category": "Fuel",
-        "keywords": ["fuel", "petrol", "diesel", "shell", "caltex", "bp", "engen", "jt", "transport", "uber"],
+        "keywords": ["fuel", "petrol", "diesel", "caltex", "engen"],
         "exclude_keywords": []
     },
-    
-    # GROCERIES - supermarket, food, groceries, restaurant (moderate amounts)
+
+    # GROCERIES
     {
         "category": "Groceries",
-        "keywords": ["groceries", "supermarket", "shoprite", "checkers", "takealot", "spar", "food", "coles"],
+        "keywords": [
+            "groceries", "supermarket", "shoprite", "checkers", "spar", "woolworths food",
+            "pick n pay", "food store",
+        ],
         "exclude_keywords": []
     },
-    
-    # MEALS & DINING - restaurant, cafe, pizza, burger, coffee
+
+    # MEALS & DINING
     {
         "category": "Meals & Dining",
-        "keywords": ["restaurant", "cafe", "pizza", "burger", "coffee", "kfc", "mcdonalds", "dominos", "nando's", "steers"],
+        "keywords": [
+            "restaurant", "cafe", "pizza", "burger", "kfc", "mcdonalds",
+            "nandos", "nando's", "steers", "wimpy", "debonairs",
+        ],
         "exclude_keywords": []
     },
-    
-    # TRANSPORTATION - flights, buses, taxis, parking, car rental
+
+    # TRANSPORTATION - flights, ride-hailing, parking, tolls
     {
         "category": "Transportation",
-        "keywords": ["flight", "airline", "bus", "taxi", "parking", "car rental", "hotel", "airbnb"],
-        "exclude_keywords": []
+        "keywords": [
+            "flight", "airline", "uber ride", "bolt ride", "taxify",
+            "parking", "e-toll", "sanral",
+        ],
+        "exclude_keywords": ["uber eats", "mr delivery"]
     },
-    
-    # HEALTHCARE - pharmacy, doctor, dentist, hospital, medical
+
+    # HEALTHCARE
     {
         "category": "Healthcare",
-        "keywords": ["pharmacy", "doctor", "dentist", "hospital", "medical", "clinic", "health", "gp"],
+        "keywords": [
+            "pharmacy", "doctor", "dentist", "hospital", "medical", "clinic",
+            "gp visit", "optometrist", "dischem", "clicks pharmacy",
+        ],
         "exclude_keywords": []
     },
-    
-    # INSURANCE - insurance premium, policy
+
+    # INSURANCE - only explicit insurance language
     {
         "category": "Insurance",
-        "keywords": ["insurance", "premium", "policy", "assurance"],
+        "keywords": [
+            "insurance", "insure", "assurance", "life cover", "car insurance",
+            "short term ins", "medical aid",
+        ],
         "exclude_keywords": []
     },
-    
-    # OFFICE & SUPPLIES - stationery, office, supplies, paper
+
+    # OFFICE & SUPPLIES
     {
         "category": "Office & Supplies",
-        "keywords": ["stationery", "office", "supplies", "paper", "printer", "ink"],
+        "keywords": ["stationery", "office supplies", "printer ink", "printer paper"],
         "exclude_keywords": []
     },
-    
-    # PROFESSIONAL SERVICES - legal, accounting, consulting, professional
+
+    # PROFESSIONAL SERVICES
     {
         "category": "Professional Services",
-        "keywords": ["legal", "accounting", "consultant", "professional", "lawyer", "attorney", "audit"],
+        "keywords": ["legal fee", "accounting fee", "consulting fee", "attorney", "audit fee", "notary"],
         "exclude_keywords": []
     },
-    
-    # SUBSCRIPTIONS - monthly, recurring, annual subscription
+
+    # SUBSCRIPTIONS - only explicit subscription language or known services
     {
         "category": "Subscriptions",
-        "keywords": ["subscription", "monthly", "annual subscription", "premium", "membership"],
+        "keywords": ["subscription", "annual subscription", "membership", "netflix", "spotify", "showmax"],
         "exclude_keywords": []
     },
-    
-    # ENTERTAINMENT - cinema, movies, games, sports, entertainment
+
+    # ENTERTAINMENT
     {
         "category": "Entertainment",
-        "keywords": ["cinema", "movie", "games", "sports", "entertainment", "theatre", "museum"],
+        "keywords": ["cinema", "movie ticket", "theatre", "museum", "dstv", "multichoice", "concert"],
         "exclude_keywords": []
     },
-    
-    # GIFTS & DONATIONS - donation, gift, charity
+
+    # CLOTHING
+    {
+        "category": "Clothing",
+        "keywords": [
+            "clothing", "fashion store", "apparel", "pep stores", "jet stores",
+            "ackermans", "truworths", "edgars", "foschini",
+        ],
+        "exclude_keywords": []
+    },
+
+    # GIFTS & DONATIONS
     {
         "category": "Gifts & Donations",
-        "keywords": ["donation", "gift", "charity", "contribute"],
+        "keywords": ["donation", "ngo", "charity"],
         "exclude_keywords": []
     },
-    
-    # FEES - bank fees, transfer fees, admin fees
+
+    # FEES & CHARGES - only explicit fee language; short words excluded to avoid false positives
     {
         "category": "Fees & Charges",
-        "keywords": ["fee", "charge", "admin", "transfer fee", "service charge", "bank charge"],
+        "keywords": [
+            "bank charge", "bank fee", "monthly bank", "account fee",
+            "service fee", "admin fee", "transaction fee", "monthly service fee",
+            "maintenance fee", "overdraft", "atm fee", "penalty fee",
+        ],
         "exclude_keywords": []
     },
-    
-    # TRANSFERS - transfer between accounts
+
+    # TRANSFERS - explicit transfer language only
     {
         "category": "Transfers",
-        "keywords": ["transfer", "payment received", "payment sent"],
+        "keywords": ["eft transfer", "online transfer", "interbank transfer", "payment received"],
         "exclude_keywords": []
     },
-    
-    # INCOME - salary, deposit, transfer from, income, revenue
+
+    # INCOME - salary, wages, refunds
     {
         "category": "Income",
-        "keywords": ["salary", "deposit", "income", "revenue", "refund", "credit"],
+        "keywords": ["salary", "wages", "income", "commission", "refund", "cashback"],
         "exclude_keywords": []
     },
 ]
@@ -774,15 +888,27 @@ def categorize_transaction(description: str, amount: float) -> Tuple[str, bool]:
     
     # Categorize expenses based on rules
     desc_lower = description.lower()
-    
-    # Check each rule in order (first match wins)
+
+    # Step 1: Check MERCHANT_MAPPINGS first — these are specific well-known merchants
+    # and give more accurate categorization than broad keyword rules.
+    for mapping in MERCHANT_MAPPINGS:
+        cat = mapping.get("category")
+        if not cat or cat == "Other":
+            continue
+        for pattern in mapping.get("patterns", []):
+            p = pattern.lower()
+            # Match as whole word or at word boundary to avoid "shells" matching "shell"
+            if re.search(r'\b' + re.escape(p) + r'\b', desc_lower):
+                return cat, is_expense
+
+    # Step 2: Check CATEGORIZATION_RULES (keyword-based, broader)
     for rule in CATEGORIZATION_RULES:
         if rule["category"] == "Income":
             continue  # Skip income rules for expenses
-        
+
         if _matches_rule(desc_lower, rule):
             return rule["category"], is_expense
-    
+
     # Default to Other if no match
     return "Other", is_expense
 
@@ -813,24 +939,31 @@ def _matches_rule(description_lower: str, rule: dict) -> bool:
         except re.error:
             pass
 
-    # Check if any keyword matches
+    # Check if any keyword matches.
+    # Use word-boundary at the START of each keyword to prevent partial matches
+    # (e.g. "fee" matching inside "coffee", "charge" inside "recharge").
+    # Multi-word keywords like "bank charge" work correctly because the boundary
+    # applies to the first character of the keyword.
+    def _kw_match(kw: str, text: str) -> bool:
+        return bool(re.search(r'\b' + re.escape(kw.lower()), text))
+
     keyword_match = any(
-        keyword.lower() in description_lower
+        _kw_match(keyword, description_lower)
         for keyword in rule.get("keywords", [])
     )
-    
+
     if not keyword_match:
         return False
-    
-    # Check if any exclude keyword matches (if so, rule doesn't apply)
+
+    # Check exclude keywords with the same word-boundary logic
     if rule.get("exclude_keywords"):
         exclude_match = any(
-            keyword.lower() in description_lower
+            _kw_match(keyword, description_lower)
             for keyword in rule["exclude_keywords"]
         )
         if exclude_match:
             return False
-    
+
     return True
 
 

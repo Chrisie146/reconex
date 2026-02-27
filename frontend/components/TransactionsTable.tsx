@@ -76,6 +76,7 @@ interface Transaction {
   description: string
   amount: number
   category: string
+  suggested_category?: string | null
   invoice_id?: number | null
   merchant?: string | null
   vat_amount?: number | null
@@ -340,7 +341,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
           switch (txnFilter) {
             case 'expenses': txns = txns.filter((t: any) => Number(t.amount) < 0); break
             case 'income': txns = txns.filter((t: any) => Number(t.amount) > 0); break
-            case 'uncategorized': txns = txns.filter((t: any) => !t.category || t.category === '' || t.category === 'Other'); break
+            case 'uncategorized': txns = txns.filter((t: any) => !t.category || t.category === '' || t.category === 'Other' || t.category === 'Uncategorized'); break
           }
         }
 
@@ -366,19 +367,45 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
     fetchData()
   }, [sessionId, currentClient?.id, refreshTrigger, refreshKey, searchTrigger, selectedStatement, txnFilter])
 
+  // Fetch categories whenever session, statement, or client changes
   useEffect(() => {
-    if ((!categoriesList || categoriesList.length === 0) && sessionId) {
-      axios.get(`${API_BASE_URL}/categories`, { params: { session_id: sessionId, ...(currentClient?.id ? { client_id: currentClient.id } : {}) } })
-        .then(res => {
-          const categoryNames = (res.data.categories || []).map((cat: any) =>
-            typeof cat === 'string' ? cat : cat.name
-          )
-          setCategoriesList(categoryNames)
-        })
-        .catch(() => {})
-    }
+    const effectiveSessionId = sessionId || selectedStatement || null
+    if (!effectiveSessionId && !currentClient?.id) return
+    const params: any = { ...(currentClient?.id ? { client_id: currentClient.id } : {}) }
+    if (effectiveSessionId) params.session_id = effectiveSessionId
+    axios.get(`${API_BASE_URL}/categories`, { params })
+      .then(res => {
+        const categoryNames = (res.data.categories || []).map((cat: any) =>
+          typeof cat === 'string' ? cat : cat.name
+        )
+        setCategoriesList(categoryNames)
+      })
+      .catch(() => {})
+  }, [sessionId, selectedStatement, currentClient?.id])
+
+  // Sync categories from props when they change (e.g. after upload or category creation)
+  useEffect(() => {
     if (categories && categories.length > 0) setCategoriesList(categories)
-  }, [sessionId, currentClient?.id])
+  }, [categories])
+
+  // Reset ALL filter/sort/search state when switching sessions or statements
+  // This prevents stale filters from a previous statement bleeding into the new one
+  useEffect(() => {
+    setQuickFilter('all')
+    setInstantQuery('')
+    setQuery('')
+    setDateFrom('')
+    setDateTo('')
+    setDateError(null)
+    setCurrentPage(1)
+    setSelectedIds(new Set())
+    setOpeningBalance('0')
+    setEditingCategoryId(null)
+    setEditingMerchantId(null)
+    setShowEditPanel(false)
+    setSelectedTransactionForEdit(null)
+    setTxnFilter(null)
+  }, [sessionId, selectedStatement, currentClient?.id])
 
   // Reset page when filters change
   useEffect(() => { setCurrentPage(1) }, [quickFilter, debouncedInstantQuery, sortBy, sortDirection, dateFrom, dateTo, query])
@@ -542,7 +569,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
     switch (quickFilter) {
       case 'income': filtered = filtered.filter(t => t.amount > 0); break
       case 'expenses': filtered = filtered.filter(t => t.amount < 0); break
-      case 'uncategorized': filtered = filtered.filter(t => !t.category || t.category === '' || t.category === 'Other'); break
+      case 'uncategorized': filtered = filtered.filter(t => !t.category || t.category === '' || t.category === 'Other' || t.category === 'Uncategorized'); break
     }
 
     if (debouncedInstantQuery) {
@@ -573,7 +600,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
   const stats = useMemo(() => {
     const income = transactions.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0)
     const expenses = transactions.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0)
-    const uncategorized = transactions.filter(t => !t.category || t.category === '' || t.category === 'Other').length
+    const uncategorized = transactions.filter(t => !t.category || t.category === '' || t.category === 'Other' || t.category === 'Uncategorized').length
     return { income, expenses, net: income - expenses, uncategorized, total: transactions.length }
   }, [transactions])
 
@@ -899,6 +926,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
             )}
           </div>
         )}
+
       </div>
 
       {/* ─── Floating Bulk Actions Bar ─── */}
@@ -1146,7 +1174,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
                               return (
                                 <td key={`${txn.id}-${col}`} className="px-4 py-2.5">
                                   <div onClick={(e) => { e.stopPropagation(); setSelectedTransactionForEdit(txn); setShowEditPanel(true) }} className="cursor-pointer group/cat">
-                                    {txn.category ? (
+                                    {txn.category && txn.category !== 'Uncategorized' ? (
                                       <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${catStyle.bg} ${catStyle.text} ${catStyle.border} hover:shadow-sm transition-shadow`}>
                                         {txn.category}
                                         <span className="text-[10px] opacity-0 group-hover/cat:opacity-60 transition-opacity">✎</span>

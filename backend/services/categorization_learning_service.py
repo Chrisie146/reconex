@@ -78,112 +78,31 @@ class CategorizationLearningService:
         client_id: Optional[int] = None
     ) -> List[Dict]:
         """
-        Learn categorization patterns from a user's category assignment
-        Creates multiple rules with different pattern types for better matching
-        
-        Args:
-            user_id: Persistent user identifier
-            session_id: Current session ID
-            description: Transaction description (or keyword if provided)
-            category: Category assigned by user
-            merchant: Optional merchant name from transaction
-            keyword: Optional keyword for contains pattern (takes precedence)
-            db: Database session
-            client_id: Optional client ID to scope the learned rules
-        
-        Returns list of created rules
+        Save a keyword-based categorization rule so it applies to future uploads.
+
+        A rule is only created when the user explicitly provides a keyword
+        (at least 3 characters). This prevents spurious auto-generated rules
+        based on noisy, never-repeating transaction descriptions.
+
+        The saved rule is a 'contains' pattern: any future transaction whose
+        description contains the keyword will be confirmed as the given category.
+
+        Returns list of created/updated rules (empty if no keyword supplied).
         """
-        from models import UserCategorizationRule
-        
-        created_rules = []
-        
-        # Strategy 0: Keyword contains pattern (if provided - highest priority)
-        # When user explicitly provides a keyword, create a contains rule
-        if keyword and len(keyword.strip()) >= 3:
-            keyword_clean = keyword.strip().upper()
-            contains_rule = CategorizationLearningService._create_or_update_rule(
-                user_id=user_id,
-                session_id=session_id,
-                category=category,
-                pattern_type='contains',
-                pattern_value=keyword_clean,
-                db=db,
-                client_id=client_id
-            )
-            if contains_rule:
-                created_rules.append(contains_rule)
-            # If keyword is provided, skip other pattern extraction (user was explicit)
-            return created_rules
-        
-        normalized_desc = CategorizationLearningService.normalize_description(description)
-        
-        # Strategy 1: Merchant name (if provided - high confidence)
-        # Use the actual merchant field if available, which is more reliable than extraction
-        if merchant and len(merchant.strip()) > 2:
-            merchant_clean = merchant.strip().upper()
-            merchant_rule = CategorizationLearningService._create_or_update_rule(
-                user_id=user_id,
-                session_id=session_id,
-                category=category,
-                pattern_type='merchant',
-                pattern_value=merchant_clean,
-                db=db,
-                client_id=client_id
-            )
-            if merchant_rule:
-                created_rules.append(merchant_rule)
-        
-        # Strategy 2: Exact match (high confidence)
-        # Only create if description is unique enough (not too generic)
-        if len(normalized_desc) > 10:
-            exact_rule = CategorizationLearningService._create_or_update_rule(
-                user_id=user_id,
-                session_id=session_id,
-                category=category,
-                pattern_type='exact',
-                pattern_value=normalized_desc,
-                db=db,
-                client_id=client_id
-            )
-            if exact_rule:
-                created_rules.append(exact_rule)
-        
-        # Strategy 3: Merchant extraction from description (medium confidence)
-        # Only if merchant wasn't provided directly
-        if not merchant:
-            extracted_merchant = CategorizationLearningService.extract_merchant_from_description(description)
-            if extracted_merchant and len(extracted_merchant) > 3:
-                merchant_rule = CategorizationLearningService._create_or_update_rule(
-                    user_id=user_id,
-                    session_id=session_id,
-                    category=category,
-                    pattern_type='merchant',
-                    pattern_value=extracted_merchant.upper(),
-                    db=db,
-                    client_id=client_id
-                )
-                if merchant_rule:
-                    created_rules.append(merchant_rule)
-        
-        # Strategy 4: Starts with pattern (for consistent prefixes like "NETFLIX")
-        # Extract first 2-3 words
-        words = normalized_desc.split()
-        if len(words) >= 2:
-            prefix = ' '.join(words[:2])
-            if len(prefix) > 5:  # Avoid too short prefixes
-                starts_rule = CategorizationLearningService._create_or_update_rule(
-                    user_id=user_id,
-                    session_id=session_id,
-                    category=category,
-                    pattern_type='starts_with',
-                    pattern_value=prefix,
-                    db=db,
-                    client_id=client_id
-                )
-                if starts_rule:
-                    created_rules.append(starts_rule)
-        
-        return created_rules
+        if not keyword or len(keyword.strip()) < 3:
+            return []
+
+        keyword_clean = keyword.strip().upper()
+        rule = CategorizationLearningService._create_or_update_rule(
+            user_id=user_id,
+            session_id=session_id,
+            category=category,
+            pattern_type='contains',
+            pattern_value=keyword_clean,
+            db=db,
+            client_id=client_id
+        )
+        return [rule] if rule else []
     
     @staticmethod
     def _create_or_update_rule(
@@ -277,13 +196,18 @@ class CategorizationLearningService:
         """
         from models import UserCategorizationRule
         
-        # Get all enabled rules for this user + client, ordered by priority
+        # Get all enabled rules for this user + client, ordered by priority.
+        # STRICT client scoping: only load rules for the exact client.
+        # When client_id is None, only load rules with NULL client_id (global rules).
+        # This prevents rules learned for Client A from applying to Client B.
         query = db.query(UserCategorizationRule).filter(
             UserCategorizationRule.user_id == user_id,
             UserCategorizationRule.enabled == 1
         )
         if client_id is not None:
             query = query.filter(UserCategorizationRule.client_id == client_id)
+        else:
+            query = query.filter(UserCategorizationRule.client_id.is_(None))
         rules = query.all()
         
         # Group rules by pattern type for efficient matching
@@ -306,12 +230,24 @@ class CategorizationLearningService:
         suggestions = {}
         
         for txn in transactions:
-            # Skip already categorized transactions unless override_existing is set.
-            # During upload, override_existing=True so learned rules beat the built-in
-            # keyword categorizer. During manual re-apply, we leave user-set categories alone.
+            # Never override user-confirmed categories unless override_existing is set.
+            # Even with override_existing (during upload), respect confirmed Income
+            # for positive-amount transactions — learned rules should only override
+            # the built-in expense categorizer, not flip income to an expense category.
             if not override_existing:
-                if hasattr(txn, 'category') and txn.category and txn.category != 'Other':
+                if hasattr(txn, 'category') and txn.category and txn.category not in ('Other', 'Uncategorized'):
                     continue
+            else:
+                # During upload: only override "Uncategorized" / "Other" / built-in suggestions.
+                # Never override Income for positive amounts — that's confirmed by the system.
+                txn_amount = getattr(txn, 'amount', 0)
+                txn_category = getattr(txn, 'category', '')
+                if txn_amount is not None and float(txn_amount) > 0 and txn_category == 'Income':
+                    continue
+                # Also skip if user-created DB rule already confirmed this transaction
+                if txn_category and txn_category not in ('Other', 'Uncategorized') and not getattr(txn, 'suggested_category', None):
+                    # A DB rule already confirmed this — don't let learned rules fight it
+                    pass  # Allow learned rules to override DB-rule confirmations since learned rules are more recent user intent
             
             description = txn.description if hasattr(txn, 'description') else str(txn)
             normalized_desc = CategorizationLearningService.normalize_description(description)
@@ -369,11 +305,15 @@ class CategorizationLearningService:
         """Get all learned rules for a user, optionally scoped to a client"""
         from models import UserCategorizationRule
         
+        # STRICT client scoping: only return rules for the exact client.
+        # When client_id is None, only return rules with NULL client_id (global).
         query = db.query(UserCategorizationRule).filter(
             UserCategorizationRule.user_id == user_id
         )
         if client_id is not None:
             query = query.filter(UserCategorizationRule.client_id == client_id)
+        else:
+            query = query.filter(UserCategorizationRule.client_id.is_(None))
         rules = query.order_by(
             UserCategorizationRule.use_count.desc(),
             UserCategorizationRule.created_at.desc()

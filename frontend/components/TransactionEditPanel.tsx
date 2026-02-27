@@ -65,8 +65,6 @@ export default function TransactionEditPanel({
   const [keyword, setKeyword] = useState('')
   const [applyMerchantSimilar, setApplyMerchantSimilar] = useState(false)
   const [applyCategorySimilar, setApplyCategorySimilar] = useState(false)
-  const [merchantKeyword, setMerchantKeyword] = useState('')
-  const [categoryKeyword, setCategoryKeyword] = useState('')
   const [description, setDescription] = useState('')
   const [editingDescription, setEditingDescription] = useState(false)
 
@@ -178,8 +176,6 @@ export default function TransactionEditPanel({
       setKeyword(smartKw)
       setApplyMerchantSimilar(false)
       setApplyCategorySimilar(false)
-      setMerchantKeyword(smartKw)
-      setCategoryKeyword(smartKw)
     }
   }, [transaction, isOpen])
 
@@ -190,7 +186,7 @@ export default function TransactionEditPanel({
     if (!transaction) return
 
     const trimmedMerchant = (merchant || '').trim()
-    const trimmedKeyword = (merchantKeyword || '').trim()
+    const trimmedKeyword = (keyword || '').trim()
 
     if (!trimmedMerchant) {
       setError('Merchant is required to apply to similar transactions')
@@ -254,7 +250,7 @@ export default function TransactionEditPanel({
     if (!transaction) return
 
     const trimmedCategory = (category || '').trim()
-    const trimmedKeyword = (categoryKeyword || '').trim()
+    const trimmedKeyword = (keyword || '').trim()
 
     if (!trimmedCategory) {
       setError('Category is required to apply to similar transactions')
@@ -414,7 +410,7 @@ export default function TransactionEditPanel({
         await axios.post(
           `${API_BASE_URL}/bulk-categorise`,
           {
-            keyword: categoryKeyword,
+            keyword: keyword,
             category: category,
             only_uncategorised: false
           },
@@ -593,9 +589,6 @@ export default function TransactionEditPanel({
                   const newCat = e.target.value
                   setCategory(newCat)
                   if (newCat && newCat !== (transaction?.category || '')) {
-                    // Auto-check and auto-populate keyword when category changes
-                    const smartKw = extractSmartKeyword(transaction?.description || '')
-                    setCategoryKeyword(smartKw)
                     setApplyCategorySimilar(true)
                   } else {
                     setApplyCategorySimilar(false)
@@ -619,26 +612,33 @@ export default function TransactionEditPanel({
                 Create New Category
               </button>
 
-              {/* Auto-Learn Rule (always on) */}
+              {/* Combined: Learn Rule + Apply to Similar (shown when category changes) */}
               {category && category !== (transaction.category || '') && (
-                <div className="rounded-xl bg-blue-50 ring-1 ring-blue-200 p-3 space-y-2.5">
+                <div className="rounded-xl bg-blue-50 ring-1 ring-blue-200 p-3 space-y-3">
                   <div className="flex items-start gap-2">
                     <svg className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.347.405A4.975 4.975 0 0112 17a4.975 4.975 0 01-2.09-.455l-.347-.405z" />
                     </svg>
                     <div>
-                      <span className="text-sm font-medium text-blue-900">
-                        This category will be remembered
-                      </span>
+                      <span className="text-sm font-medium text-blue-900">Learn &amp; apply this rule</span>
                       <p className="text-xs text-blue-700 mt-0.5">
-                        Future uploads will auto-categorize matching transactions.
+                        One keyword — used for learning, applying to similar, and merchant matching below.
                       </p>
                     </div>
                   </div>
+
+                  {/* Single shared keyword input */}
                   <div className="space-y-1">
-                    <label className="text-[11px] font-semibold uppercase tracking-widest text-blue-600">
-                      Match keyword (optional — leave blank for smart matching)
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-semibold uppercase tracking-widest text-blue-600">Keyword</label>
+                      {keyword.trim().length >= 5 ? (
+                        <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 ring-1 ring-emerald-200 rounded-full px-2 py-0.5">Specific ✓</span>
+                      ) : keyword.trim().length >= 3 ? (
+                        <span className="text-[10px] font-medium text-amber-700 bg-amber-50 ring-1 ring-amber-200 rounded-full px-2 py-0.5">May match broadly</span>
+                      ) : (
+                        <span className="text-[10px] font-medium text-neutral-500 bg-neutral-100 ring-1 ring-neutral-200 rounded-full px-2 py-0.5">Optional</span>
+                      )}
+                    </div>
                     <input
                       type="text"
                       value={keyword}
@@ -646,66 +646,32 @@ export default function TransactionEditPanel({
                       placeholder="e.g., WOOLWORTHS, NETFLIX, UBER"
                       className="w-full rounded-lg bg-white px-3 py-2 text-sm text-neutral-900 ring-1 ring-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                    <p className="text-xs text-blue-600">
-                      Leave blank to learn from the full description automatically.
-                    </p>
+                    <p className="text-xs text-blue-600">Leave blank to use the full description for learning.</p>
                   </div>
-                </div>
-              )}
 
-              {/* Apply Category to Similar */}
-              {category && (
-              <div className="rounded-xl bg-neutral-50 ring-1 ring-neutral-200 p-3 space-y-3">
-                <label className="flex items-start gap-2.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={applyCategorySimilar}
-                    onChange={(e) => {
-                      setApplyCategorySimilar(e.target.checked)
-                      if (e.target.checked && !categoryKeyword) {
-                        setCategoryKeyword(extractSmartKeyword(transaction?.description || ''))
-                      }
-                    }}
-                    className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <div>
-                    <span className="text-sm font-medium text-neutral-900">
-                      Apply to similar in this statement
-                    </span>
-                    <p className="text-xs text-neutral-500 mt-0.5">
-                      {categoryKeyword
-                        ? <>Transactions containing <span className="font-semibold text-neutral-700">{categoryKeyword}</span> will be updated now</>
-                        : 'Update all matching transactions in the current statement'
-                      }
-                    </p>
-                  </div>
-                </label>
-
-                {applyCategorySimilar && (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <label className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 flex-1">
-                        Keyword
-                      </label>
-                      {categoryKeyword.trim().length >= 5 ? (
-                        <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 ring-1 ring-emerald-200 rounded-full px-2 py-0.5">Specific ✓</span>
-                      ) : categoryKeyword.trim().length >= 3 ? (
-                        <span className="text-[10px] font-medium text-amber-700 bg-amber-50 ring-1 ring-amber-200 rounded-full px-2 py-0.5">May match broadly</span>
-                      ) : null}
-                    </div>
+                  {/* Apply to similar checkbox */}
+                  <label className="flex items-start gap-2.5 cursor-pointer">
                     <input
-                      type="text"
-                      value={categoryKeyword}
-                      onChange={(e) => setCategoryKeyword(e.target.value.toUpperCase())}
-                      placeholder="e.g., WOOLWORTHS, NETFLIX, UBER"
-                      className="w-full rounded-lg bg-white px-3 py-2 text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      type="checkbox"
+                      checked={applyCategorySimilar}
+                      onChange={(e) => setApplyCategorySimilar(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500"
                     />
-                    <p className="text-xs text-neutral-500">
-                      All transactions in this statement containing this keyword will be updated.
-                    </p>
+                    <div>
+                      <span className="text-sm font-medium text-blue-900">Apply category to similar now</span>
+                      <p className="text-xs text-blue-700 mt-0.5">
+                        {keyword.trim().length >= 3
+                          ? <>Updates transactions containing <span className="font-semibold">{keyword}</span> in this statement</>
+                          : 'Updates matching transactions in this statement'
+                        }
+                      </p>
+                    </div>
+                  </label>
+
+                  {applyCategorySimilar && (
                     <button
                       onClick={handleApplyCategorySimilar}
-                      disabled={loading || (category || '').trim().length === 0 || categoryKeyword.trim().length < 3}
+                      disabled={loading || (category || '').trim().length === 0 || keyword.trim().length < 3}
                       className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {loading ? (
@@ -716,13 +682,12 @@ export default function TransactionEditPanel({
                       ) : (
                         <>
                           <Copy className="w-4 h-4" />
-                          Apply to All Matching
+                          Apply Category to All Matching
                         </>
                       )}
                     </button>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
               )}
             </div>
           ) : (
@@ -803,32 +768,39 @@ export default function TransactionEditPanel({
                 />
                 <div>
                   <span className="text-sm font-medium text-neutral-900">
-                    Apply merchant to similar transactions
+                    Apply merchant to similar
                   </span>
                   <p className="text-xs text-neutral-500 mt-0.5">
-                    Match by keyword and update learned rules
+                    Update matching transactions and save a learned rule
                   </p>
                 </div>
               </label>
 
               {applyMerchantSimilar && (
-                <div className="ml-6.5 space-y-2">
-                  <label className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400">
-                    Keyword (min 3 chars)
-                  </label>
-                  <input
-                    type="text"
-                    value={merchantKeyword}
-                    onChange={(e) => setMerchantKeyword(e.target.value.toUpperCase())}
-                    placeholder="e.g., WOOLWORTHS, NETFLIX, UBER"
-                    className="w-full rounded-lg bg-white px-3 py-2 text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <p className="text-xs text-neutral-500">
-                    Will apply to all transactions containing this keyword
-                  </p>
+                <div className="ml-6 space-y-2">
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Keyword</label>
+                      {keyword.trim().length >= 5 ? (
+                        <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 ring-1 ring-emerald-200 rounded-full px-2 py-0.5">Specific ✓</span>
+                      ) : keyword.trim().length >= 3 ? (
+                        <span className="text-[10px] font-medium text-amber-700 bg-amber-50 ring-1 ring-amber-200 rounded-full px-2 py-0.5">May match broadly</span>
+                      ) : null}
+                    </div>
+                    <input
+                      type="text"
+                      value={keyword}
+                      onChange={(e) => setKeyword(e.target.value.toUpperCase())}
+                      placeholder="e.g., WOOLWORTHS, NETFLIX, UBER"
+                      className="w-full rounded-lg bg-white px-3 py-2 text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <p className="text-xs text-neutral-500">
+                      Only transactions containing this keyword will be updated.
+                    </p>
+                  </div>
                   <button
                     onClick={handleApplyMerchantSimilar}
-                    disabled={loading || (merchant || '').trim().length === 0 || merchantKeyword.trim().length < 3}
+                    disabled={loading || (merchant || '').trim().length === 0 || keyword.trim().length < 3}
                     className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {loading ? (

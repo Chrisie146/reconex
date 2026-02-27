@@ -87,10 +87,26 @@ export default function Dashboard() {
       .catch(() => {
         // ignore errors silently; UI will still function without preloaded categories
       })
-  }, [sessionId, currentClient?.id])
+  }, [sessionId, currentClient?.id, selectedStatement])
+
+  // Also refresh categories when switching statements via sidebar
+  useEffect(() => {
+    if (!selectedStatement) return
+    const params: any = { session_id: selectedStatement }
+    if (currentClient?.id) params.client_id = currentClient.id
+    axios.get(`${API_BASE_URL}/categories`, { params })
+      .then(res => {
+        const categoryNames = (res.data.categories || []).map((cat: any) => 
+          typeof cat === 'string' ? cat : cat.name
+        )
+        setUploadedCategories(categoryNames)
+      })
+      .catch(() => {})
+  }, [selectedStatement])
 
   const handleUploadSuccess = (newSessionId: string, count: number, categories: string[]) => {
     setSessionId(newSessionId)
+    setSelectedStatement(newSessionId)  // Sync sidebar selection to the newly uploaded statement
     setTransactionCount(count)
     setUploadedCategories(categories)
     setShowUploadView(false)  // Switch to transactions view after successful upload
@@ -118,6 +134,7 @@ export default function Dashboard() {
 
   const handleReset = () => {
     setSessionId(null)
+    setSelectedStatement('')  // Clear sidebar selection
     setTransactionCount(0)
     setUploadedCategories([])
     setSelectedTransaction(null)

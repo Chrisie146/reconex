@@ -25,10 +25,13 @@ export default function Page() {
     setClientSessionId(params.get('session_id'))
   }, [])
 
-  // Load categories for this session so modals have data
+  // Load categories for this session/statement so modals have data
   useEffect(() => {
-    if (!clientSessionId) return
-    axios.get(`${API_BASE_URL}/categories`, { params: { session_id: clientSessionId, ...(currentClient?.id ? { client_id: currentClient.id } : {}) } })
+    const effectiveSessionId = clientSessionId || selectedStatement || null
+    if (!effectiveSessionId && !currentClient?.id) return
+    const params: any = { ...(currentClient?.id ? { client_id: currentClient.id } : {}) }
+    if (effectiveSessionId) params.session_id = effectiveSessionId
+    axios.get(`${API_BASE_URL}/categories`, { params })
       .then(res => {
         // Extract just the names from the category objects
         const categoryNames = (res.data.categories || []).map((cat: any) => 
@@ -37,7 +40,7 @@ export default function Page() {
         setUploadedCategories(categoryNames)
       })
       .catch(() => {})
-  }, [clientSessionId, currentClient?.id])
+  }, [clientSessionId, selectedStatement, currentClient?.id])
 
   return (
     <>

@@ -21,7 +21,7 @@ from routers.dependencies import (
     vat_service,
 )
 from services.bank_detector import BankDetector
-from services.categoriser import categorize_transaction
+from services.categoriser import MERCHANT_MAPPINGS, categorize_transaction
 from services.parser import _find_data_start, normalize_csv, parse_date, validate_csv
 from services.pdf_parser import ParserError as PDFParserError
 from services.pdf_parser import pdf_to_csv_bytes
@@ -113,7 +113,12 @@ def _apply_rules_and_save(
     categories_found: set = set()
 
     for txn_data in normalized_transactions:
-        category, _is_expense = categorize_transaction(txn_data["description"], txn_data["amount"])
+        raw_category, is_expense = categorize_transaction(txn_data["description"], txn_data["amount"])
+
+        # Built-in rules always confirm directly — no suggestions needed.
+        # "Other" means no built-in rule matched → Uncategorized.
+        category = raw_category if raw_category != "Other" else "Uncategorized"
+
         tdict = {
             "description": txn_data["description"],
             "amount": txn_data["amount"],
@@ -121,6 +126,7 @@ def _apply_rules_and_save(
             "category": category,
         }
 
+        # User-created auto-apply rules override and confirm directly
         for r in enabled_rules:
             if not r.get("auto_apply"):
                 continue
@@ -136,6 +142,17 @@ def _apply_rules_and_save(
             except Exception:
                 continue
 
+        # Auto-assign merchant from built-in MERCHANT_MAPPINGS if not already set by a user rule
+        if not txn_data.get("_merchant"):
+            desc_lower = txn_data["description"].lower()
+            for mapping in MERCHANT_MAPPINGS:
+                for pattern in mapping.get("patterns", []):
+                    if pattern.lower() in desc_lower:
+                        txn_data["_merchant"] = mapping["merchant"]
+                        break
+                if txn_data.get("_merchant"):
+                    break
+
         categories_found.add(category)
         transaction = Transaction(
             client_id=client_id,
@@ -144,6 +161,7 @@ def _apply_rules_and_save(
             description=txn_data["description"],
             amount=txn_data["amount"],
             category=category,
+            suggested_category=None,
             bank_source=bank_source,
             balance_verified=txn_data.get("balance_verified"),
             balance_difference=txn_data.get("balance_difference"),
@@ -158,34 +176,33 @@ def _apply_rules_and_save(
 
     db.commit()
 
-    # Apply learned categorisation rules.
-    # override_existing=True so that learned rules take priority over the built-in
-    # keyword categorizer — this is the core of the "memory" feature.
+    # Apply keyword-based learned rules — confirmed directly (no suggestions).
+    # These rules only exist because the user explicitly created them by typing a
+    # keyword, so auto-confirming them is safe and expected behaviour.
     try:
         all_transactions = db.query(Transaction).filter(Transaction.session_id == session_id).all()
         effective_user_id = str(current_user.id)
-        suggestions = learning_service.apply_learned_rules(
+        confirmed = learning_service.apply_learned_rules(
             effective_user_id, all_transactions, db, client_id=client_id, override_existing=True
         )
 
-        updated_ids = []
-        for txn_id, cat in suggestions.items():
+        updated_count = 0
+        for txn_id, cat in confirmed.items():
             txn = db.query(Transaction).filter(Transaction.id == txn_id).first()
             if txn:
                 txn.category = cat
-                categories_found.add(cat)  # reflect learned categories in response
-                updated_ids.append(txn_id)
+                txn.suggested_category = None
+                categories_found.add(cat)
+                updated_count += 1
 
-        if suggestions:
+        if confirmed:
             db.commit()
-            for txn_id in updated_ids:
-                vat_service.apply_vat_to_transaction(txn_id, session_id, force=False)
-            print(f"✓ Auto-categorized {len(suggestions)} transaction(s) using learned rules")
+            print(f"✓ Auto-categorized {updated_count} transaction(s) from keyword rules")
         else:
-            print("ℹ️  No learned rules matched transactions in this upload")
+            print("ℹ️  No keyword rules matched transactions in this upload")
     except Exception as learn_error:
         import traceback
-        print(f"Warning: Failed to apply learned rules: {learn_error}")
+        print(f"Warning: Failed to apply keyword rules: {learn_error}")
         traceback.print_exc()
 
     return categories_found
@@ -434,6 +451,10 @@ def save_parsed_transactions(
                 date_obj = d
 
             category, _is_expense = categorize_transaction(desc, amount)
+
+            # Built-in rules always confirm directly — "Other" maps to Uncategorized
+            category = category if category != "Other" else "Uncategorized"
+
             tdict = {"description": desc, "amount": amount, "date": date_obj, "category": category}
 
             for r in enabled_rules:
@@ -451,6 +472,17 @@ def save_parsed_transactions(
                 except Exception:
                     continue
 
+            # Auto-assign merchant from built-in MERCHANT_MAPPINGS if not already set by a user rule
+            if not item.get("_merchant"):
+                desc_lower = desc.lower()
+                for mapping in MERCHANT_MAPPINGS:
+                    for pattern in mapping.get("patterns", []):
+                        if pattern.lower() in desc_lower:
+                            item["_merchant"] = mapping["merchant"]
+                            break
+                    if item.get("_merchant"):
+                        break
+
             categories_found.add(category)
             transaction = Transaction(
                 client_id=client_id,
@@ -459,6 +491,7 @@ def save_parsed_transactions(
                 description=desc,
                 amount=amount,
                 category=category,
+                suggested_category=None,
                 balance_verified=item.get("balance_verified"),
                 balance_difference=item.get("balance_difference"),
                 validation_message=item.get("validation_message"),
@@ -472,26 +505,27 @@ def save_parsed_transactions(
 
         db.commit()
 
-        # Apply learned rules — override_existing=True so they beat the built-in categorizer
+        # Apply keyword-based learned rules — confirmed directly
         try:
             all_transactions = db.query(Transaction).filter(Transaction.session_id == session_id).all()
             effective_user_id = str(current_user.id)
-            suggestions = learning_service.apply_learned_rules(
+            confirmed = learning_service.apply_learned_rules(
                 effective_user_id, all_transactions, db, client_id=client_id, override_existing=True
             )
-            for txn_id, cat in suggestions.items():
+            for txn_id, cat in confirmed.items():
                 txn = db.query(Transaction).filter(Transaction.id == txn_id).first()
                 if txn:
                     txn.category = cat
-                    categories_found.add(cat)  # reflect learned categories in response
-            if suggestions:
+                    txn.suggested_category = None
+                    categories_found.add(cat)
+            if confirmed:
                 db.commit()
-                print(f"✓ Auto-categorized {len(suggestions)} transaction(s) using learned rules")
+                print(f"✓ Auto-categorized {len(confirmed)} transaction(s) from keyword rules")
             else:
-                print("ℹ️  No learned rules matched transactions in this upload")
+                print("ℹ️  No keyword rules matched transactions in this upload")
         except Exception as learn_error:
             import traceback
-            print(f"Warning: Failed to apply learned rules: {learn_error}")
+            print(f"Warning: Failed to apply keyword rules: {learn_error}")
             traceback.print_exc()
 
         return sanitize_response_data({

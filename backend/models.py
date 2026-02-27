@@ -3,7 +3,7 @@ Database models for Bank Statement Analyzer
 Handles storage of transactions and session data
 """
 
-from sqlalchemy import Column, Integer, String, Float, Date, DateTime, create_engine, ForeignKey, Boolean, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Float, Date, DateTime, create_engine, ForeignKey, Boolean, UniqueConstraint, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
@@ -66,12 +66,16 @@ class Transaction(Base):
     
     # Bank source tracking
     bank_source = Column(String, nullable=True, default="unknown")  # standard_bank, absa, capitec, unknown
-    
+
+    # Suggestion system: predefined rules propose a category, user confirms or changes
+    # Populated on upload from keyword/merchant rules; cleared when user accepts/overrides
+    suggested_category = Column(String, nullable=True)
+
     # Balance validation metadata (for production transparency)
     balance_verified = Column(Integer, nullable=True)  # 1=True, 0=False, NULL=None/no balance
     balance_difference = Column(Float, nullable=True)  # Absolute difference from expected balance
     validation_message = Column(String, nullable=True)  # Human-readable validation result
-    
+
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -524,5 +528,16 @@ def get_db():
 
 
 def init_db():
-    """Initialize database tables"""
+    """Initialize database tables and run lightweight column migrations."""
     Base.metadata.create_all(bind=engine)
+
+    # Lightweight schema migrations for SQLite (ALTER TABLE ADD COLUMN is idempotent via try/except)
+    with engine.connect() as conn:
+        for ddl in [
+            "ALTER TABLE transactions ADD COLUMN suggested_category VARCHAR",
+        ]:
+            try:
+                conn.execute(text(ddl))
+                conn.commit()
+            except Exception:
+                pass  # Column already exists — safe to ignore
