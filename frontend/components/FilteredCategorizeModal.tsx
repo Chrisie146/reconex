@@ -30,27 +30,41 @@ export default function FilteredCategorizeModal({ isOpen, onClose, transactions,
   const [selectAll, setSelectAll] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState('')
   const [loading, setLoading] = useState(false)
+  const [search, setSearch] = useState('')
+
+  const filteredTransactions = search.trim()
+    ? transactions.filter((t) =>
+        t.description.toLowerCase().includes(search.trim().toLowerCase())
+      )
+    : transactions
 
   useEffect(() => {
     if (!isOpen) {
       setSelectedIds([])
       setSelectAll(false)
       setSelectedCategory('')
+      setSearch('')
       setLoading(false)
-    }
-    else {
-      // if the caller requests initial select-all, enable it on open
+    } else {
       if (initialSelectAll) setSelectAll(true)
     }
   }, [isOpen])
 
+  // When selectAll changes, select/deselect only what's currently visible
   useEffect(() => {
     if (selectAll) {
-      setSelectedIds(transactions.map((t) => t.id))
+      setSelectedIds(filteredTransactions.map((t) => t.id))
     } else {
       setSelectedIds([])
     }
-  }, [selectAll, transactions])
+  }, [selectAll]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When the search changes, keep selectAll in sync
+  useEffect(() => {
+    if (selectAll) {
+      setSelectedIds(filteredTransactions.map((t) => t.id))
+    }
+  }, [search]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleId = (id: number) => {
     setSelectedIds((prev) => {
@@ -106,10 +120,21 @@ export default function FilteredCategorizeModal({ isOpen, onClose, transactions,
           </div>
 
           <div className="px-6 py-4 space-y-4">
+            {/* Search */}
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search descriptions…"
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <input id="fc-select-all" type="checkbox" checked={selectAll} onChange={(e) => setSelectAll(e.target.checked)} className="mt-1" />
-                <label htmlFor="fc-select-all" className="text-sm font-medium">Select all ({transactions.length})</label>
+                <label htmlFor="fc-select-all" className="text-sm font-medium">
+                  Select all ({filteredTransactions.length}{search.trim() ? ` of ${transactions.length}` : ''})
+                </label>
               </div>
 
               <div className="flex items-center gap-2">
@@ -124,7 +149,10 @@ export default function FilteredCategorizeModal({ isOpen, onClose, transactions,
             </div>
 
             <div className="space-y-2">
-              {transactions.map((t) => (
+              {filteredTransactions.length === 0 && (
+                <p className="text-sm text-neutral-500 text-center py-4">No transactions match your search.</p>
+              )}
+              {filteredTransactions.map((t) => (
                 <div key={t.id} className="flex items-center justify-between border border-neutral-100 rounded p-2">
                   <div className="flex items-center gap-3">
                     <input type="checkbox" checked={selectedIds.includes(t.id)} onChange={() => toggleId(t.id)} />
