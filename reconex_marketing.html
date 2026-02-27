@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reconex – Clean and reconcile bank statements in minutes</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', Arial, Helvetica, sans-serif;
+      background: #ffffff;
+      color: #1a1a1a;
+      font-size: 15px;
+      line-height: 1.7;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .page {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 48px 40px 40px;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      border-bottom: 2px solid #e4e8ef;
+      padding-bottom: 32px;
+      margin-bottom: 44px;
+    }
+
+    .logo {
+      font-size: 38px;
+      font-weight: 700;
+      letter-spacing: -1px;
+      color: #1a1a1a;
+      margin-bottom: 10px;
+    }
+
+    .logo span {
+      color: #2563eb;
+    }
+
+    .tagline {
+      font-size: 17px;
+      font-weight: 400;
+      color: #4b5563;
+      max-width: 480px;
+    }
+
+    /* ── Sections ── */
+    .section {
+      margin-bottom: 40px;
+    }
+
+    .section-label {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+      color: #2563eb;
+      background: #eff6ff;
+      padding: 3px 10px;
+      border-radius: 4px;
+      margin-bottom: 10px;
+    }
+
+    h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 12px;
+      line-height: 1.3;
+    }
+
+    p {
+      color: #374151;
+      font-size: 15px;
+      line-height: 1.75;
+    }
+
+    /* ── Two-column grid for mid sections ── */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 40px;
+    }
+
+    .card {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 24px 22px;
+    }
+
+    .card h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 14px;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    ul li {
+      font-size: 14.5px;
+      color: #374151;
+      padding: 5px 0;
+      padding-left: 20px;
+      position: relative;
+      line-height: 1.6;
+    }
+
+    ul li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 12px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #2563eb;
+    }
+
+    /* ── How it works steps ── */
+    .steps {
+      display: flex;
+      gap: 0;
+      margin-top: 4px;
+    }
+
+    .step {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      position: relative;
+      padding-right: 16px;
+    }
+
+    .step:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      right: 8px;
+      top: 13px;
+      height: 1px;
+      width: calc(100% - 36px);
+      background: #d1d5db;
+    }
+
+    .step-number {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #2563eb;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 10px;
+      flex-shrink: 0;
+      z-index: 1;
+    }
+
+    .step-text {
+      font-size: 13.5px;
+      color: #374151;
+      font-weight: 500;
+      line-height: 1.4;
+    }
+
+    /* ── CTA Section ── */
+    .cta-section {
+      background: #1e3a5f;
+      border-radius: 10px;
+      padding: 32px 30px;
+      margin-bottom: 40px;
+    }
+
+    .cta-section .section-label {
+      background: rgba(255,255,255,0.15);
+      color: #93c5fd;
+    }
+
+    .cta-section h2 {
+      color: #ffffff;
+      margin-bottom: 12px;
+    }
+
+    .cta-section p {
+      color: #cbd5e1;
+      font-size: 14.5px;
+      margin-bottom: 18px;
+    }
+
+    .contact-block {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .contact-pill {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #e2e8f0;
+      font-size: 13.5px;
+      font-weight: 500;
+      padding: 8px 16px;
+      border-radius: 6px;
+      text-decoration: none;
+    }
+
+    /* ── Divider ── */
+    .divider {
+      height: 1px;
+      background: #e5e7eb;
+      margin: 40px 0;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      text-align: center;
+      font-size: 12.5px;
+      color: #9ca3af;
+      padding-top: 8px;
+    }
+
+    /* ── Print styles ── */
+    @media print {
+      @page {
+        size: A4;
+        margin: 16mm 14mm 16mm 14mm;
+      }
+
+      body {
+        font-size: 13.5px;
+      }
+
+      .page {
+        padding: 0;
+        max-width: 100%;
+      }
+
+      .cta-section {
+        background: #1e3a5f !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .card {
+        background: #f9fafb !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .section-label {
+        background: #eff6ff !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .step-number {
+        background: #2563eb !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      ul li::before {
+        background: #2563eb !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      a {
+        text-decoration: none;
+        color: inherit;
+      }
+
+      .contact-pill {
+        border: 1px solid rgba(255,255,255,0.3) !important;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .two-col {
+        grid-template-columns: 1fr;
+      }
+      .steps {
+        flex-direction: column;
+        gap: 16px;
+      }
+      .step::after {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">recon<span>ex</span></div>
+      <p class="tagline">Clean and reconcile bank statements in minutes.</p>
+    </header>
+
+    <!-- Problem -->
+    <section class="section">
+      <span class="section-label">The Problem</span>
+      <h2>Bank reconciliation is slow, messy, and error-prone.</h2>
+      <p>
+        Many small businesses and bookkeepers spend hours each month wrestling with messy bank statements,
+        manually categorising hundreds of transactions, and trying to reconcile closing balances — often in
+        spreadsheets that break, duplicate entries, or simply take too long. Time that should be spent running
+        a business is lost to tedious financial admin.
+      </p>
+    </section>
+
+    <!-- Solution -->
+    <section class="section">
+      <span class="section-label">The Solution</span>
+      <h2>Reconex automates the hard parts.</h2>
+      <p style="margin-bottom: 24px;">
+        Reconex is a simple, focused tool that takes your raw bank statement, categorises every transaction
+        automatically, and reconciles your closing balance — giving you a clean financial overview in minutes,
+        not hours.
+      </p>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-text">Upload your bank statement</div>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-text">Transactions are categorised automatically</div>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-text">Reconcile to closing balance</div>
+        </div>
+        <div class="step">
+          <div class="step-number">4</div>
+          <div class="step-text">Review your clean financial overview</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- Who It's For + Key Benefits -->
+    <div class="two-col">
+      <div class="card">
+        <h3>Who It's For</h3>
+        <ul>
+          <li>Small business owners</li>
+          <li>Freelancers</li>
+          <li>Bookkeepers</li>
+          <li>Accountants managing multiple clients</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Key Benefits</h3>
+        <ul>
+          <li>Saves hours of manual work</li>
+          <li>Built for South African banks</li>
+          <li>Simple, intuitive interface</li>
+          <li>No complicated accounting software required</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <div class="cta-section">
+      <span class="section-label">Early Beta Access</span>
+      <h2>Be one of the first to try Reconex.</h2>
+      <p>
+        We're currently inviting a small group of South African business owners and bookkeepers to join our
+        early beta. Get early access, help shape the product, and save hours on your next reconciliation.
+      </p>
+      <div class="contact-block">
+        <span class="contact-pill">&#127760; www.reconex.co.za</span>
+        <span class="contact-pill">&#9993; hello@reconex.co.za</span>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      Reconex &nbsp;|&nbsp; Early Beta &nbsp;|&nbsp; Built for South African SMEs
+    </footer>
+
+  </div>
+</body>
+</html>

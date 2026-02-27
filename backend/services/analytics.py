@@ -340,7 +340,7 @@ def detect_recurring_transactions(
         primary_cat = sorted_txns[0].category or "Uncategorized"
 
         txn_details = [
-            {"date": t.date.isoformat(), "amount": t.amount, "description": t.description}
+            {"id": t.id, "date": t.date.isoformat(), "amount": t.amount, "description": t.description}
             for t in sorted_txns[:12]  # limit to last 12 occurrences
         ]
 
@@ -356,6 +356,8 @@ def detect_recurring_transactions(
             "last_seen": sorted_txns[0].date.isoformat(),
             "is_debit": is_debit,
             "transactions": txn_details,
+            # All IDs in this recurring group (used internally by the unusual report)
+            "transaction_ids": [t.id for t in txns],
         })
 
     # Sort by absolute total descending

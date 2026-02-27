@@ -115,7 +115,7 @@ export default function UnusualTransactionsModal({
   const [roundEnabled, setRoundEnabled]   = useState(false)
   const [roundMultiple, setRoundMultiple] = useState('100')
   const [recurEnabled, setRecurEnabled]   = useState(false)
-  const [recurCount, setRecurCount]       = useState('3')
+  const [recurCount, setRecurCount]       = useState('2')
   const [dupeEnabled, setDupeEnabled]     = useState(false)
   const [dupeDays, setDupeDays]           = useState('3')
   const [weekendEnabled, setWeekendEnabled] = useState(false)
@@ -185,6 +185,46 @@ export default function UnusualTransactionsModal({
       ? <ChevronUp className="w-3 h-3 inline ml-0.5" />
       : <ChevronDown className="w-3 h-3 inline ml-0.5" />
   }
+
+  /* ── Export Excel ─────────────────────────────────────────────── */
+  const handleExportExcel = useCallback(async () => {
+    if (!result?.transactions?.length) return
+    setExporting(true)
+    try {
+      const params: Record<string, unknown> = {}
+      if (sessionId)  params.session_id = sessionId
+      if (clientId)   params.client_id  = clientId
+      if (aboveEnabled && aboveAmount) params.above_amount = parseFloat(aboveAmount)
+      if (belowEnabled && belowAmount) params.below_amount = parseFloat(belowAmount)
+      if (roundEnabled) {
+        params.round_amount   = true
+        params.round_multiple = parseInt(roundMultiple) || 100
+      }
+      if (recurEnabled) {
+        params.recurring           = true
+        params.recurring_min_count = parseInt(recurCount) || 2
+      }
+      if (dupeEnabled) {
+        params.duplicates            = true
+        params.duplicate_window_days = parseInt(dupeDays) || 3
+      }
+      if (weekendEnabled) params.weekend = true
+
+      const res = await axios.get(`${API_BASE_URL}/unusual/export`, {
+        params,
+        responseType: 'blob',
+      })
+      const url = URL.createObjectURL(new Blob([res.data]))
+      const a   = document.createElement('a')
+      a.href = url
+      a.download = `unusual_transactions_${new Date().toISOString().slice(0, 10)}.xlsx`
+      document.body.appendChild(a); a.click()
+      document.body.removeChild(a); URL.revokeObjectURL(url)
+      toast.success('Excel exported')
+    } catch { toast.error('Excel export failed') }
+    finally { setExporting(false) }
+  }, [result, sessionId, clientId, aboveEnabled, aboveAmount, belowEnabled, belowAmount,
+      roundEnabled, roundMultiple, recurEnabled, recurCount, dupeEnabled, dupeDays, weekendEnabled])
 
   /* ── Export CSV ───────────────────────────────────────────────── */
   const handleExportCSV = useCallback(() => {
@@ -290,7 +330,7 @@ export default function UnusualTransactionsModal({
                 label="Recurring transactions"
                 icon={<RefreshCw className="w-4 h-4 text-purple-400" />}>
                 <span className="text-xs text-neutral-400">Same description + amount appearing at least</span>
-                <NumInput value={recurCount} onChange={setRecurCount} placeholder="3" min={2} />
+                <NumInput value={recurCount} onChange={setRecurCount} placeholder="2" min={2} />
                 <span className="text-xs text-neutral-400">times</span>
               </CriteriaRow>
 
@@ -422,16 +462,28 @@ export default function UnusualTransactionsModal({
                   Close
                 </button>
                 {result.total > 0 && (
-                  <button
-                    onClick={handleExportCSV}
-                    disabled={exporting}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-emerald-600 hover:bg-emerald-500 text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-                    {exporting
-                      ? <Loader2 className="w-4 h-4 animate-spin" />
-                      : <Download className="w-4 h-4" />
-                    }
-                    Export CSV
-                  </button>
+                  <>
+                    <button
+                      onClick={handleExportCSV}
+                      disabled={exporting}
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-slate-700 hover:bg-slate-600 text-neutral-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                      {exporting
+                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                        : <Download className="w-4 h-4" />
+                      }
+                      Export CSV
+                    </button>
+                    <button
+                      onClick={handleExportExcel}
+                      disabled={exporting}
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-emerald-600 hover:bg-emerald-500 text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                      {exporting
+                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                        : <Download className="w-4 h-4" />
+                      }
+                      Export Excel
+                    </button>
+                  </>
                 )}
               </div>
             </div>

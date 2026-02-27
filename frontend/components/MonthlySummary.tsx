@@ -1,12 +1,14 @@
- 'use client'
+'use client'
 
 import { useEffect, useState } from 'react'
-import { TrendingUp, TrendingDown } from 'lucide-react'
+import { TrendingUp, TrendingDown, Wallet } from 'lucide-react'
 import Link from 'next/link'
 import axios from '@/lib/axiosClient'
 import { toast } from 'sonner'
 import type { Client } from '@/lib/clientContext'
 import MonthlyTransactionsModal from './MonthlyTransactionsModal'
+import { KPICardSkeleton } from './SkeletonCard'
+import { useCountUp } from '@/lib/hooks/useCountUp'
 
 import { API_BASE_URL } from '@/lib/apiBase'
 
@@ -82,64 +84,86 @@ export default function MonthlySummary({ sessionId, currentClient }: MonthlySumm
     fetchSummary()
   }, [sessionId, currentClient?.id])
 
-  if (loading) {
-    return <div className="text-center py-8 text-neutral-600">Loading summary...</div>
-  }
-
   const overall = summary?.overall || {}
   const months = summary?.months || []
 
+  // Count-up animations for KPI values (use 0 while loading)
+  const animatedIncome = useCountUp(loading ? 0 : (overall.total_income ?? 0))
+  const animatedExpenses = useCountUp(loading ? 0 : (overall.total_expenses ?? 0))
+  const animatedNet = useCountUp(loading ? 0 : Math.abs(overall.net_balance ?? 0))
+
+  if (loading) {
+    return <KPICardSkeleton />
+  }
+
   return (
     <div className="space-y-6">
-      {/* Overall Stats */}
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="card p-6">
+
+        {/* Income */}
+        <div className="card card-hover p-6 bg-gradient-to-br from-white to-green-50/40 dark:from-neutral-900 dark:to-green-950/20">
           <div className="flex items-center justify-between">
-            <Link href={currentClient?.id ? `/transactions?client_id=${currentClient.id}&txn_filter=income` : `/transactions?session_id=${sessionId}&txn_filter=income`} className="flex-1">
+            <Link href={currentClient?.id ? `/transactions?client_id=${currentClient.id}&txn_filter=income` : `/transactions?session_id=${sessionId}&txn_filter=income`} className="flex-1 min-w-0">
               <div className="cursor-pointer">
-                <p className="text-sm font-medium text-neutral-600">Total Income</p>
-                <p className="text-2xl font-bold text-green-600 mt-1">
-                  R{overall.total_income?.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Total Income</p>
+                <p className="text-2xl font-bold text-green-600 mt-1 tabular-nums">
+                  R{animatedIncome.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </div>
             </Link>
-            <div className="p-3 bg-green-50 rounded-lg">
-              <TrendingUp className="w-6 h-6 text-green-600" />
+            <div className="kpi-icon p-3 bg-green-100 dark:bg-green-900/30 rounded-xl ml-3 shrink-0">
+              <TrendingUp className="w-5 h-5 text-green-600" />
             </div>
           </div>
         </div>
 
-        <div className="card p-6">
+        {/* Expenses */}
+        <div className="card card-hover p-6 bg-gradient-to-br from-white to-red-50/40 dark:from-neutral-900 dark:to-red-950/20">
           <div className="flex items-center justify-between">
-            <Link href={currentClient?.id ? `/transactions?client_id=${currentClient.id}&txn_filter=expenses` : `/transactions?session_id=${sessionId}&txn_filter=expenses`} className="flex-1">
+            <Link href={currentClient?.id ? `/transactions?client_id=${currentClient.id}&txn_filter=expenses` : `/transactions?session_id=${sessionId}&txn_filter=expenses`} className="flex-1 min-w-0">
               <div className="cursor-pointer">
-                <p className="text-sm font-medium text-neutral-600">Total Expenses</p>
-                <p className="text-2xl font-bold text-red-600 mt-1">
-                  R{overall.total_expenses?.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Total Expenses</p>
+                <p className="text-2xl font-bold text-red-600 mt-1 tabular-nums">
+                  R{animatedExpenses.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </div>
             </Link>
-            <div className="p-3 bg-red-50 rounded-lg">
-              <TrendingDown className="w-6 h-6 text-red-600" />
+            <div className="kpi-icon p-3 bg-red-100 dark:bg-red-900/30 rounded-xl ml-3 shrink-0">
+              <TrendingDown className="w-5 h-5 text-red-600" />
             </div>
           </div>
         </div>
 
-        <div className="card p-6">
+        {/* Net Balance */}
+        <div className={`card card-hover p-6 bg-gradient-to-br ${
+          overall.net_balance >= 0
+            ? 'from-white to-blue-50/40 dark:from-neutral-900 dark:to-blue-950/20'
+            : 'from-white to-orange-50/40 dark:from-neutral-900 dark:to-orange-950/20'
+        }`}>
           <div className="flex items-center justify-between">
-            <Link href={currentClient?.id ? `/transactions?client_id=${currentClient.id}` : `/transactions?session_id=${sessionId}`} className="flex-1">
+            <Link href={currentClient?.id ? `/transactions?client_id=${currentClient.id}` : `/transactions?session_id=${sessionId}`} className="flex-1 min-w-0">
               <div className="cursor-pointer">
-                <p className="text-sm font-medium text-neutral-600">Net Balance</p>
-                <p className={`text-2xl font-bold mt-1 ${
-                  overall.net_balance >= 0 ? 'text-green-600' : 'text-red-600'
+                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Net Balance</p>
+                <p className={`text-2xl font-bold mt-1 tabular-nums ${
+                  overall.net_balance >= 0 ? 'text-blue-600' : 'text-orange-600'
                 }`}>
-                  R{overall.net_balance?.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                  {overall.net_balance < 0 ? '-' : ''}R{animatedNet.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </div>
             </Link>
+            <div className={`kpi-icon p-3 rounded-xl ml-3 shrink-0 ${
+              overall.net_balance >= 0
+                ? 'bg-blue-100 dark:bg-blue-900/30'
+                : 'bg-orange-100 dark:bg-orange-900/30'
+            }`}>
+              <Wallet className={`w-5 h-5 ${
+                overall.net_balance >= 0 ? 'text-blue-600' : 'text-orange-600'
+              }`} />
+            </div>
           </div>
         </div>
+
       </div>
 
       {/* Reconciliation Overview */}

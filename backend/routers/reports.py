@@ -604,7 +604,7 @@ def get_unusual_transactions(
     round_amount: bool = Query(default=False),
     round_multiple: int = Query(default=100, ge=1),
     recurring: bool = Query(default=False),
-    recurring_min_count: int = Query(default=3, ge=2),
+    recurring_min_count: int = Query(default=2, ge=2),
     duplicates: bool = Query(default=False),
     duplicate_window_days: int = Query(default=3, ge=1),
     weekend: bool = Query(default=False),
@@ -642,56 +642,17 @@ def get_unusual_transactions(
                 merchant_map[m.transaction_id] = m.merchant or ""
 
         # ── Pre-compute for recurring check ────────────────────────
-        # Uses the same smart normalization as detect_recurring_transactions():
-        # strips dates/refs, applies 10% amount tolerance, requires multi-month presence.
-        from collections import defaultdict
-        import re as _re
-
-        def _normalize_desc(desc: str) -> str:
-            s = desc.upper().strip()
-            s = _re.sub(r'\d{4}[-/]\d{2}[-/]\d{2}', '', s)  # dates
-            s = _re.sub(r'\b\d{6,}\b', '', s)               # long ref numbers
-            s = _re.sub(r'\*+\d+', '', s)                   # masked card numbers
-            s = _re.sub(r'\bREF\s*:?\s*\w+', '', s)         # REF: xxx
-            s = _re.sub(r'\s+', ' ', s).strip()
-            return s
-
+        # Delegate to the same detect_recurring_transactions() used by the dashboard
+        # so the two views are always consistent.
         recurring_ids: set = set()
         if recurring:
-            # Group transactions by normalised description
-            norm_groups: dict = defaultdict(list)
-            for t in txns:
-                key = _normalize_desc(t.description)
-                if key:
-                    norm_groups[key].append(t)
-
-            for _pattern, _group in norm_groups.items():
-                if len(_group) < recurring_min_count:
-                    continue
-
-                # Must span at least recurring_min_count distinct months
-                months_seen = set(t.date.strftime("%Y-%m") for t in _group)
-                if len(months_seen) < 2:
-                    continue
-
-                # Apply 10% amount tolerance: keep only same-sign sub-groups
-                _signs = set(1 if t.amount >= 0 else -1 for t in _group)
-                for _sign in _signs:
-                    sub = [t for t in _group if (1 if t.amount >= 0 else -1) == _sign]
-                    if len(sub) < recurring_min_count:
-                        continue
-                    _amounts = [abs(t.amount) for t in sub]
-                    _avg = sum(_amounts) / len(_amounts)
-                    if _avg < 1:
-                        continue
-                    _max_dev = max(abs(a - _avg) / _avg for a in _amounts)
-                    if _max_dev > 0.10:
-                        continue
-                    _sub_months = set(t.date.strftime("%Y-%m") for t in sub)
-                    if len(_sub_months) < 2:
-                        continue
-                    for t in sub:
-                        recurring_ids.add(t.id)
+            _rec_result = detect_recurring_transactions(
+                db, session_id=session_id, client_id=client_id,
+                min_occurrences=recurring_min_count,
+            )
+            for _group in _rec_result.get("recurring", []):
+                for _tid in _group.get("transaction_ids", []):
+                    recurring_ids.add(_tid)
 
         # ── Pre-compute for duplicates check ───────────────────────
         duplicate_ids: set = set()
@@ -749,3 +710,59 @@ def get_unusual_transactions(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unusual transactions report failed: {str(e)}")
+
+
+@router.get("/unusual/export")
+def export_unusual_transactions(
+    session_id: Optional[str] = Query(default=None),
+    client_id: Optional[int] = Query(default=None),
+    above_amount: Optional[float] = Query(default=None),
+    below_amount: Optional[float] = Query(default=None),
+    round_amount: bool = Query(default=False),
+    round_multiple: int = Query(default=100, ge=1),
+    recurring: bool = Query(default=False),
+    recurring_min_count: int = Query(default=2, ge=2),
+    duplicates: bool = Query(default=False),
+    duplicate_window_days: int = Query(default=3, ge=1),
+    weekend: bool = Query(default=False),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Export unusual transactions report as a styled Excel workbook."""
+    try:
+        # Re-use the JSON endpoint to obtain the flagged list, then stream Excel.
+        report = get_unusual_transactions(
+            session_id=session_id,
+            client_id=client_id,
+            above_amount=above_amount,
+            below_amount=below_amount,
+            round_amount=round_amount,
+            round_multiple=round_multiple,
+            recurring=recurring,
+            recurring_min_count=recurring_min_count,
+            duplicates=duplicates,
+            duplicate_window_days=duplicate_window_days,
+            weekend=weekend,
+            current_user=current_user,
+            db=db,
+        )
+        client = None
+        if client_id is not None:
+            client = db.query(Client).filter(Client.id == client_id, Client.user_id == current_user.id).first()
+        client_name = client.name if client else None
+        output = ExcelExporter.export_unusual_transactions(
+            flagged_transactions=report["transactions"],
+            client_name=client_name,
+        )
+        slug = re.sub(r'[^\w-]', '_', client.name.strip())[:24] if client else (session_id[:8] if session_id else f"client_{client_id}")
+        filename = f"unusual_transactions_{slug}.xlsx"
+        headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+        return StreamingResponse(
+            output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers=headers,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unusual transactions Excel export failed: {str(e)}")

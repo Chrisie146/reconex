@@ -961,6 +961,75 @@ class ExcelExporter:
         return output
 
     # ══════════════════════════════════════════════════════════
+    #  EXPORT: UNUSUAL TRANSACTIONS REPORT
+    # ══════════════════════════════════════════════════════════
+    _FLAG_LABELS: dict = {
+        "above_threshold": "Above threshold",
+        "below_threshold": "Below threshold",
+        "round_amount":    "Round amount",
+        "recurring":       "Recurring",
+        "duplicate":       "Possible duplicate",
+        "weekend":         "Weekend",
+    }
+
+    @staticmethod
+    def export_unusual_transactions(
+        flagged_transactions: list,
+        client_name: Optional[str] = None,
+    ) -> BytesIO:
+        """Export unusual/flagged transactions to a styled Excel workbook."""
+        NUM_COLS = 6
+        col_widths = {"A": 14, "B": 40, "C": 22, "D": 18, "E": 22, "F": 42}
+        headers = ["Date", "Description", "Merchant", "Amount", "Category", "Flags"]
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Unusual Transactions"
+
+        for letter, w in col_widths.items():
+            ws.column_dimensions[letter].width = w
+
+        # ── Title bar ─────────────────────────────────────────
+        ExcelExporter._write_branded_title(ws, "Unusual Transactions Report", NUM_COLS, row=1)
+
+        # ── Info rows ─────────────────────────────────────────
+        ExcelExporter._write_info_row(ws, "Flagged transactions:", len(flagged_transactions), row=2)
+        if client_name:
+            ExcelExporter._write_info_row(ws, "Client:", client_name, row=3)
+
+        # ── Header row ────────────────────────────────────────
+        HEADER_ROW = 4
+        for col, h in enumerate(headers, 1):
+            ws.cell(row=HEADER_ROW, column=col, value=h)
+        ExcelExporter._style_header_row(ws, HEADER_ROW, NUM_COLS)
+
+        # ── Data rows ─────────────────────────────────────────
+        FLAG_LABELS = ExcelExporter._FLAG_LABELS
+        for i, txn in enumerate(flagged_transactions):
+            r = HEADER_ROW + 1 + i
+            amount = txn.get("amount", 0)
+            flag_keys: list = txn.get("flags", [])
+            flag_text = "; ".join(FLAG_LABELS.get(f, f) for f in flag_keys)
+
+            ws.cell(row=r, column=1, value=txn.get("date", ""))
+            ws.cell(row=r, column=2, value=txn.get("description", ""))
+            ws.cell(row=r, column=3, value=txn.get("merchant", "") or "")
+            amt_cell = ws.cell(row=r, column=4, value=amount)
+            ws.cell(row=r, column=5, value=txn.get("category") or "Uncategorized")
+            ws.cell(row=r, column=6, value=flag_text)
+
+            ExcelExporter._style_data_row(ws, r, NUM_COLS, is_stripe=(i % 2 == 1))
+            ExcelExporter._style_amount_cell(amt_cell, amount)
+
+        ExcelExporter._freeze_and_filter(ws, HEADER_ROW, NUM_COLS)
+        ExcelExporter._set_print_setup(ws)
+
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+        return output
+
+    # ══════════════════════════════════════════════════════════
     #  EXPORT: SINGLE CATEGORY (monthly sections)
     # ══════════════════════════════════════════════════════════
     @staticmethod

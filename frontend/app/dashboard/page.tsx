@@ -18,6 +18,7 @@ import BulkCategoryModal from '@/components/BulkCategoryModal'
 import Sidebar from '@/components/Sidebar'
 import StatementInfoBanner from '@/components/StatementInfoBanner'
 import OnboardingWizard from '@/components/OnboardingWizard'
+import AnimatedSection from '@/components/AnimatedSection'
 import { useClient } from '@/lib/clientContext'
 import { getAuthUser } from '@/lib/auth'
 
@@ -192,29 +193,44 @@ export default function Dashboard() {
             <div className="space-y-12">
               {/* Statement Info Banner */}
               {selectedStatement && (
-                <StatementInfoBanner selectedStatement={selectedStatement} sessionId={sessionId} />
+                <AnimatedSection delay="0ms">
+                  <StatementInfoBanner selectedStatement={selectedStatement} sessionId={sessionId} />
+                </AnimatedSection>
               )}
 
               {/* Summary Cards */}
-              <MonthlySummary sessionId={sessionId} currentClient={currentClient} />
+              <AnimatedSection delay="60ms">
+                <MonthlySummary sessionId={sessionId} currentClient={currentClient} />
+              </AnimatedSection>
 
               {/* Cash Flow Chart */}
-              <CashFlowChart sessionId={sessionId} currentClient={currentClient} />
+              <AnimatedSection delay="120ms">
+                <CashFlowChart sessionId={sessionId} currentClient={currentClient} />
+              </AnimatedSection>
 
               {/* Income / Expense Trend */}
-              <IncomeExpenseTrend sessionId={sessionId} currentClient={currentClient} />
+              <AnimatedSection delay="0ms">
+                <IncomeExpenseTrend sessionId={sessionId} currentClient={currentClient} />
+              </AnimatedSection>
 
               {/* Category Breakdown */}
-              <CategoryBreakdown sessionId={sessionId} currentClient={currentClient} />
+              <AnimatedSection delay="0ms">
+                <CategoryBreakdown sessionId={sessionId} currentClient={currentClient} />
+              </AnimatedSection>
 
               {/* Merchant Analytics */}
-              <MerchantAnalytics sessionId={sessionId} currentClient={currentClient} />
+              <AnimatedSection delay="0ms">
+                <MerchantAnalytics sessionId={sessionId} currentClient={currentClient} />
+              </AnimatedSection>
 
               {/* Recurring Transactions */}
-              <RecurringTransactions sessionId={sessionId} currentClient={currentClient} />
+              <AnimatedSection delay="0ms">
+                <RecurringTransactions sessionId={sessionId} currentClient={currentClient} />
+              </AnimatedSection>
 
               {/* Transactions Preview (5 rows) */}
-              <div className="card bg-white border border-neutral-200">
+              <AnimatedSection delay="0ms">
+              <div className="card card-hover bg-white border border-neutral-200">
                 <div className="px-6 py-4 flex items-center justify-between">
                   <div>
                     <h3 className="text-lg font-semibold text-neutral-900">Recent transactions</h3>
@@ -246,12 +262,13 @@ export default function Dashboard() {
                         </tr>
                       </thead>
                       <tbody>
-                        {previewTxns.map((t: any) => (
-                          <tr key={t.id} className="border-b border-neutral-100 hover:bg-neutral-50 cursor-pointer" onClick={() => {
-                            handleTransactionSelect(t)
-                            // deep-link into Transactions page if user wants full view
-                            // (clicking row opens bulk modal here for quick edit)
-                          }}>
+                        {previewTxns.map((t: any, idx: number) => (
+                          <tr
+                            key={t.id}
+                            className="row-enter border-b border-neutral-100 hover:bg-neutral-50 cursor-pointer"
+                            style={{ animationDelay: `${idx * 60}ms` }}
+                            onClick={() => { handleTransactionSelect(t) }}
+                          >
                             <td className="px-4 py-3 text-neutral-600">{new Date(t.date).toLocaleDateString('en-ZA')}</td>
                             <td className="px-4 py-3 text-neutral-900 truncate max-w-[40ch]">{t.description || <span className="text-neutral-400 italic">[No description]</span>}</td>
                             <td className="px-4 py-3 text-neutral-700">{t.category || <span className="text-neutral-400 italic">Uncategorized</span>}</td>
@@ -263,9 +280,12 @@ export default function Dashboard() {
                   )}
                 </div>
               </div>
+              </AnimatedSection>
 
               {/* Export Options */}
-              <ExportButtons sessionId={sessionId} currentClient={currentClient} />
+              <AnimatedSection delay="0ms">
+                <ExportButtons sessionId={sessionId} currentClient={currentClient} />
+              </AnimatedSection>
 
               {/* Categories & Rules Button */}
               <div className="flex justify-center gap-4 py-4">
