@@ -86,24 +86,25 @@ class VATService:
         finally:
             db.close()
     
-    def _split_transactions_by_type(self, transactions: List[Transaction]) -> Tuple[List[Transaction], List[Transaction]]:
+    def _split_transactions_by_type(self, transactions: List[Transaction], client_id: Optional[int] = None) -> Tuple[List[Transaction], List[Transaction]]:
         """Split transactions into VAT Input (expenses) and VAT Output (income/sales)
-        
+
         Args:
             transactions: List of transactions
-            
+            client_id: Optional client ID for scoped custom category lookup
+
         Returns:
             Tuple of (vat_input_transactions, vat_output_transactions)
         """
         vat_input = []
         vat_output = []
-        
+
         for txn in transactions:
-            if self._is_vat_output(txn.category):
+            if self._is_vat_output(txn.category, client_id=client_id):
                 vat_output.append(txn)
             else:
                 vat_input.append(txn)
-        
+
         return vat_input, vat_output
     
     def get_session_vat_config(self, session_id: str) -> Optional[SessionVATConfig]:
@@ -570,19 +571,19 @@ class VATService:
                 txn.merchant = merchant_record.merchant if merchant_record else None
             
             if format == "csv":
-                return self._export_vat_csv(transactions, start_date, end_date, export_type)
+                return self._export_vat_csv(transactions, start_date, end_date, export_type, client_id=client_id)
             else:
-                return self._export_vat_excel(transactions, start_date, end_date, export_type)
+                return self._export_vat_excel(transactions, start_date, end_date, export_type, client_id=client_id)
         finally:
             db.close()
     
-    def _export_vat_csv(self, transactions: List[Transaction], start_date, end_date, export_type: str = "both"):
+    def _export_vat_csv(self, transactions: List[Transaction], start_date, end_date, export_type: str = "both", client_id: Optional[int] = None):
         """Export VAT report as CSV with separate sections for Input and Output"""
         from io import StringIO, BytesIO
         import csv
-        
+
         # Split transactions into input and output
-        vat_input, vat_output = self._split_transactions_by_type(transactions)
+        vat_input, vat_output = self._split_transactions_by_type(transactions, client_id=client_id)
         
         output = StringIO()
         writer = csv.writer(output)
@@ -725,14 +726,14 @@ class VATService:
         bytes_output.seek(0)
         return bytes_output
     
-    def _export_vat_excel(self, transactions: List[Transaction], start_date, end_date, export_type: str = "both"):
+    def _export_vat_excel(self, transactions: List[Transaction], start_date, end_date, export_type: str = "both", client_id: Optional[int] = None):
         """Export VAT report as Excel with separate sections for Input and Output"""
         import openpyxl
         from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
         from io import BytesIO
-        
+
         # Split transactions into input and output
-        vat_input, vat_output = self._split_transactions_by_type(transactions)
+        vat_input, vat_output = self._split_transactions_by_type(transactions, client_id=client_id)
         
         wb = openpyxl.Workbook()
         ws = wb.active
