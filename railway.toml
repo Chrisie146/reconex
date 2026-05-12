@@ -1,1 +1,24 @@
 # Service configs are in backend/railway.toml and frontend/railway.toml
+# (Kept here for reference; per-service configs override these)
+[build]
+
+[[services]]
+name = "reconex-api"
+rootDirectory = "backend"
+buildCommand = "pip install --upgrade pip && pip install -r requirements.txt"
+startCommand = "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port $PORT"
+healthcheckPath = "/health"
+
+[services.deploy]
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+[[services]]
+name = "reconex-frontend"
+rootDirectory = "frontend"
+buildCommand = "npm install && npm run build"
+startCommand = "npm start -- -p $PORT"
+
+[services.deploy]
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
