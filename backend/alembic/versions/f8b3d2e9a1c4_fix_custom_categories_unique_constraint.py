@@ -47,18 +47,22 @@ def upgrade() -> None:
     ))
 
     # Add composite unique constraint: one category name per client.
-    # We use a partial-style unique index via NULLS NOT DISTINCT (PG 15+)
-    # for consistent behaviour; fall back to standard unique if not supported.
-    # Standard UNIQUE(client_id, name) is safe because:
-    #   - (5, 'Transfer') is unique per client  ✓
-    #   - (NULL, 'Transfer') rows are NOT considered duplicates of each other
-    #     under the standard SQL NULL semantics (NULL != NULL), which is fine
-    #     for legacy global categories.
-    conn.execute(sa.text(
-        "ALTER TABLE custom_categories "
-        "ADD CONSTRAINT uq_custom_categories_client_name "
-        "UNIQUE (client_id, name)"
-    ))
+    # Wrapped in a DO block so it's a no-op if the constraint already exists
+    # (e.g. when the initial migration created the table with the constraint).
+    conn.execute(sa.text("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.table_constraints
+                WHERE table_name = 'custom_categories'
+                  AND constraint_name = 'uq_custom_categories_client_name'
+            ) THEN
+                ALTER TABLE custom_categories
+                    ADD CONSTRAINT uq_custom_categories_client_name
+                    UNIQUE (client_id, name);
+            END IF;
+        END $$
+    """))
 
 
 def downgrade() -> None:
