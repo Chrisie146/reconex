@@ -9,7 +9,7 @@ export function initPostHog(): void {
   if (posthog.__loaded) return
 
   const key = process.env.NEXT_PUBLIC_POSTHOG_KEY
-  if (!key) return // silently skip if key not configured
+  if (!key || key.startsWith('phc_your')) return // silently skip if key not configured
 
   posthog.init(key, {
     api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
