@@ -53,6 +53,7 @@ class UserResponse(BaseModel):
     created_at: datetime
     
     class Config:
+        orm_mode = True
         from_attributes = True
 
 
@@ -95,6 +96,7 @@ class ClientResponse(BaseModel):
     created_at: datetime
     
     class Config:
+        orm_mode = True
         from_attributes = True
 
 
@@ -112,6 +114,7 @@ class TransactionResponse(BaseModel):
     category: str
 
     class Config:
+        orm_mode = True
         from_attributes = True
 
 
@@ -180,6 +183,7 @@ class AccountResponse(BaseModel):
     description: Optional[str]
 
     class Config:
+        orm_mode = True
         from_attributes = True
 
 
@@ -188,7 +192,10 @@ class AccountNode(AccountResponse):
     children: List["AccountNode"] = Field(default_factory=list)
 
 
-AccountNode.model_rebuild()
+if hasattr(AccountNode, "model_rebuild"):
+    AccountNode.model_rebuild()
+else:
+    AccountNode.update_forward_refs()
 
 
 class SeedTemplateRequest(BaseModel):
@@ -207,4 +214,5 @@ class SessionResponse(BaseModel):
     created_at: datetime
     
     class Config:
+        orm_mode = True
         from_attributes = True
