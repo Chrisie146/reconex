@@ -4,16 +4,21 @@ import React, { useState, useEffect, useMemo } from 'react'
 import {
   Sparkles, Trash2, Edit2, Power, PowerOff, RefreshCw, Info,
   TrendingUp, Loader2, AlertCircle, X, Check, ChevronDown, ChevronUp,
-  Search, Crosshair, Store, ArrowRight, FileSearch, Tag
+  Search, Crosshair, Store, ArrowRight, FileSearch, Tag, Layers
 } from 'lucide-react'
 import { apiFetch } from '@/lib/apiFetch'
 import { useClient } from '@/lib/clientContext'
 import { toast } from 'sonner'
+import AccountSelector from './AccountSelector'
+import { useAccounts } from '@/lib/hooks/useAccounts'
 
 /* ── Types ──────────────────────────────────────────────────────────── */
 interface LearnedRule {
   id: number
   category: string
+  account_id: number | null
+  account_code?: string | null
+  account_name?: string | null
   pattern_type: string
   pattern_value: string
   confidence_score: number
@@ -38,11 +43,13 @@ const pm = (type: string) => PATTERN_META[type] ?? { icon: null, label: type, ve
    ══════════════════════════════════════════════════════════════════════ */
 export default function LearnedRulesManager({ sessionId }: LearnedRulesManagerProps) {
   const { currentClient } = useClient()
+  const { accounts } = useAccounts(currentClient?.id ?? null, { postable: true })
   const [rules, setRules] = useState<LearnedRule[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [editingRule, setEditingRule] = useState<number | null>(null)
   const [editCategory, setEditCategory] = useState('')
+  const [editAccountId, setEditAccountId] = useState<number | null>(null)
   const [showInfo, setShowInfo] = useState(false)
   const [applyingRules, setApplyingRules] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -76,8 +83,8 @@ export default function LearnedRulesManager({ sessionId }: LearnedRulesManagerPr
   }
 
   const toggleEnabled = async (rule: LearnedRule) => { await updateRule(rule.id, { enabled: !rule.enabled }) }
-  const startEdit = (rule: LearnedRule) => { setEditingRule(rule.id); setEditCategory(rule.category) }
-  const saveEdit = async (ruleId: number) => { await updateRule(ruleId, { category: editCategory }) }
+  const startEdit = (rule: LearnedRule) => { setEditingRule(rule.id); setEditCategory(rule.category); setEditAccountId(rule.account_id ?? null) }
+  const saveEdit = async (ruleId: number) => { await updateRule(ruleId, { category: editCategory, account_id: editAccountId }) }
 
   const applyRules = async () => {
     if (!confirm('Apply all learned rules to ALL transactions for this client?')) return
@@ -113,6 +120,8 @@ export default function LearnedRulesManager({ sessionId }: LearnedRulesManagerPr
     return rules.filter(r =>
       r.pattern_value.toLowerCase().includes(q) ||
       r.category.toLowerCase().includes(q) ||
+      (r.account_code || '').toLowerCase().includes(q) ||
+      (r.account_name || '').toLowerCase().includes(q) ||
       r.pattern_type.toLowerCase().includes(q)
     )
   }, [rules, searchTerm])
@@ -234,6 +243,7 @@ export default function LearnedRulesManager({ sessionId }: LearnedRulesManagerPr
         <div className="space-y-3">
           {filtered.map(rule => {
             const meta = pm(rule.pattern_type)
+            const account = accounts.find(a => a.id === rule.account_id) || null
             return (
               <div key={rule.id}
                 className={`rounded-xl border overflow-hidden transition-shadow ${
@@ -248,10 +258,17 @@ export default function LearnedRulesManager({ sessionId }: LearnedRulesManagerPr
                       <p className="text-sm text-neutral-700 leading-relaxed">
                         If transaction {meta.verb}{' '}
                         <code className="rounded bg-neutral-100 border border-neutral-200 px-1.5 py-0.5 text-[11px] font-mono text-neutral-800">{rule.pattern_value}</code>
-                        {' '}then categorize as{' '}
+                        {' '}then map to{' '}
                         <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 text-violet-700 border border-violet-200 px-2 py-0.5 text-[11px] font-semibold">
                           <Tag className="w-3 h-3" /> {rule.category}
                         </span>
+                        {(account || rule.account_name) && (
+                          <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 text-[11px] font-semibold">
+                            <Layers className="w-3 h-3" />
+                            {(account?.code || rule.account_code) && <span className="font-mono">{account?.code || rule.account_code}</span>}
+                            {account?.name || rule.account_name}
+                          </span>
+                        )}
                       </p>
 
                       {/* meta row */}
@@ -271,16 +288,23 @@ export default function LearnedRulesManager({ sessionId }: LearnedRulesManagerPr
 
                       {/* inline edit */}
                       {editingRule === rule.id && (
-                        <div className="flex items-center gap-2 mt-3">
-                          <span className="text-xs text-neutral-500">New category:</span>
+                        <div className="mt-3 grid grid-cols-1 md:grid-cols-[minmax(180px,280px)_minmax(240px,1fr)_auto_auto] items-center gap-2">
                           <input type="text" value={editCategory} onChange={e => setEditCategory(e.target.value)} autoFocus
-                            className="rounded-lg border border-neutral-200 px-3 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-violet-200" />
+                            aria-label="Category"
+                            className="rounded-lg border border-neutral-200 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-violet-200" />
+                          <AccountSelector
+                            clientId={currentClient?.id ?? null}
+                            value={editAccountId}
+                            onChange={(id) => setEditAccountId(id)}
+                            placeholder="Select account..."
+                            postableOnly
+                          />
                           <button onClick={() => saveEdit(rule.id)}
-                            className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-700">
+                            className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-emerald-700">
                             <Check className="w-3 h-3" /> Save
                           </button>
                           <button onClick={() => setEditingRule(null)}
-                            className="rounded-lg border border-neutral-200 px-2.5 py-1 text-xs text-neutral-600 hover:bg-neutral-50">
+                            className="rounded-lg border border-neutral-200 px-2.5 py-1.5 text-xs text-neutral-600 hover:bg-neutral-50">
                             Cancel
                           </button>
                         </div>

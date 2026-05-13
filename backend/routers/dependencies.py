@@ -95,7 +95,8 @@ class CreateCategoryRequest(BaseModel):
 class CreateRuleRequest(BaseModel):
     """Request body for creating a categorization rule"""
     name: str
-    category: str
+    category: Optional[str] = None
+    account_id: Optional[int] = None
     keywords: List[str]
     priority: int = 10
     auto_apply: bool = True
@@ -106,6 +107,7 @@ class UpdateRuleRequest(BaseModel):
     """Request body for updating a rule"""
     name: Optional[str] = None
     category: Optional[str] = None
+    account_id: Optional[int] = None
     keywords: Optional[List[str]] = None
     priority: Optional[int] = None
     auto_apply: Optional[bool] = None
