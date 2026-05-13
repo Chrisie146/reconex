@@ -38,6 +38,20 @@ class Client(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)  # References authenticated User
     name = Column(String, nullable=False)  # Client name
+
+    # Categorisation V2: drives the (entity × purpose → account) resolver.
+    # Values: pty_ltd | cc | sole_prop | trust | partnership | individual | npo
+    legal_entity_type = Column(String, nullable=True, index=True)
+    # Values: company | sole_prop | individual_trader | individual_only
+    # individual_trader = natural person conducting a trade on a personal bank account
+    # (farmers, freelancers, Airbnb hosts). Distinct from sole_prop (separate books).
+    trading_capacity = Column(String, nullable=True)
+    # Values: farming | retail | consulting | professional | construction | rental |
+    #         restaurant | other | none
+    trade_type = Column(String, nullable=True)
+    # When true, retail/grocery spend on a company card defaults to Director's Loan.
+    director_uses_company_card = Column(Boolean, nullable=False, default=False)
+
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
@@ -134,6 +148,10 @@ class Transaction(Base):
     # Populated on upload from keyword/merchant rules; cleared when user accepts/overrides
     suggested_category = Column(String, nullable=True)
 
+    # Categorisation V2: human-readable reason shown next to the suggestion
+    # (e.g. "Director's Loan — personal use of company card").
+    suggestion_reason = Column(String, nullable=True)
+
     # Balance validation metadata (for production transparency)
     balance_verified = Column(Integer, nullable=True)  # 1=True, 0=False, NULL=None/no balance
     balance_difference = Column(Float, nullable=True)  # Absolute difference from expected balance
@@ -219,6 +237,40 @@ class Rule(Base):
     action = Column(String, nullable=False)      # JSON string
     auto_apply = Column(Integer, default=0)      # 1 = auto-apply on upload
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class SystemRule(Base):
+    """
+    System-shipped categorisation rules (read-only, ship with the product).
+
+    Distinct from Rule (user-authored, per-client). System rules emit a
+    `purpose` (business/personal/capital/financing/tax/mixed/other) plus an
+    optional CoA code hint; the resolver maps the purpose to an actual
+    account_id on the client's seeded CoA using the entity × trading_capacity
+    matrix.
+
+    Conditions JSON shape matches Rule.conditions (reuses txn_matches_conditions
+    in routers/dependencies.py). entity_filter optionally restricts which clients
+    a rule applies to.
+    """
+    __tablename__ = "system_rules"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String, unique=True, nullable=False, index=True)  # stable id for upserts (e.g. "sa.bank.fnb_monthly_fee")
+    name = Column(String, nullable=False)
+    priority = Column(Integer, nullable=False, default=100, index=True)
+    conditions = Column(String, nullable=False)  # JSON string, same shape as Rule.conditions
+    # Values: business | personal | capital | financing | tax | mixed | other
+    purpose = Column(String, nullable=False)
+    coa_hint = Column(String, nullable=True)  # CoA code (e.g. "6700"); resolver may override
+    # Values: high (auto-apply) | medium (suggest) | low (flag for review)
+    confidence = Column(String, nullable=False, default="medium")
+    # Optional JSON restriction by legal_entity_type / trading_capacity / trade_type
+    entity_filter = Column(String, nullable=True)
+    description = Column(String, nullable=True)  # accountant-facing reason text
+    enabled = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class Invoice(Base):
@@ -612,10 +664,15 @@ def init_db():
             "ALTER TABLE transactions ADD COLUMN suggested_category VARCHAR",
             "ALTER TABLE transactions ADD COLUMN account_id INTEGER",
             "ALTER TABLE transactions ADD COLUMN suggested_account_id INTEGER",
+            "ALTER TABLE transactions ADD COLUMN suggestion_reason VARCHAR",
             "ALTER TABLE user_categorization_rules ADD COLUMN account_id INTEGER",
             "ALTER TABLE archived_transactions ADD COLUMN account_id INTEGER",
             "ALTER TABLE archived_transactions ADD COLUMN account_code VARCHAR",
             "ALTER TABLE archived_transactions ADD COLUMN account_name VARCHAR",
+            "ALTER TABLE clients ADD COLUMN legal_entity_type VARCHAR",
+            "ALTER TABLE clients ADD COLUMN trading_capacity VARCHAR",
+            "ALTER TABLE clients ADD COLUMN trade_type VARCHAR",
+            "ALTER TABLE clients ADD COLUMN director_uses_company_card BOOLEAN DEFAULT 0",
         ]:
             try:
                 conn.execute(text(ddl))

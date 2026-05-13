@@ -293,8 +293,19 @@ async def log_requests(request: Request, call_next):
 
 @app.on_event("startup")
 def startup_event():
-    """Initialize database tables."""
+    """Initialize database tables and seed system-shipped data."""
     init_db()
+    try:
+        from services.system_rules.seed import seed_system_rules
+        from models import SessionLocal
+        db = SessionLocal()
+        try:
+            seed_system_rules(db)
+        finally:
+            db.close()
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).warning("System rule seeding skipped: %s", exc)
 
 
 # =============================================================================

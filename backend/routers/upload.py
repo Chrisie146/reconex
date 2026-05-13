@@ -23,6 +23,7 @@ from routers.dependencies import (
 from services.bank_detector import BankDetector
 from services.categoriser import MERCHANT_MAPPINGS, categorize_transaction
 from services.parser import _find_data_start, normalize_csv, parse_date, validate_csv
+from services.system_rule_engine import apply_system_rules
 from services.pdf_parser import ParserError as PDFParserError
 from services.pdf_parser import pdf_to_csv_bytes
 from rate_limiter import upload_limiter
@@ -128,7 +129,13 @@ def _apply_rules_and_save(
 
     categories_found: set = set()
 
-    for txn_data in normalized_transactions:
+    # Categorisation V2: evaluate system-shipped rules first, per-transaction.
+    # The result feeds suggestion fields on the new row; later layers (user rules,
+    # learned rules) can still override.
+    client = db.query(Client).filter(Client.id == client_id).first() if client_id else None
+    system_hits = apply_system_rules(normalized_transactions, client, db)
+
+    for idx, txn_data in enumerate(normalized_transactions):
         raw_category, is_expense = categorize_transaction(txn_data["description"], txn_data["amount"])
 
         # Built-in rules always confirm directly — no suggestions needed.
@@ -182,6 +189,22 @@ def _apply_rules_and_save(
                 if txn_data.get("_merchant"):
                     break
 
+        # Apply system-rule hit when no user rule already set account_id.
+        # High-confidence system rules auto-apply; medium/low populate suggestion.
+        suggested_account_id = None
+        suggestion_reason = None
+        sys_hit = system_hits[idx] if idx < len(system_hits) else None
+        if sys_hit is not None and sys_hit.account is not None:
+            if account_id is None and sys_hit.confidence == "high":
+                account_id = sys_hit.account.id
+                category = sys_hit.account.name
+                suggestion_reason = sys_hit.reason
+            elif account_id is None:
+                suggested_account_id = sys_hit.account.id
+                suggestion_reason = sys_hit.reason
+        elif sys_hit is not None:
+            suggestion_reason = sys_hit.reason
+
         categories_found.add(category)
         transaction = Transaction(
             client_id=client_id,
@@ -191,7 +214,9 @@ def _apply_rules_and_save(
             amount=txn_data["amount"],
             category=category,
             account_id=account_id,
+            suggested_account_id=suggested_account_id,
             suggested_category=None,
+            suggestion_reason=suggestion_reason,
             bank_source=bank_source,
             balance_verified=txn_data.get("balance_verified"),
             balance_difference=txn_data.get("balance_difference"),

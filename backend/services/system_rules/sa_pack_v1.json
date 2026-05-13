@@ -1,0 +1,397 @@
+{
+  "name": "sa_pack_v1",
+  "version": 1,
+  "description": "South African anchor rules — banks, SARS, utilities, fuel, retail. Phase A of Categorisation V2.",
+  "rules": [
+    {
+      "code": "sa.bank.fnb_monthly_fee",
+      "name": "FNB monthly account fee",
+      "priority": 10,
+      "conditions": {"match_type": "all", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)\\bfnb\\b.*\\b(monthly|account)\\s+fee\\b"}
+      ]},
+      "purpose": "business",
+      "coa_hint": "6700",
+      "confidence": "high",
+      "description": "Bank Charges — FNB monthly fee"
+    },
+    {
+      "code": "sa.bank.standard_monthly_fee",
+      "name": "Standard Bank monthly fee",
+      "priority": 10,
+      "conditions": {"match_type": "all", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)standard\\s*bank.*(monthly|service)\\s+fee"}
+      ]},
+      "purpose": "business",
+      "coa_hint": "6700",
+      "confidence": "high",
+      "description": "Bank Charges — Standard Bank monthly fee"
+    },
+    {
+      "code": "sa.bank.absa_monthly_fee",
+      "name": "Absa monthly fee",
+      "priority": 10,
+      "conditions": {"match_type": "all", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)\\babsa\\b.*(monthly|service)\\s+fee"}
+      ]},
+      "purpose": "business",
+      "coa_hint": "6700",
+      "confidence": "high",
+      "description": "Bank Charges — Absa monthly fee"
+    },
+    {
+      "code": "sa.bank.capitec_fee",
+      "name": "Capitec fee",
+      "priority": 10,
+      "conditions": {"match_type": "all", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)capitec.*(fee|charge)"}
+      ]},
+      "purpose": "business",
+      "coa_hint": "6700",
+      "confidence": "high",
+      "description": "Bank Charges — Capitec"
+    },
+    {
+      "code": "sa.bank.nedbank_fee",
+      "name": "Nedbank fee",
+      "priority": 10,
+      "conditions": {"match_type": "all", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)nedbank.*(fee|charge|monthly)"}
+      ]},
+      "purpose": "business",
+      "coa_hint": "6700",
+      "confidence": "high",
+      "description": "Bank Charges — Nedbank"
+    },
+    {
+      "code": "sa.bank.atm_fee",
+      "name": "ATM withdrawal fee",
+      "priority": 20,
+      "conditions": {"match_type": "any", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)\\batm\\s+(fee|charge|withdrawal\\s+fee)\\b"},
+        {"field": "description", "op": "contains", "value": "saswitch"}
+      ]},
+      "purpose": "business",
+      "coa_hint": "6700",
+      "confidence": "high",
+      "description": "Bank Charges — ATM fee"
+    },
+    {
+      "code": "sa.bank.eft_fee",
+      "name": "EFT / payment fee",
+      "priority": 20,
+      "conditions": {"match_type": "any", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)\\beft\\s+(fee|charge)\\b"},
+        {"field": "description", "op": "regex", "value": "(?i)payment\\s+fee"},
+        {"field": "description", "op": "regex", "value": "(?i)bank\\s+charges?"}
+      ]},
+      "purpose": "business",
+      "coa_hint": "6700",
+      "confidence": "high",
+      "description": "Bank Charges — EFT/payment fee"
+    },
+    {
+      "code": "sa.bank.debit_order_rejected",
+      "name": "Debit order rejection / unpaid",
+      "priority": 20,
+      "conditions": {"match_type": "any", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)debit\\s+order\\s+(rejected|unpaid|reversal|fee)"},
+        {"field": "description", "op": "contains", "value": "rd fee"}
+      ]},
+      "purpose": "business",
+      "coa_hint": "6700",
+      "confidence": "high",
+      "description": "Bank Charges — debit order rejected"
+    },
+    {
+      "code": "sa.bank.interest_received",
+      "name": "Interest received",
+      "priority": 30,
+      "conditions": {"match_type": "any", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)interest\\s+(received|earned|credit)"},
+        {"field": "description", "op": "regex", "value": "(?i)credit\\s+interest"}
+      ]},
+      "purpose": "business",
+      "coa_hint": "4400",
+      "confidence": "high",
+      "description": "Interest Income"
+    },
+    {
+      "code": "sa.bank.interest_paid",
+      "name": "Interest paid",
+      "priority": 30,
+      "conditions": {"match_type": "any", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)interest\\s+(paid|charged|debit|expense)"},
+        {"field": "description", "op": "regex", "value": "(?i)debit\\s+interest"}
+      ]},
+      "purpose": "business",
+      "coa_hint": "7100",
+      "confidence": "high",
+      "description": "Interest Expense"
+    },
+    {
+      "code": "sa.tax.sars_paye",
+      "name": "SARS PAYE payment",
+      "priority": 5,
+      "conditions": {"match_type": "all", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)\\bsars\\b.*\\b(paye|pa ye)\\b"}
+      ]},
+      "purpose": "tax",
+      "coa_hint": "2150",
+      "confidence": "high",
+      "description": "PAYE Payable — SARS"
+    },
+    {
+      "code": "sa.tax.sars_vat",
+      "name": "SARS VAT payment",
+      "priority": 5,
+      "conditions": {"match_type": "all", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)\\bsars\\b.*\\bvat\\b"}
+      ]},
+      "purpose": "tax",
+      "coa_hint": "2220",
+      "confidence": "high",
+      "description": "VAT Payable — SARS"
+    },
+    {
+      "code": "sa.tax.sars_provisional",
+      "name": "SARS provisional tax",
+      "priority": 5,
+      "conditions": {"match_type": "all", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)\\bsars\\b.*(provisional|prov\\s*tax|irp6)"}
+      ]},
+      "purpose": "tax",
+      "coa_hint": "9200",
+      "confidence": "high",
+      "description": "Provisional Tax — SARS"
+    },
+    {
+      "code": "sa.tax.sars_income_tax",
+      "name": "SARS income tax",
+      "priority": 6,
+      "conditions": {"match_type": "all", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)\\bsars\\b.*(income\\s+tax|itr14|itr12)"}
+      ]},
+      "purpose": "tax",
+      "coa_hint": "9100",
+      "confidence": "high",
+      "description": "Income Tax — SARS"
+    },
+    {
+      "code": "sa.tax.sars_generic",
+      "name": "SARS payment (unspecified)",
+      "priority": 50,
+      "conditions": {"match_type": "all", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)\\bsars\\b"}
+      ]},
+      "purpose": "tax",
+      "coa_hint": "9100",
+      "confidence": "medium",
+      "description": "SARS payment — confirm allocation (PAYE / VAT / income tax / provisional)"
+    },
+    {
+      "code": "sa.tax.uif",
+      "name": "UIF payment",
+      "priority": 8,
+      "conditions": {"match_type": "any", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)\\bu\\s*i\\s*f\\b"},
+        {"field": "description", "op": "regex", "value": "(?i)unemployment\\s+insurance"}
+      ]},
+      "purpose": "tax",
+      "coa_hint": "2160",
+      "confidence": "high",
+      "description": "UIF Payable"
+    },
+    {
+      "code": "sa.tax.sdl",
+      "name": "SDL payment",
+      "priority": 8,
+      "conditions": {"match_type": "any", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)\\bsdl\\b"},
+        {"field": "description", "op": "regex", "value": "(?i)skills\\s+development\\s+levy"}
+      ]},
+      "purpose": "tax",
+      "coa_hint": "2170",
+      "confidence": "high",
+      "description": "SDL Payable"
+    },
+    {
+      "code": "sa.tax.cipc",
+      "name": "CIPC annual return",
+      "priority": 15,
+      "conditions": {"match_type": "all", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)\\bcipc\\b"}
+      ]},
+      "purpose": "business",
+      "coa_hint": "6500",
+      "confidence": "high",
+      "description": "CIPC fees — Accounting & Audit"
+    },
+    {
+      "code": "sa.util.eskom",
+      "name": "Eskom electricity",
+      "priority": 30,
+      "conditions": {"match_type": "all", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)\\beskom\\b"}
+      ]},
+      "purpose": "business",
+      "coa_hint": "6210",
+      "confidence": "high",
+      "description": "Utilities — Eskom"
+    },
+    {
+      "code": "sa.util.municipality",
+      "name": "Municipality / city services",
+      "priority": 35,
+      "conditions": {"match_type": "any", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)city\\s+of\\s+(cape\\s+town|johannesburg|joburg|tshwane|ekurhuleni|ethekwini)"},
+        {"field": "description", "op": "regex", "value": "(?i)\\b(municipality|municipal)\\b"}
+      ]},
+      "purpose": "business",
+      "coa_hint": "6210",
+      "confidence": "high",
+      "description": "Utilities — municipality"
+    },
+    {
+      "code": "sa.telco.vodacom",
+      "name": "Vodacom",
+      "priority": 40,
+      "conditions": {"match_type": "all", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)\\bvodacom\\b"}
+      ]},
+      "purpose": "business",
+      "coa_hint": "6220",
+      "confidence": "high",
+      "description": "Telephone & Internet — Vodacom"
+    },
+    {
+      "code": "sa.telco.mtn",
+      "name": "MTN",
+      "priority": 40,
+      "conditions": {"match_type": "all", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)\\bmtn\\b"}
+      ]},
+      "purpose": "business",
+      "coa_hint": "6220",
+      "confidence": "high",
+      "description": "Telephone & Internet — MTN"
+    },
+    {
+      "code": "sa.telco.telkom",
+      "name": "Telkom",
+      "priority": 40,
+      "conditions": {"match_type": "all", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)\\btelkom\\b"}
+      ]},
+      "purpose": "business",
+      "coa_hint": "6220",
+      "confidence": "high",
+      "description": "Telephone & Internet — Telkom"
+    },
+    {
+      "code": "sa.fuel.engen",
+      "name": "Engen fuel",
+      "priority": 50,
+      "conditions": {"match_type": "all", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)\\bengen\\b"}
+      ]},
+      "purpose": "business",
+      "coa_hint": "6300",
+      "confidence": "medium",
+      "description": "Motor Vehicle Fuel — Engen (confirm logbook supports business use)"
+    },
+    {
+      "code": "sa.fuel.shell",
+      "name": "Shell fuel",
+      "priority": 50,
+      "conditions": {"match_type": "all", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)\\bshell\\b"}
+      ]},
+      "purpose": "business",
+      "coa_hint": "6300",
+      "confidence": "medium",
+      "description": "Motor Vehicle Fuel — Shell (confirm logbook supports business use)"
+    },
+    {
+      "code": "sa.fuel.sasol_caltex_bp",
+      "name": "Sasol / Caltex / BP / Total fuel",
+      "priority": 50,
+      "conditions": {"match_type": "any", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)\\bsasol\\b"},
+        {"field": "description", "op": "regex", "value": "(?i)\\bcaltex\\b"},
+        {"field": "description", "op": "regex", "value": "(?i)\\bbp\\b\\s+(filling|garage|petrol|fuel)"},
+        {"field": "description", "op": "regex", "value": "(?i)\\btotal\\b\\s+(garage|fuel|petrol)"}
+      ]},
+      "purpose": "business",
+      "coa_hint": "6300",
+      "confidence": "medium",
+      "description": "Motor Vehicle Fuel (confirm logbook supports business use)"
+    },
+    {
+      "code": "sa.retail.checkers",
+      "name": "Checkers / Shoprite grocery",
+      "priority": 60,
+      "conditions": {"match_type": "any", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)\\bcheckers\\b"},
+        {"field": "description", "op": "regex", "value": "(?i)\\bshoprite\\b"}
+      ]},
+      "purpose": "personal",
+      "coa_hint": null,
+      "confidence": "medium",
+      "description": "Retail grocery — likely personal spend on company card",
+      "entity_filter": {"trading_capacity": ["company"]}
+    },
+    {
+      "code": "sa.retail.pnp",
+      "name": "Pick n Pay grocery",
+      "priority": 60,
+      "conditions": {"match_type": "all", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)pick\\s*n\\s*pay|\\bpnp\\b"}
+      ]},
+      "purpose": "personal",
+      "coa_hint": null,
+      "confidence": "medium",
+      "description": "Retail grocery — likely personal spend on company card",
+      "entity_filter": {"trading_capacity": ["company"]}
+    },
+    {
+      "code": "sa.retail.woolworths",
+      "name": "Woolworths",
+      "priority": 60,
+      "conditions": {"match_type": "all", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)\\bwoolworths\\b|\\bwoolies\\b"}
+      ]},
+      "purpose": "personal",
+      "coa_hint": null,
+      "confidence": "medium",
+      "description": "Retail — likely personal spend on company card",
+      "entity_filter": {"trading_capacity": ["company"]}
+    },
+    {
+      "code": "sa.retail.spar",
+      "name": "Spar grocery",
+      "priority": 60,
+      "conditions": {"match_type": "all", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)\\bspar\\b"}
+      ]},
+      "purpose": "personal",
+      "coa_hint": null,
+      "confidence": "medium",
+      "description": "Retail grocery — likely personal spend on company card",
+      "entity_filter": {"trading_capacity": ["company"]}
+    },
+    {
+      "code": "sa.payroll.salary_payment",
+      "name": "Salary / wages payment",
+      "priority": 25,
+      "conditions": {"match_type": "any", "conditions": [
+        {"field": "description", "op": "regex", "value": "(?i)\\b(salary|salaries|wages|payroll)\\b"},
+        {"field": "description", "op": "regex", "value": "(?i)\\bsal\\s+pay\\b"}
+      ]},
+      "purpose": "business",
+      "coa_hint": "6100",
+      "confidence": "medium",
+      "description": "Salaries & Wages — confirm payee is staff (not director)"
+    }
+  ]
+}
