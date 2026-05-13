@@ -1,6 +1,6 @@
 'use client'
 
-import { X, Loader2, AlertCircle, CheckCircle, AlertTriangle, Plus, Pencil, Tag, Store, Sparkles, Copy, Save } from 'lucide-react'
+import { X, Loader2, AlertCircle, CheckCircle, AlertTriangle, Plus, Pencil, Tag, Store, Sparkles, Copy, Save, Layers } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import axios from '@/lib/axiosClient'
 import AccountSelector from './AccountSelector'
@@ -70,6 +70,7 @@ export default function TransactionEditPanel({
   const [keyword, setKeyword] = useState('')
   const [applyMerchantSimilar, setApplyMerchantSimilar] = useState(false)
   const [applyCategorySimilar, setApplyCategorySimilar] = useState(false)
+  const [rememberMappingRule, setRememberMappingRule] = useState(true)
   const [description, setDescription] = useState('')
   const [editingDescription, setEditingDescription] = useState(false)
 
@@ -182,6 +183,7 @@ export default function TransactionEditPanel({
       setKeyword(smartKw)
       setApplyMerchantSimilar(false)
       setApplyCategorySimilar(false)
+      setRememberMappingRule(true)
     }
   }, [transaction, isOpen])
 
@@ -351,6 +353,40 @@ export default function TransactionEditPanel({
     }
   }
 
+  const createManualMappingRule = async () => {
+    const trimmedKeyword = keyword.trim()
+    const trimmedCategory = category.trim()
+
+    if (!clientId || trimmedKeyword.length < 3 || (!trimmedCategory && accountId == null)) {
+      return null
+    }
+
+    const ruleNameTarget = trimmedCategory || transaction?.account_name || 'Account'
+    const response = await axios.post(
+      `${API_BASE_URL}/rules`,
+      {
+        name: `${trimmedKeyword} -> ${ruleNameTarget}`,
+        enabled: true,
+        priority: 100,
+        conditions: {
+          match_type: 'any',
+          conditions: [
+            { field: 'description', op: 'contains', value: trimmedKeyword },
+          ],
+        },
+        action: {
+          type: 'set_category',
+          category: trimmedCategory || null,
+          account_id: accountId,
+        },
+        auto_apply: true,
+      },
+      { params: { client_id: clientId } }
+    )
+
+    return response.data?.id ?? null
+  }
+
   const handleSave = async () => {
     if (!transaction) {
       setError('No transaction selected')
@@ -391,8 +427,7 @@ export default function TransactionEditPanel({
           {
             params: {
               session_id: effectiveSessionId,
-              learn_rule: true,
-              keyword: keyword && keyword.trim().length >= 3 ? keyword : undefined
+              learn_rule: false
             }
           }
         )
@@ -417,26 +452,21 @@ export default function TransactionEditPanel({
         )
       }
 
-      if (applyCategorySimilar && (category !== (transaction.category || ''))) {
-        // Use client_id to apply across all statements when available
-        const bulkParams: any = clientId
-          ? { client_id: clientId }
-          : { session_id: effectiveSessionId }
+      let createdRuleId: number | null = null
+      if (rememberMappingRule && keyword.trim().length >= 3 && (category.trim() || accountId != null)) {
+        createdRuleId = await createManualMappingRule()
+      }
 
+      if (applyCategorySimilar && createdRuleId) {
         await axios.post(
-          `${API_BASE_URL}/bulk-categorise`,
-          {
-            keyword: keyword,
-            category: category,
-            only_uncategorised: false
-          },
-          { params: bulkParams }
+          `${API_BASE_URL}/rules/${createdRuleId}/apply`,
+          { session_id: effectiveSessionId }
         )
         setApplyCategorySimilar(false)
         onRefresh?.()
       }
 
-      setSuccess('Changes saved')
+      setSuccess(createdRuleId ? 'Saved and added to Manual Rules' : 'Changes saved')
       setTimeout(() => setSuccess(null), 2000)
 
       // Merge API response (with VAT fields) with existing transaction data
@@ -482,6 +512,11 @@ export default function TransactionEditPanel({
 
   const descriptionChangedLocally = editingDescription && description !== cleanDescription(transaction.description)
   const hasChanges = category !== (transaction.category || '') || accountId !== (transaction.account_id ?? null) || merchant !== (transaction.merchant || '') || descriptionChangedLocally
+  const canCreateRule = rememberMappingRule && keyword.trim().length >= 3 && (!!category.trim() || accountId != null)
+  const ruleTargetSummary = [
+    category.trim() ? category.trim() : null,
+    accountId != null ? 'selected CoA account' : null,
+  ].filter(Boolean).join(' + ')
 
   return (
     <>
@@ -593,7 +628,248 @@ export default function TransactionEditPanel({
           )}
 
           {/* ─── Category Section ─── */}
-          {!showCreateCategory ? (
+          <div className="rounded-xl bg-white ring-1 ring-neutral-200 p-4 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-700 ring-1 ring-blue-100">
+                1
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-neutral-900">Map this transaction</h3>
+                <p className="text-xs text-neutral-500">Choose a category, a Chart of Accounts account, or both.</p>
+              </div>
+            </div>
+
+            {!showCreateCategory ? (
+              <>
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <Tag className="w-4 h-4 text-neutral-400" />
+                      <label className="text-sm font-medium text-neutral-700">Category</label>
+                    </div>
+                    <select
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                      className="w-full rounded-lg bg-white px-3 py-2.5 text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
+                    >
+                      <option value="">No category</option>
+                      {categories.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <Layers className="w-4 h-4 text-neutral-400" />
+                      <label className="text-sm font-medium text-neutral-700">Chart of Accounts account</label>
+                    </div>
+                    <AccountSelector
+                      clientId={clientId ?? null}
+                      value={accountId}
+                      onChange={(id, _acct) => setAccountId(id)}
+                      postableOnly
+                      placeholder="No CoA account"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setShowCreateCategory(true)}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Create new category
+                </button>
+              </>
+            ) : (
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-neutral-700">New category name</label>
+                  <input
+                    type="text"
+                    value={newCategoryName}
+                    onChange={(e) => {
+                      setNewCategoryName(e.target.value)
+                      setCreateError('')
+                    }}
+                    placeholder="e.g., Subscriptions"
+                    className="w-full rounded-lg bg-white px-3 py-2.5 text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                {createError && (
+                  <div className="flex items-start gap-2 text-sm text-red-700">
+                    <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <span>{createError}</span>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleCreateCategory}
+                    disabled={loading || !newCategoryName.trim()}
+                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      'Create'
+                    )}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowCreateCategory(false)
+                      setNewCategoryName('')
+                      setCreateError('')
+                    }}
+                    className="flex-1 rounded-lg px-4 py-2 text-sm font-medium text-neutral-700 ring-1 ring-neutral-200 transition-colors hover:bg-neutral-100"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-xl bg-blue-50 ring-1 ring-blue-200 p-4 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-sm font-semibold text-blue-700 ring-1 ring-blue-200">
+                2
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-blue-950">Remember this mapping</h3>
+                <p className="text-xs text-blue-700">Save a Manual Rule so future matching transactions are mapped the same way.</p>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-blue-950">Match keyword</label>
+                {keyword.trim().length >= 5 ? (
+                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200">Specific</span>
+                ) : keyword.trim().length >= 3 ? (
+                  <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-amber-200">Broad</span>
+                ) : (
+                  <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-medium text-blue-700 ring-1 ring-blue-200">Required for rules</span>
+                )}
+              </div>
+              <input
+                type="text"
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value.toUpperCase())}
+                placeholder="e.g., WOOLWORTHS, NETFLIX, UBER"
+                className="w-full rounded-lg bg-white px-3 py-2 text-sm text-neutral-900 ring-1 ring-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-blue-700">Use the shortest text that reliably identifies this merchant or payment.</p>
+            </div>
+
+            <div className="space-y-3">
+              <label className="flex items-start gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={rememberMappingRule}
+                  onChange={(e) => {
+                    setRememberMappingRule(e.target.checked)
+                    if (!e.target.checked) setApplyCategorySimilar(false)
+                  }}
+                  className="mt-0.5 h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500"
+                />
+                <div>
+                  <span className="text-sm font-medium text-blue-950">Save as Manual Rule</span>
+                  <p className="text-xs text-blue-700 mt-0.5">The rule will appear under Manual Rules and run on future uploads.</p>
+                </div>
+              </label>
+
+              <label className={`flex items-start gap-2.5 ${canCreateRule ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
+                <input
+                  type="checkbox"
+                  checked={applyCategorySimilar}
+                  onChange={(e) => setApplyCategorySimilar(e.target.checked)}
+                  disabled={!canCreateRule}
+                  className="mt-0.5 h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed"
+                />
+                <div>
+                  <span className="text-sm font-medium text-blue-950">Also update matching rows in this statement</span>
+                  <p className="text-xs text-blue-700 mt-0.5">
+                    Requires a keyword of at least 3 characters and a category or CoA account.
+                  </p>
+                </div>
+              </label>
+            </div>
+
+            <div className="rounded-lg bg-white/80 px-3 py-2 text-xs text-blue-900 ring-1 ring-blue-100">
+              {canCreateRule ? (
+                <>Rule preview: when description contains <span className="font-semibold">{keyword.trim()}</span>, map to <span className="font-semibold">{ruleTargetSummary}</span>.</>
+              ) : (
+                <>Choose a mapping and enter a keyword to save a Manual Rule.</>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-xl bg-white ring-1 ring-neutral-200 p-4 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-50 text-sm font-semibold text-neutral-700 ring-1 ring-neutral-200">
+                3
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-neutral-900">Merchant is optional</h3>
+                <p className="text-xs text-neutral-500">Use this only when you want vendor-level reporting.</p>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Store className="w-4 h-4 text-neutral-400" />
+                <label className="text-sm font-medium text-neutral-700">Merchant</label>
+              </div>
+              <input
+                type="text"
+                value={merchant}
+                onChange={(e) => setMerchant(e.target.value)}
+                placeholder="e.g., Shell, Spar, FNB"
+                className="w-full rounded-lg bg-white px-3 py-2.5 text-sm text-neutral-900 ring-1 ring-neutral-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
+              />
+            </div>
+
+            <label className="flex items-start gap-2.5 cursor-pointer rounded-lg bg-neutral-50 p-3 ring-1 ring-neutral-200">
+              <input
+                type="checkbox"
+                checked={applyMerchantSimilar}
+                onChange={(e) => setApplyMerchantSimilar(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
+              />
+              <div>
+                <span className="text-sm font-medium text-neutral-900">Also apply merchant to matching rows</span>
+                <p className="text-xs text-neutral-500 mt-0.5">Uses the same keyword from the Manual Rule section.</p>
+              </div>
+            </label>
+
+            {applyMerchantSimilar && (
+              <button
+                onClick={handleApplyMerchantSimilar}
+                disabled={loading || (merchant || '').trim().length === 0 || keyword.trim().length < 3}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Applying...
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    Apply Merchant to Matching Rows
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+
+          {false && (<>{!showCreateCategory ? (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Tag className="w-4 h-4 text-neutral-400" />
@@ -630,7 +906,7 @@ export default function TransactionEditPanel({
               </button>
 
               {/* Combined: Learn Rule + Apply to Similar (shown when category changes) */}
-              {category && category !== (transaction.category || '') && (
+              {category && category !== (transaction?.category || '') && (
                 <div className="rounded-xl bg-blue-50 ring-1 ring-blue-200 p-3 space-y-3">
                   <div className="flex items-start gap-2">
                     <svg className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -856,12 +1132,19 @@ export default function TransactionEditPanel({
               )}
             </div>
           </div>
+          </>)}
 
           {/* No Changes Hint */}
-          {!hasChanges && (
+          {!hasChanges && !canCreateRule && (
             <div className="flex items-center gap-2.5 rounded-xl bg-neutral-50 ring-1 ring-neutral-200 px-4 py-3">
               <Sparkles className="w-4 h-4 text-neutral-400 flex-shrink-0" />
               <p className="text-sm text-neutral-500">No changes made</p>
+            </div>
+          )}
+          {!hasChanges && canCreateRule && (
+            <div className="flex items-center gap-2.5 rounded-xl bg-blue-50 ring-1 ring-blue-200 px-4 py-3">
+              <Sparkles className="w-4 h-4 text-blue-500 flex-shrink-0" />
+              <p className="text-sm text-blue-800">Ready to save a Manual Rule</p>
             </div>
           )}
         </div>
@@ -876,7 +1159,7 @@ export default function TransactionEditPanel({
           </button>
           <button
             onClick={handleSave}
-            disabled={loading || !hasChanges}
+            disabled={loading || (!hasChanges && !canCreateRule)}
             className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
