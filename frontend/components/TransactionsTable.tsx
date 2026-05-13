@@ -1,14 +1,13 @@
 'use client'
 
 import { useEffect, useState, useMemo, type ReactNode, useRef } from 'react'
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileText, X, Tag, Users, Trash2, Search, Settings, Check, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw, RotateCcw, Filter, TrendingUp, TrendingDown, HelpCircle, CheckSquare, Square, MinusSquare, Calculator } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileText, X, Tag, Trash2, Search, Settings, Check, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw, RotateCcw, Filter, TrendingUp, TrendingDown, HelpCircle, CheckSquare, Square, MinusSquare, Calculator, PanelRightOpen } from 'lucide-react'
 import axios from '@/lib/axiosClient'
 import { isAxiosError } from 'axios'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { arrayMove, SortableContext, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import FilteredCategorizeModal from './FilteredCategorizeModal'
-import BulkMerchantModal from './BulkMerchantModal'
+import BulkEditModal from './BulkEditModal'
 import { LoadingSection } from './Spinner'
 import InvoiceUploadModal from './InvoiceUploadModal'
 import TransactionEditPanel from './TransactionEditPanel'
@@ -153,9 +152,8 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
   const [dateFrom, setDateFrom] = useState<string>('')
   const [dateTo, setDateTo] = useState<string>('')
   const [dateError, setDateError] = useState<string | null>(null)
-  const [showFilteredModal, setShowFilteredModal] = useState(false)
   const [filteredModalTransactions, setFilteredModalTransactions] = useState<Transaction[] | null>(null)
-  const [showBulkMerchantModal, setShowBulkMerchantModal] = useState(false)
+  const [showBulkEditModal, setShowBulkEditModal] = useState(false)
   const [categoriesList, setCategoriesList] = useState<string[]>(categories || [])
   const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null)
   const [selectedCategoryValue, setSelectedCategoryValue] = useState<string>('')
@@ -192,6 +190,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [focusedTxnId, setFocusedTxnId] = useState<number | null>(null)
   const [instantQuery, setInstantQuery] = useState('')
   const debouncedInstantQuery = useDebounce(instantQuery, 300)
 
@@ -429,11 +428,6 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
     setSearchTrigger(prev => prev + 1)
   }
 
-  const handleCategorizeFiltered = () => {
-    setFilteredModalTransactions(sortedAndFilteredTransactions)
-    setShowFilteredModal(true)
-  }
-
   const handleUndo = async () => {
     try {
       const response = await axios.post(`${API_BASE_URL}/bulk-categorise/undo`, {}, { params: { session_id: sessionId } })
@@ -529,7 +523,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
   const getColumnLabel = (col: ColumnId): string => {
     const labels: Record<ColumnId, string> = {
       date: 'Date', description: 'Description', merchant: 'Merchant', amount: 'Amount',
-      vat_amount: 'VAT Amount', amount_excl_vat: 'Amount Excl VAT', category: 'Category',
+      vat_amount: 'VAT', amount_excl_vat: 'Excl. VAT', category: 'CoA / Category',
       invoice: 'Invoice', running_balance: 'Running Balance',
     }
     return labels[col] || col
@@ -614,12 +608,58 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
     return { income, expenses, net: income - expenses, count: sortedAndFilteredTransactions.length }
   }, [sortedAndFilteredTransactions])
 
+  const selectedStats = useMemo(() => {
+    const selected = transactions.filter(t => selectedIds.has(t.id))
+    const income = selected.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0)
+    const expenses = selected.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0)
+    return { income, expenses, net: income - expenses, count: selected.length }
+  }, [transactions, selectedIds])
+
   // -- Pagination --
   const totalPages = Math.max(1, Math.ceil(sortedAndFilteredTransactions.length / pageSize))
   const paginatedTransactions = useMemo(() => {
     const start = (currentPage - 1) * pageSize
     return sortedAndFilteredTransactions.slice(start, start + pageSize)
   }, [sortedAndFilteredTransactions, currentPage, pageSize])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null
+      if (target?.closest('input, textarea, select, button, [role="dialog"]')) return
+      if (showEditPanel || showBulkEditModal || showColumnPicker) return
+      if (paginatedTransactions.length === 0) return
+
+      const currentIndex = focusedTxnId == null
+        ? -1
+        : paginatedTransactions.findIndex((txn) => txn.id === focusedTxnId)
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault()
+        const next = paginatedTransactions[Math.min(paginatedTransactions.length - 1, currentIndex + 1)]
+        if (next) setFocusedTxnId(next.id)
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault()
+        const next = paginatedTransactions[Math.max(0, currentIndex === -1 ? 0 : currentIndex - 1)]
+        if (next) setFocusedTxnId(next.id)
+      } else if (event.key === 'Enter' && focusedTxnId != null) {
+        const txn = paginatedTransactions.find((item) => item.id === focusedTxnId)
+        if (txn) {
+          event.preventDefault()
+          setSelectedTransactionForEdit(txn)
+          setShowEditPanel(true)
+        }
+      } else if (event.key === ' ' && focusedTxnId != null) {
+        event.preventDefault()
+        toggleSelect(focusedTxnId)
+      } else if ((event.key === 'b' || event.key === 'B') && selectedIds.size > 0) {
+        event.preventDefault()
+        handleBulkEditSelected()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [focusedTxnId, paginatedTransactions, selectedIds, showBulkEditModal, showColumnPicker, showEditPanel])
 
   // -- Selection helpers --
   const allPageSelected = paginatedTransactions.length > 0 && paginatedTransactions.every(t => selectedIds.has(t.id))
@@ -652,10 +692,10 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
 
   const clearSelection = () => setSelectedIds(new Set())
 
-  const handleBulkCategorizeSelected = () => {
+  const handleBulkEditSelected = () => {
     const selected = transactions.filter(t => selectedIds.has(t.id))
     setFilteredModalTransactions(selected)
-    setShowFilteredModal(true)
+    setShowBulkEditModal(true)
   }
 
   // Refetch helper - silent refetch that preserves table state (no loading spinner)
@@ -674,50 +714,39 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
   const visibleCols = columnOrder.filter((c) => visibleColumns.has(c) && (c !== 'running_balance' || showRunningBalance) && ((c !== 'vat_amount' && c !== 'amount_excl_vat') || vatEnabled))
 
   return (
-    <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-700">
+    <div className="overflow-hidden rounded-lg border border-neutral-300 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
       {/* ─── Header ─── */}
-      <div className="border-b border-neutral-200">
+      <div className="border-b border-neutral-300">
         {/* Title row */}
-        <div className="px-6 py-4 flex items-center justify-between gap-4">
+        <div className="flex items-center justify-between gap-4 bg-white px-4 py-3">
           <div className="flex-1 min-w-0">
-            <h2 className="text-xl font-semibold text-neutral-900 tracking-tight">Transactions</h2>
-            <p className="text-xs text-neutral-500 mt-0.5">
+            <h2 className="text-base font-semibold tracking-tight text-neutral-950">Transactions workbook</h2>
+            <p className="mt-0.5 text-xs text-neutral-500">
               {sortedAndFilteredTransactions.length === transactions.length
                 ? `${transactions.length} transactions`
                 : `${sortedAndFilteredTransactions.length} of ${transactions.length} transactions`}
+              <span className="mx-2 text-neutral-300">|</span>
+              Net {filteredStats.net >= 0 ? '+' : '-'}R{Math.abs(filteredStats.net).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
             </p>
           </div>
 
           {/* Primary actions */}
           <div className="flex items-center gap-2">
             <button
-              onClick={handleCategorizeFiltered}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-neutral-900 text-white text-sm font-medium rounded-lg hover:bg-neutral-800 active:bg-neutral-950 transition-colors shadow-sm"
-              title={`Categorize currently filtered transactions (${sortedAndFilteredTransactions.length})`}
+              onClick={() => {
+                setFilteredModalTransactions(selectedIds.size > 0 ? transactions.filter(t => selectedIds.has(t.id)) : sortedAndFilteredTransactions)
+                setShowBulkEditModal(true)
+              }}
+              className="inline-flex items-center gap-1.5 rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-neutral-800 active:bg-neutral-950"
+              title="Bulk edit selected or filtered transactions"
             >
               <Tag size={15} />
-              Categorize
-              {sortedAndFilteredTransactions.length < transactions.length && (
-                <span className="text-xs bg-white/20 rounded px-1">{sortedAndFilteredTransactions.length}</span>
-              )}
-            </button>
-            <button
-              onClick={() => {
-                setFilteredModalTransactions(sortedAndFilteredTransactions)
-                setShowBulkMerchantModal(true)
-              }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-neutral-700 text-white text-sm font-medium rounded-lg hover:bg-neutral-600 active:bg-neutral-800 transition-colors shadow-sm"
-              title={`Assign merchant to filtered transactions (${sortedAndFilteredTransactions.length})`}
-            >
-              <Users size={15} />
-              Merchant
-              {sortedAndFilteredTransactions.length < transactions.length && (
-                <span className="text-xs bg-white/20 rounded px-1">{sortedAndFilteredTransactions.length}</span>
-              )}
+              Bulk edit
+              <span className="rounded bg-white/20 px-1 text-xs">{selectedIds.size || sortedAndFilteredTransactions.length}</span>
             </button>
             <button
               onClick={() => setShowClearCategoriesModal(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white text-neutral-600 text-sm font-medium rounded-lg border border-neutral-200 hover:bg-neutral-50 active:bg-neutral-100 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-50 active:bg-neutral-100"
               title="Clear all categories"
             >
               <Trash2 size={15} />
@@ -727,7 +756,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
         </div>
 
         {/* ─── Quick Filter Chips + Instant Search ─── */}
-        <div className="px-6 py-3 bg-neutral-50/80 border-t border-neutral-100 flex items-center gap-3 flex-wrap">
+        <div className="flex flex-wrap items-center gap-2 border-t border-neutral-200 bg-neutral-100/70 px-4 py-2">
           {/* Quick filter chips */}
           <div className="flex items-center gap-1.5">
             {([
@@ -757,17 +786,17 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
             ))}
           </div>
 
-          <div className="h-5 w-px bg-neutral-200" />
+          <div className="h-5 w-px bg-neutral-300" />
 
           {/* Instant search */}
-          <div className="relative flex-1 max-w-xs">
+          <div className="relative min-w-[260px] flex-1">
             <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
             <input
               type="text"
               placeholder="Search description, merchant, category..."
               value={instantQuery}
               onChange={(e) => setInstantQuery(e.target.value)}
-              className="w-full text-sm pl-8 pr-8 py-1.5 border border-neutral-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:border-transparent placeholder:text-neutral-400 transition-shadow"
+              className="w-full rounded-md border border-neutral-300 bg-white py-1.5 pl-8 pr-8 text-sm shadow-inner transition-shadow placeholder:text-neutral-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
             />
             {instantQuery && (
               <button
@@ -779,7 +808,17 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
             )}
           </div>
 
-          <div className="h-5 w-px bg-neutral-200" />
+          <div className="h-5 w-px bg-neutral-300" />
+
+          {selectedIds.size > 0 && (
+            <div className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-medium text-blue-900">
+              <CheckSquare size={13} />
+              {selectedIds.size} selected
+              <span className="font-mono">
+                {selectedStats.net >= 0 ? '+' : '-'}R{Math.abs(selectedStats.net).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+          )}
 
           {/* VAT Recalculate button (only when VAT is enabled) */}
           {currentClient?.id && vatEnabled && (
@@ -935,65 +974,52 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
 
       {/* ─── Floating Bulk Actions Bar ─── */}
       {selectedIds.size > 0 && (
-        <div className="sticky top-0 z-30 bg-blue-600 text-white px-6 py-2.5 flex items-center justify-between shadow-lg">
+        <div className="sticky top-0 z-30 flex items-center justify-between border-b border-blue-300 bg-blue-50 px-4 py-2.5 text-blue-950 shadow-sm">
           <div className="flex items-center gap-3">
             <span className="text-sm font-semibold">{selectedIds.size} selected</span>
-            <button onClick={selectAllFiltered} className="text-xs underline text-blue-100 hover:text-white">
+            <span className="text-xs font-mono text-blue-800">
+              Net {selectedStats.net >= 0 ? '+' : '-'}R{Math.abs(selectedStats.net).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+            </span>
+            <button onClick={selectAllFiltered} className="text-xs font-medium underline text-blue-700 hover:text-blue-900">
               Select all {sortedAndFilteredTransactions.length}
             </button>
-            <button onClick={clearSelection} className="text-xs underline text-blue-100 hover:text-white">
+            <button onClick={clearSelection} className="text-xs font-medium underline text-blue-700 hover:text-blue-900">
               Clear
             </button>
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={handleBulkCategorizeSelected}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white text-blue-700 text-xs font-semibold rounded-md hover:bg-blue-50 transition-colors"
+              onClick={handleBulkEditSelected}
+              className="inline-flex items-center gap-1.5 rounded-md bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-neutral-800"
             >
               <Tag size={13} />
-              Categorize Selected
+              Bulk edit selected
             </button>
             <button
               onClick={() => {
                 const selected = transactions.filter(t => selectedIds.has(t.id))
                 setFilteredModalTransactions(selected)
-                setShowBulkMerchantModal(true)
+                setShowBulkEditModal(true)
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 text-white text-xs font-semibold rounded-md hover:bg-blue-400 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-md border border-blue-300 bg-white px-3 py-1.5 text-xs font-semibold text-blue-800 transition-colors hover:bg-blue-100"
             >
-              <Users size={13} />
-              Set Merchant
+              <PanelRightOpen size={13} />
+              Review rows
             </button>
           </div>
         </div>
       )}
 
       {/* ─── Modals ─── */}
-      <FilteredCategorizeModal
-        isOpen={showFilteredModal}
-        onClose={() => { setShowFilteredModal(false); setFilteredModalTransactions(null) }}
+      <BulkEditModal
+        isOpen={showBulkEditModal}
+        onClose={() => { setShowBulkEditModal(false); setFilteredModalTransactions(null) }}
         transactions={filteredModalTransactions || transactions}
         categories={categoriesList}
         sessionId={sessionId || ''}
         clientId={currentClient?.id}
-        initialSelectAll={!!filteredModalTransactions}
         onApplied={(message, count) => {
-          setSuccessMessage(message)
-          setShowFilteredModal(false)
-          setSelectedIds(new Set())
-          setTimeout(() => setSuccessMessage(''), 4000)
-          refetchTransactions()
-        }}
-      />
-
-      <BulkMerchantModal
-        isOpen={showBulkMerchantModal}
-        onClose={() => { setShowBulkMerchantModal(false); setFilteredModalTransactions(null) }}
-        transactions={filteredModalTransactions || transactions}
-        sessionId={sessionId || ''}
-        clientId={currentClient?.id}
-        onApplied={(message, count) => {
-          setShowBulkMerchantModal(false)
+          setShowBulkEditModal(false)
           setFilteredModalTransactions(null)
           setSuccessMessage(message)
           setSelectedIds(new Set())
@@ -1054,14 +1080,14 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
       )}
 
       {/* ─── Table ─── */}
-      <div ref={tableContainerRef} className="overflow-x-auto">
+      <div ref={tableContainerRef} className="max-h-[68vh] overflow-auto bg-white">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[1120px] border-separate border-spacing-0 text-xs">
             <SortableContext items={visibleCols} strategy={horizontalListSortingStrategy}>
-              <thead>
-                <tr className="border-b border-neutral-200 bg-neutral-50/80">
+              <thead className="sticky top-0 z-20">
+                <tr className="bg-neutral-100">
                   {/* Checkbox header */}
-                  <th className="w-10 px-3 py-3 text-center bg-neutral-50/80">
+                  <th className="sticky left-0 z-30 w-10 border-b border-r border-neutral-300 bg-neutral-100 px-2 py-2 text-center">
                     <button onClick={toggleSelectAll} className="text-neutral-400 hover:text-neutral-700 transition-colors"
                       title={allPageSelected ? 'Deselect all on page' : 'Select all on page'}>
                       {allPageSelected ? <CheckSquare size={16} className="text-blue-600" />
@@ -1070,14 +1096,14 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
                     </button>
                   </th>
                   {visibleCols.map((col) => {
-                    const base = "px-4 py-3 font-semibold text-[11px] uppercase tracking-wider text-neutral-500 select-none whitespace-nowrap bg-neutral-50/80"
+                    const base = "border-b border-r border-neutral-300 px-3 py-2 font-semibold text-[11px] uppercase tracking-wide text-neutral-600 select-none whitespace-nowrap bg-neutral-100"
                     switch (col) {
                       case 'date':
-                        return <SortableHeaderCell key={col} id={col} onClick={() => handleHeaderClick('date')} className={`text-left ${base} cursor-pointer hover:text-neutral-800`}>Date {getSortIcon('date')}</SortableHeaderCell>
+                        return <SortableHeaderCell key={col} id={col} onClick={() => handleHeaderClick('date')} className={`sticky left-10 z-30 min-w-[104px] text-left ${base} cursor-pointer hover:text-neutral-800`}>Date {getSortIcon('date')}</SortableHeaderCell>
                       case 'description':
-                        return <SortableHeaderCell key={col} id={col} onClick={() => handleHeaderClick('description')} className={`text-left ${base} cursor-pointer hover:text-neutral-800`}>Description {getSortIcon('description')}</SortableHeaderCell>
+                        return <SortableHeaderCell key={col} id={col} onClick={() => handleHeaderClick('description')} className={`min-w-[360px] text-left ${base} cursor-pointer hover:text-neutral-800`}>Description {getSortIcon('description')}</SortableHeaderCell>
                       case 'merchant':
-                        return <SortableHeaderCell key={col} id={col} onClick={() => handleHeaderClick('merchant')} className={`text-left ${base} cursor-pointer hover:text-neutral-800`}>Merchant {getSortIcon('merchant')}</SortableHeaderCell>
+                        return <SortableHeaderCell key={col} id={col} onClick={() => handleHeaderClick('merchant')} className={`min-w-[160px] text-left ${base} cursor-pointer hover:text-neutral-800`}>Merchant {getSortIcon('merchant')}</SortableHeaderCell>
                       case 'amount':
                         return <SortableHeaderCell key={col} id={col} onClick={() => handleHeaderClick('amount')} className={`text-right ${base} cursor-pointer hover:text-neutral-800`} align="right">Amount {getSortIcon('amount')}</SortableHeaderCell>
                       case 'vat_amount':
@@ -1085,7 +1111,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
                       case 'amount_excl_vat':
                         return <SortableHeaderCell key={col} id={col} className={`text-right ${base}`} align="right">Excl. VAT</SortableHeaderCell>
                       case 'category':
-                        return <SortableHeaderCell key={col} id={col} onClick={() => handleHeaderClick('category')} className={`text-left ${base} cursor-pointer hover:text-neutral-800`}>Category {getSortIcon('category')}</SortableHeaderCell>
+                        return <SortableHeaderCell key={col} id={col} onClick={() => handleHeaderClick('category')} className={`min-w-[220px] text-left ${base} cursor-pointer hover:text-neutral-800`}>CoA / Category {getSortIcon('category')}</SortableHeaderCell>
                       case 'invoice':
                         return <SortableHeaderCell key={col} id={col} className={`text-left ${base}`}>Invoice</SortableHeaderCell>
                       case 'running_balance':
@@ -1095,7 +1121,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
                   })}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-100">
+              <tbody>
                 {(() => {
                   const balanceMap = calculateRunningBalance(sortedAndFilteredTransactions)
                   return paginatedTransactions.map((txn, idx) => {
@@ -1104,15 +1130,18 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
                     return (
                       <tr
                         key={txn.id}
-                        onClick={() => onTransactionSelect?.(txn)}
-                        className={`group cursor-pointer transition-colors ${
+                        tabIndex={0}
+                        onClick={() => setFocusedTxnId(txn.id)}
+                        onDoubleClick={() => { setFocusedTxnId(txn.id); setSelectedTransactionForEdit(txn); setShowEditPanel(true) }}
+                        className={`group cursor-default outline-none transition-colors ${
                           isHighlighted ? 'bg-amber-50 hover:bg-amber-100'
-                          : isSelected ? 'bg-blue-50/60 hover:bg-blue-50'
+                          : isSelected ? 'bg-blue-50 hover:bg-blue-50'
+                          : focusedTxnId === txn.id ? 'bg-sky-50 hover:bg-sky-50'
                           : idx % 2 === 0 ? 'bg-white hover:bg-neutral-50'
-                          : 'bg-neutral-50/40 hover:bg-neutral-100/60'
+                          : 'bg-neutral-50/50 hover:bg-neutral-100'
                         }`}
                       >
-                        <td className="w-10 px-3 py-2.5 text-center">
+                        <td className={`sticky left-0 z-10 w-10 border-b border-r border-neutral-200 px-2 py-1.5 text-center ${isSelected ? 'bg-blue-50' : focusedTxnId === txn.id ? 'bg-sky-50' : idx % 2 === 0 ? 'bg-white' : 'bg-neutral-50'}`}>
                           <button onClick={(e) => { e.stopPropagation(); toggleSelect(txn.id) }} className="text-neutral-300 hover:text-blue-600 transition-colors">
                             {isSelected ? <CheckSquare size={15} className="text-blue-600" /> : <Square size={15} className="opacity-0 group-hover:opacity-100 transition-opacity" />}
                           </button>
@@ -1120,14 +1149,14 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
                         {visibleCols.map((col) => {
                           switch (col) {
                             case 'date':
-                              return <td key={`${txn.id}-${col}`} className="px-4 py-2.5 text-neutral-500 text-xs tabular-nums whitespace-nowrap">{new Date(txn.date).toLocaleDateString('en-ZA')}</td>
+                              return <td key={`${txn.id}-${col}`} className={`sticky left-10 z-10 whitespace-nowrap border-b border-r border-neutral-200 px-3 py-1.5 text-xs tabular-nums text-neutral-600 ${isSelected ? 'bg-blue-50' : focusedTxnId === txn.id ? 'bg-sky-50' : idx % 2 === 0 ? 'bg-white' : 'bg-neutral-50'}`}>{new Date(txn.date).toLocaleDateString('en-ZA')}</td>
                             case 'description': {
                               const displayDesc = cleanDescription(txn.description)
                               return (
-                                <td key={`${txn.id}-${col}`} className="px-4 py-2.5 max-w-sm">
+                                <td key={`${txn.id}-${col}`} className="max-w-sm border-b border-r border-neutral-200 px-3 py-1.5">
                                   <div className="flex flex-col gap-0.5">
                                     <div onClick={(e) => { e.stopPropagation(); setSelectedTransactionForEdit(txn); setShowEditPanel(true) }}
-                                      className="cursor-pointer hover:text-blue-600 transition-colors text-sm text-neutral-900 leading-snug whitespace-normal break-words" title="Click to edit">
+                                      className="cursor-pointer whitespace-normal break-words text-xs leading-snug text-neutral-900 transition-colors hover:text-blue-600" title="Click to edit">
                                       {displayDesc || <span className="text-neutral-400 italic text-xs">[No description]</span>}
                                     </div>
                                     {!selectedStatement && txn.statement_name && txn.statement_name !== 'Unknown Statement' && (
@@ -1139,7 +1168,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
                             }
                             case 'merchant':
                               return (
-                                <td key={`${txn.id}-${col}`} className="px-4 py-2.5 max-w-[180px]">
+                                <td key={`${txn.id}-${col}`} className="max-w-[180px] border-b border-r border-neutral-200 px-3 py-1.5">
                                   <div onClick={(e) => { e.stopPropagation(); setSelectedTransactionForEdit(txn); setShowEditPanel(true) }}
                                     className="group/merchant flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-neutral-100 cursor-pointer transition-colors">
                                     <span className="text-xs text-neutral-700 truncate">{txn.merchant || <span className="text-neutral-300 italic">Add merchant</span>}</span>
@@ -1150,8 +1179,8 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
                             case 'amount': {
                               const isPositive = txn.amount >= 0
                               return (
-                                <td key={`${txn.id}-${col}`} className="text-right px-4 py-2.5 whitespace-nowrap">
-                                  <span className={`inline-flex items-center gap-1 text-sm font-semibold tabular-nums ${isPositive ? 'text-emerald-600' : 'text-red-600'}`}>
+                                <td key={`${txn.id}-${col}`} className="whitespace-nowrap border-b border-r border-neutral-200 px-3 py-1.5 text-right">
+                                  <span className={`inline-flex items-center gap-1 font-mono text-xs font-semibold tabular-nums ${isPositive ? 'text-emerald-700' : 'text-red-700'}`}>
                                     {isPositive ? '+' : '-'}R{Math.abs(txn.amount).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
                                   </span>
                                 </td>
@@ -1159,7 +1188,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
                             }
                             case 'vat_amount':
                               return (
-                                <td key={`${txn.id}-${col}`} className="text-right px-4 py-2.5 whitespace-nowrap">
+                                <td key={`${txn.id}-${col}`} className="whitespace-nowrap border-b border-r border-neutral-200 px-3 py-1.5 text-right">
                                   {txn.vat_amount != null
                                     ? <span className="text-xs text-violet-600 tabular-nums">R{Math.abs(txn.vat_amount).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
                                     : <span className="text-neutral-200">—</span>}
@@ -1167,7 +1196,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
                               )
                             case 'amount_excl_vat':
                               return (
-                                <td key={`${txn.id}-${col}`} className="text-right px-4 py-2.5 whitespace-nowrap">
+                                <td key={`${txn.id}-${col}`} className="whitespace-nowrap border-b border-r border-neutral-200 px-3 py-1.5 text-right">
                                   {txn.amount_excl_vat != null
                                     ? <span className="text-xs text-neutral-600 tabular-nums">R{Math.abs(txn.amount_excl_vat).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
                                     : <span className="text-neutral-200">—</span>}
@@ -1176,7 +1205,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
                             case 'category': {
                               const catStyle = getCategoryStyle(txn.category)
                               return (
-                                <td key={`${txn.id}-${col}`} className="px-4 py-2.5">
+                                <td key={`${txn.id}-${col}`} className="border-b border-r border-neutral-200 px-3 py-1.5">
                                   <div onClick={(e) => { e.stopPropagation(); setSelectedTransactionForEdit(txn); setShowEditPanel(true) }} className="cursor-pointer group/cat space-y-1">
                                     {txn.account_id ? (
                                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 hover:shadow-sm transition-shadow">
@@ -1200,7 +1229,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
                             }
                             case 'invoice':
                               return (
-                                <td key={`${txn.id}-${col}`} className="px-4 py-2.5">
+                                <td key={`${txn.id}-${col}`} className="border-b border-r border-neutral-200 px-3 py-1.5">
                                   {(() => {
                                     const inv = txn.invoice_id ? invoicesById[txn.invoice_id] : null
                                     return inv ? (
@@ -1223,7 +1252,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
                               )
                             case 'running_balance':
                               return (
-                                <td key={`${txn.id}-${col}`} className="text-right px-4 py-2.5 whitespace-nowrap">
+                                <td key={`${txn.id}-${col}`} className="whitespace-nowrap border-b border-r border-neutral-200 px-3 py-1.5 text-right">
                                   {(() => {
                                     const balance = balanceMap.get(txn.id)
                                     const isNeg = balance !== undefined && balance < 0

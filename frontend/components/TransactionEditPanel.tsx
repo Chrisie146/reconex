@@ -24,6 +24,7 @@ interface Transaction {
   description: string
   amount: number
   category: string
+  invoice_id?: number | null
   account_id?: number | null
   account_code?: string | null
   account_name?: string | null
@@ -527,14 +528,17 @@ export default function TransactionEditPanel({
       />
 
       {/* Panel */}
-      <div className="fixed right-0 top-0 z-40 flex h-full w-[420px] flex-col bg-white shadow-2xl ring-1 ring-neutral-200 animate-in slide-in-from-right">
+      <div className="fixed right-0 top-0 z-40 flex h-full w-full max-w-[520px] flex-col bg-white shadow-2xl ring-1 ring-neutral-200 animate-in slide-in-from-right">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-neutral-200 bg-white px-6 py-4">
           <div className="flex items-center gap-3">
             <div className="rounded-lg bg-blue-50 p-2">
               <Pencil className="w-4 h-4 text-blue-600" />
             </div>
-            <h2 className="text-lg font-semibold text-neutral-900">Edit Transaction</h2>
+            <div>
+              <h2 className="text-lg font-semibold text-neutral-900">Transaction workspace</h2>
+              <p className="text-xs text-neutral-500">Map, verify VAT, and apply similar changes.</p>
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -609,6 +613,48 @@ export default function TransactionEditPanel({
                   minimumFractionDigits: 2,
                 })}
               </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="rounded-lg bg-white p-3 ring-1 ring-neutral-200">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-neutral-400">VAT breakdown</p>
+              <div className="mt-2 space-y-1 text-xs">
+                <div className="flex justify-between gap-3">
+                  <span className="text-neutral-500">Incl. VAT</span>
+                  <span className="font-mono font-semibold text-neutral-900">
+                    R{Math.abs(transaction.amount_incl_vat ?? transaction.amount).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-neutral-500">Excl. VAT</span>
+                  <span className="font-mono text-neutral-700">
+                    {transaction.amount_excl_vat != null ? `R${Math.abs(transaction.amount_excl_vat).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : '-'}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-neutral-500">VAT</span>
+                  <span className="font-mono text-violet-700">
+                    {transaction.vat_amount != null ? `R${Math.abs(transaction.vat_amount).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` : '-'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-white p-3 ring-1 ring-neutral-200">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-neutral-400">Evidence</p>
+              <div className="mt-2 space-y-1 text-xs">
+                <div className="flex justify-between gap-3">
+                  <span className="text-neutral-500">Invoice</span>
+                  <span className={`font-semibold ${transaction.invoice_id ? 'text-blue-700' : 'text-neutral-400'}`}>
+                    {transaction.invoice_id ? `Linked #${transaction.invoice_id}` : 'Not linked'}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-neutral-500">Statement</span>
+                  <span className="max-w-[160px] truncate text-neutral-700">{transaction.statement_name || transaction.session_id || 'Current'}</span>
+                </div>
+              </div>
             </div>
           </div>
 

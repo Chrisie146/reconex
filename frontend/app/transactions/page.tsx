@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react'
 import Sidebar from '@/components/Sidebar'
 import TransactionsTable from '@/components/TransactionsTable'
 import StatementInfoBanner from '@/components/StatementInfoBanner'
-import BulkCategoryModal from '@/components/BulkCategoryModal'
 import axios from '@/lib/axiosClient'
 import { useClient } from '@/lib/clientContext'
 
@@ -14,8 +13,6 @@ export default function Page() {
   // Keep server and initial client render identical (no session id),
   // then read the actual `session_id` on mount to avoid hydration mismatches.
   const [clientSessionId, setClientSessionId] = React.useState<string | null>(null)
-  const [selectedTransaction, setSelectedTransaction] = useState<any | null>(null)
-  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false)
   const [uploadedCategories, setUploadedCategories] = useState<string[]>([])
   const [selectedStatement, setSelectedStatement] = useState<string>('')
   const { currentClient } = useClient()
@@ -66,10 +63,6 @@ export default function Page() {
                 sessionId={clientSessionId}
                 selectedStatement={selectedStatement}
                 onStatementChange={setSelectedStatement}
-                onTransactionSelect={(txn) => {
-                  setSelectedTransaction({ id: txn.id, description: txn.description, category: txn.category })
-                  setIsBulkModalOpen(true)
-                }}
                 categories={uploadedCategories}
                 refreshTrigger={0}
               />
@@ -77,20 +70,6 @@ export default function Page() {
           </div>
         </div>
       </div>
-
-      {/* Bulk Category Modal (same as dashboard) */}
-      <BulkCategoryModal
-        isOpen={isBulkModalOpen}
-        onClose={() => setIsBulkModalOpen(false)}
-        selectedTransaction={selectedTransaction}
-        sessionId={clientSessionId || ''}
-        categories={uploadedCategories}
-        onSuccess={(message: string, updatedCount: number) => {
-          setIsBulkModalOpen(false)
-          // optionally trigger a refresh or show feedback
-        }}
-        onCategoryCreated={(newCategories: string[]) => setUploadedCategories(newCategories)}
-      />
     </>
   )
 }
