@@ -177,12 +177,26 @@ export default function RulesManager({ sessionId }: RulesManagerProps) {
   async function updateRule(rule: Rule, updates: Partial<Rule>) {
     try {
       await apiFetch(`/rules/${rule.id}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
       })
       setRules(rules.map(r => r.id === rule.id ? { ...r, ...updates } : r))
       setEditing(null)
+      flash('success', 'Rule updated')
+    } catch (err) {
+      flash('error', err instanceof Error ? err.message : 'Failed to update rule')
+    }
+  }
+
+  async function updateRuleQuick(rule: Rule, updates: Partial<Rule>) {
+    try {
+      await apiFetch(`/rules/${rule.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      })
+      setRules(rules.map(r => r.id === rule.id ? { ...r, ...updates } : r))
       flash('success', 'Rule updated')
     } catch (err) {
       flash('error', err instanceof Error ? err.message : 'Failed to update rule')
@@ -206,7 +220,7 @@ export default function RulesManager({ sessionId }: RulesManagerProps) {
         action: {
           ...rule.action,
           category: editing.category || null,
-          account_id: editing.account_id,
+          account_id: editing.account_id ?? null,
         },
       }
       await updateRule(rule, updates)
@@ -470,7 +484,7 @@ export default function RulesManager({ sessionId }: RulesManagerProps) {
 
                 return (
                   <React.Fragment key={rule.id}>
-                    <tr className={isEditing ? 'bg-blue-50' : 'hover:bg-neutral-50'}>
+                    <tr className={`${isEditing ? 'bg-blue-50' : 'hover:bg-neutral-50'} ${!rule.enabled ? 'opacity-50' : ''}`}>
                       {/* Description */}
                       <td className="px-4 py-3">
                         <p className="font-medium text-neutral-900">{rule.name}</p>
@@ -536,7 +550,8 @@ export default function RulesManager({ sessionId }: RulesManagerProps) {
                         <input
                           type="checkbox"
                           checked={rule.auto_apply}
-                          onChange={e => updateRule(rule, { ...rule, auto_apply: e.target.checked })}
+                          onChange={e => updateRuleQuick(rule, { auto_apply: e.target.checked })}
+                          aria-label={`Toggle auto-apply for ${rule.name}`}
                           className="h-4 w-4 rounded border-neutral-300 text-blue-600 cursor-pointer"
                         />
                       </td>
@@ -549,12 +564,14 @@ export default function RulesManager({ sessionId }: RulesManagerProps) {
                               <button
                                 onClick={() => saveEditing(rule)}
                                 disabled={saving}
+                                aria-label="Save rule"
                                 className="rounded px-2 py-1 text-xs font-medium text-emerald-700 border border-emerald-200 hover:bg-emerald-50 disabled:opacity-40"
                               >
                                 <Save className="inline h-3.5 w-3.5" />
                               </button>
                               <button
                                 onClick={() => setEditing(null)}
+                                aria-label="Cancel editing"
                                 className="rounded px-2 py-1 text-xs font-medium text-neutral-600 border border-neutral-200 hover:bg-neutral-50"
                               >
                                 <X className="inline h-3.5 w-3.5" />
@@ -567,8 +584,9 @@ export default function RulesManager({ sessionId }: RulesManagerProps) {
                                   ruleId: rule.id,
                                   keyword: keywords.join(', '),
                                   category: rule.action.category || '',
-                                  account_id: rule.action.account_id || null,
+                                  account_id: rule.action.account_id ?? null,
                                 })}
+                                aria-label={`Edit ${rule.name}`}
                                 className="rounded px-2 py-1 text-xs font-medium text-neutral-600 border border-neutral-200 hover:bg-neutral-50"
                               >
                                 <Edit2 className="inline h-3.5 w-3.5" />
@@ -588,6 +606,7 @@ export default function RulesManager({ sessionId }: RulesManagerProps) {
                               </button>
                               <button
                                 onClick={() => deleteRule(rule)}
+                                aria-label={`Delete ${rule.name}`}
                                 className="rounded px-2 py-1 text-xs font-medium text-red-600 border border-red-200 hover:bg-red-50"
                               >
                                 <Trash2 className="inline h-3.5 w-3.5" />
