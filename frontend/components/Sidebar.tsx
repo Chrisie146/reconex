@@ -8,7 +8,7 @@ import {
   Archive, Eye, Tag, Zap, Sparkles, FileText, FileSpreadsheet,
   FolderOpen, ChevronDown, Receipt, Users, Download,
   Settings2, PanelLeftClose, PanelLeft, Loader2, CalendarRange, HardDrive,
-  AlertTriangle
+  AlertTriangle, BookOpen
 } from 'lucide-react'
 import axios from '@/lib/axiosClient'
 import { toast } from 'sonner'
@@ -125,7 +125,8 @@ export default function Sidebar({ sessionId, selectedStatement = '', onStatement
 
   // Always visible when a client is selected (no session required)
   const clientNav: NavItem[] = currentClient ? [
-    { href: `/transactions${sessionQS}`,  icon: <List className="w-[18px] h-[18px]" />,   label: 'Transactions',     matchPrefix: '/transactions' },
+    { href: `/transactions${sessionQS}`,    icon: <List className="w-[18px] h-[18px]" />,     label: 'Transactions',       matchPrefix: '/transactions' },
+    { href: `/chart-of-accounts`,           icon: <BookOpen className="w-[18px] h-[18px]" />, label: 'Chart of Accounts',  matchPrefix: '/chart-of-accounts' },
   ] : []
 
   // Only visible when a session is known

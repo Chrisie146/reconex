@@ -75,19 +75,17 @@ class CategorizationLearningService:
         merchant: Optional[str] = None,
         keyword: Optional[str] = None,
         db: Session = None,
-        client_id: Optional[int] = None
+        client_id: Optional[int] = None,
+        account_id: Optional[int] = None,
     ) -> List[Dict]:
         """
         Save a keyword-based categorization rule so it applies to future uploads.
 
+        Phase 2: Also stores `account_id` on the rule when provided so that
+        future transactions matched by this rule can have the account assigned.
+
         A rule is only created when the user explicitly provides a keyword
-        (at least 3 characters). This prevents spurious auto-generated rules
-        based on noisy, never-repeating transaction descriptions.
-
-        The saved rule is a 'contains' pattern: any future transaction whose
-        description contains the keyword will be confirmed as the given category.
-
-        Returns list of created/updated rules (empty if no keyword supplied).
+        (at least 3 characters).  Returns list of created/updated rules.
         """
         if not keyword or len(keyword.strip()) < 3:
             return []
@@ -100,7 +98,8 @@ class CategorizationLearningService:
             pattern_type='contains',
             pattern_value=keyword_clean,
             db=db,
-            client_id=client_id
+            client_id=client_id,
+            account_id=account_id,
         )
         return [rule] if rule else []
     
@@ -112,63 +111,72 @@ class CategorizationLearningService:
         pattern_type: str,
         pattern_value: str,
         db: Session,
-        client_id: Optional[int] = None
+        client_id: Optional[int] = None,
+        account_id: Optional[int] = None,
     ) -> Optional[Dict]:
-        """
-        Create a new rule or update existing one
-        If rule already exists for same pattern but different category, update it
+        """Create a new rule or update an existing one.
+
+        Phase 2: also stores `account_id` so future matches can auto-assign
+        an account.
         """
         from models import UserCategorizationRule
-        
+
         # Check if rule already exists for this user + client
         query = db.query(UserCategorizationRule).filter(
             UserCategorizationRule.user_id == user_id,
             UserCategorizationRule.pattern_type == pattern_type,
-            UserCategorizationRule.pattern_value == pattern_value
+            UserCategorizationRule.pattern_value == pattern_value,
         )
         if client_id is not None:
             query = query.filter(UserCategorizationRule.client_id == client_id)
         else:
             query = query.filter(UserCategorizationRule.client_id.is_(None))
         existing = query.first()
-        
+
         if existing:
-            # Update category if different (user changed their mind)
-            if existing.category != category:
+            # Update if category or account changed (user changed their mind)
+            changed = existing.category != category or (
+                account_id is not None and existing.account_id != account_id
+            )
+            if changed:
                 existing.category = category
-                existing.confidence_score = 1.0  # Reset confidence
+                if account_id is not None:
+                    existing.account_id = account_id
+                existing.confidence_score = 1.0
                 db.commit()
                 return {
                     'id': existing.id,
                     'pattern_type': existing.pattern_type,
                     'pattern_value': existing.pattern_value,
                     'category': existing.category,
-                    'action': 'updated'
+                    'account_id': existing.account_id,
+                    'action': 'updated',
                 }
-            # Rule already exists with same category, no action needed
             return None
-        
+
         # Create new rule
         new_rule = UserCategorizationRule(
             user_id=user_id,
             client_id=client_id,
             session_id=session_id,
             category=category,
+            account_id=account_id,
             pattern_type=pattern_type,
             pattern_value=pattern_value,
             confidence_score=1.0,
             use_count=0,
-            enabled=1
+            enabled=1,
         )
         db.add(new_rule)
         db.commit()
-        
+
         return {
             'id': new_rule.id,
             'pattern_type': new_rule.pattern_type,
             'pattern_value': new_rule.pattern_value,
             'category': new_rule.category,
-            'action': 'created'
+            'account_id': new_rule.account_id,
+            'action': 'created',
         }
     
     @staticmethod
@@ -291,12 +299,14 @@ class CategorizationLearningService:
             if matched_rule:
                 txn_id = txn.id if hasattr(txn, 'id') else None
                 if txn_id:
-                    suggestions[txn_id] = matched_rule.category
-                    
+                    # Phase 2: return (category, account_id) tuple so callers can
+                    # assign both.  account_id may be None for legacy rules.
+                    suggestions[txn_id] = (matched_rule.category, getattr(matched_rule, 'account_id', None))
+
                     # Update rule usage statistics
                     matched_rule.use_count += 1
                     matched_rule.last_used = datetime.utcnow()
-        
+
         db.commit()
         return suggestions
     

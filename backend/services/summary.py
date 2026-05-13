@@ -5,8 +5,8 @@ Calculates monthly summaries and aggregations for reporting
 
 from typing import Dict, List, Any, Optional
 from datetime import date
-from sqlalchemy.orm import Session
-from models import Transaction
+from sqlalchemy.orm import Session, joinedload
+from models import Account, Transaction
 
 
 def calculate_monthly_summary(session_id: str = None, db: Session = None, client_id: int = None) -> Dict[str, Any]:
@@ -38,87 +38,96 @@ def calculate_monthly_summary(session_id: str = None, db: Session = None, client
     """
     
     # Fetch transactions - filter by session_id or client_id
-    query = db.query(Transaction)
+    query = db.query(Transaction).options(joinedload(Transaction.account))
     if session_id:
         query = query.filter(Transaction.session_id == session_id)
     elif client_id:
         query = query.filter(Transaction.client_id == client_id)
     else:
         raise ValueError("Either session_id or client_id must be provided")
-    
+
     transactions = query.order_by(Transaction.date).all()
-    
+
     if not transactions:
         return {
             "months": [],
             "overall": {
                 "total_income": 0.0,
                 "total_expenses": 0.0,
-                "net_balance": 0.0
-            }
+                "net_balance": 0.0,
+            },
         }
-    
+
     # Group by month
     monthly_data: Dict[str, Dict[str, Any]] = {}
-    
+
     for txn in transactions:
-        # Create month key (YYYY-MM)
         month_key = txn.date.strftime("%Y-%m")
-        
+
         if month_key not in monthly_data:
             monthly_data[month_key] = {
                 "month": month_key,
                 "total_income": 0.0,
                 "total_expenses": 0.0,
                 "net_balance": 0.0,
-                "categories": {}
+                "categories": {},
+                "accounts": {},  # Phase 2
             }
-        
+
         month = monthly_data[month_key]
-        
-        # Categorize income vs expense
-        if txn.amount >= 0:
-            month["total_income"] += txn.amount
+
+        # Income vs expense classification: prefer account_type when set
+        acct = txn.account
+        if acct and txn.account_id:
+            is_income = acct.account_type in ("revenue",)
+        else:
+            is_income = txn.amount >= 0
+
+        if is_income:
+            month["total_income"] += abs(txn.amount)
         else:
             month["total_expenses"] += abs(txn.amount)
-        
-        # Track by category
-        if txn.category not in month["categories"]:
-            month["categories"][txn.category] = 0.0
-        
-        # Store absolute value for categories (makes sense for reporting)
-        month["categories"][txn.category] += abs(txn.amount)
-        
-        # Calculate net
+
+        # Category grouping (legacy, always populated)
+        cat_key = txn.category or "Uncategorized"
+        if cat_key not in month["categories"]:
+            month["categories"][cat_key] = 0.0
+        month["categories"][cat_key] += abs(txn.amount)
+
+        # Account grouping (Phase 2 — only for transactions with account_id)
+        if acct and txn.account_id:
+            acct_key = f"{acct.code} · {acct.name}"
+            if acct_key not in month["accounts"]:
+                month["accounts"][acct_key] = {
+                    "account_id": acct.id,
+                    "code": acct.code,
+                    "name": acct.name,
+                    "account_type": acct.account_type,
+                    "total": 0.0,
+                }
+            month["accounts"][acct_key]["total"] += abs(txn.amount)
+
         month["net_balance"] = month["total_income"] - month["total_expenses"]
-    
-    # Sort months chronologically
+
     sorted_months = sorted(monthly_data.items())
     months_list = [data for _, data in sorted_months]
-    
-    # Calculate overall totals
+
     overall_income = sum(m["total_income"] for m in months_list)
     overall_expenses = sum(m["total_expenses"] for m in months_list)
     overall_balance = overall_income - overall_expenses
-    
+
     return {
         "months": months_list,
         "overall": {
             "total_income": overall_income,
             "total_expenses": overall_expenses,
-            "net_balance": overall_balance
-        }
+            "net_balance": overall_balance,
+        },
     }
 
 
 def get_category_summary(session_id: str = None, db: Session = None, client_id: int = None) -> Dict[str, float]:
-    """
-    Get total amounts by category across all transactions in a session or by client
-    
-    Returns:
-        Dict of {category: total_amount}
-    """
-    
+    """Get total amounts by category across all transactions in a session or by client."""
     query = db.query(Transaction)
     if session_id:
         query = query.filter(Transaction.session_id == session_id)
@@ -126,19 +135,66 @@ def get_category_summary(session_id: str = None, db: Session = None, client_id: 
         query = query.filter(Transaction.client_id == client_id)
     else:
         raise ValueError("Either session_id or client_id must be provided")
-    
+
     transactions = query.all()
-    
+
     categories: Dict[str, float] = {}
-    
+
     for txn in transactions:
-        if txn.category not in categories:
-            categories[txn.category] = 0.0
-        
-        categories[txn.category] += abs(txn.amount)
-    
-    # Sort by amount descending
+        key = txn.category or "Uncategorized"
+        if key not in categories:
+            categories[key] = 0.0
+        categories[key] += abs(txn.amount)
+
     return dict(sorted(categories.items(), key=lambda x: x[1], reverse=True))
+
+
+def get_account_summary(
+    session_id: Optional[str] = None,
+    db: Session = None,
+    client_id: Optional[int] = None,
+) -> List[Dict[str, Any]]:
+    """Get total amounts grouped by Chart-of-Accounts account.
+
+    Phase 2: only includes transactions that have an account_id assigned.
+    Transactions without an account_id are not included — use
+    get_category_summary() for those.
+
+    Returns:
+        List of dicts ordered by account.code, each with:
+        { account_id, code, name, account_type, normal_balance, total }
+    """
+    query = (
+        db.query(Transaction)
+        .options(joinedload(Transaction.account))
+        .filter(Transaction.account_id.isnot(None))
+    )
+    if session_id:
+        query = query.filter(Transaction.session_id == session_id)
+    elif client_id:
+        query = query.filter(Transaction.client_id == client_id)
+    else:
+        raise ValueError("Either session_id or client_id must be provided")
+
+    transactions = query.all()
+
+    accounts: Dict[int, Dict[str, Any]] = {}
+    for txn in transactions:
+        acct = txn.account
+        if not acct:
+            continue
+        if acct.id not in accounts:
+            accounts[acct.id] = {
+                "account_id": acct.id,
+                "code": acct.code,
+                "name": acct.name,
+                "account_type": acct.account_type,
+                "normal_balance": acct.normal_balance,
+                "total": 0.0,
+            }
+        accounts[acct.id]["total"] += abs(txn.amount)
+
+    return sorted(accounts.values(), key=lambda x: x["code"] or "")
 
 
 def get_transactions_by_category(

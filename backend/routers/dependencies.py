@@ -366,10 +366,17 @@ def apply_learned_rules_to_session(
         )
 
         updated_ids = []
-        for txn_id, category in suggestions.items():
+        for txn_id, suggestion in suggestions.items():
+            # apply_learned_rules now returns (category, account_id) tuples
+            if isinstance(suggestion, tuple):
+                category, account_id = suggestion
+            else:
+                category, account_id = suggestion, None
             txn = db.query(Transaction).filter(Transaction.id == txn_id).first()
             if txn:
                 txn.category = category
+                if account_id is not None:
+                    txn.account_id = account_id
                 txn.suggested_category = None  # learned = confirmed, clear any suggestion
                 updated_ids.append(txn_id)
 

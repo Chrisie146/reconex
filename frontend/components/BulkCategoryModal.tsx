@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { posthog } from '@/lib/posthog'
 import { useClient } from '@/lib/clientContext'
 import LoadingButton from './LoadingButton'
+import AccountSelector from './AccountSelector'
 import { API_BASE_URL } from '@/lib/apiBase'
 
 interface BulkCategoryModalProps {
@@ -33,6 +34,7 @@ export default function BulkCategoryModal({
 }: BulkCategoryModalProps) {
   const { currentClient } = useClient()
   const [selectedCategory, setSelectedCategory] = useState('')
+  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null)
   const [applyBulk, setApplyBulk] = useState(false)
   const [keyword, setKeyword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -109,8 +111,8 @@ export default function BulkCategoryModal({
   }
 
   const handleBulkApply = async () => {
-    if (!selectedCategory) {
-      toast.error('Please select a category')
+    if (!selectedCategory && !selectedAccountId) {
+      toast.error('Please select a category or account')
       return
     }
 
@@ -132,6 +134,7 @@ export default function BulkCategoryModal({
           {
             keyword: keyword,
             category: selectedCategory,
+            account_id: selectedAccountId || undefined,
             only_uncategorised: false,
           },
           {
@@ -143,20 +146,28 @@ export default function BulkCategoryModal({
         posthog.capture('transactions_categorised', { count: updated_count, method: 'bulk', category: selectedCategory })
         onSuccess(message, updated_count)
       } else {
-        // Update single transaction category
-        const response = await axios.put(
-          `${API_BASE_URL}/transactions/${selectedTransaction.id}`,
-          { category: selectedCategory },
-          {
-            params: { session_id: sessionId },
-          }
-        )
+        // Update single transaction — category and/or account
+        if (selectedAccountId) {
+          await axios.put(
+            `${API_BASE_URL}/transactions/${selectedTransaction.id}/account`,
+            { account_id: selectedAccountId },
+            { params: { session_id: sessionId } }
+          )
+        }
+        if (selectedCategory) {
+          await axios.put(
+            `${API_BASE_URL}/transactions/${selectedTransaction.id}`,
+            { category: selectedCategory },
+            { params: { session_id: sessionId } }
+          )
+        }
 
         posthog.capture('transactions_categorised', { count: 1, method: 'single', category: selectedCategory })
         onSuccess(`Updated category to "${selectedCategory}"`, 1)
       }
 
       setSelectedCategory('')
+      setSelectedAccountId(null)
       setApplyBulk(false)
       setKeyword('')
       setConfirmMode(false)
@@ -223,6 +234,19 @@ export default function BulkCategoryModal({
                     >
                       + Create New Category
                     </button>
+
+                    <div className="border-t border-neutral-200 pt-3">
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        Account (CoA) <span className="text-neutral-400 font-normal">(optional)</span>
+                      </label>
+                      <AccountSelector
+                        clientId={currentClient?.id ?? null}
+                        value={selectedAccountId}
+                        onChange={(id, _acct) => setSelectedAccountId(id)}
+                        postableOnly
+                        placeholder="Select account..."
+                      />
+                    </div>
 
                     <div className="border-t border-neutral-200 pt-4">
                       <label htmlFor="apply-bulk-checkbox" className="flex items-start gap-3 cursor-pointer">
@@ -313,7 +337,7 @@ export default function BulkCategoryModal({
                       loading={loading}
                       loadingText="Processing..."
                       variant="primary"
-                      disabled={loading || !selectedCategory}
+                      disabled={loading || (!selectedCategory && !selectedAccountId)}
                       className="flex-1"
                     >
                       Apply

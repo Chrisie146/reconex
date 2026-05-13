@@ -102,6 +102,7 @@ tags_metadata = [
     {"name": "Column Mapping", "description": "Manual column mapping fallback for unsupported bank formats"},
     {"name": "Transactions", "description": "View, search, and manage transactions"},
     {"name": "Categories", "description": "Manage transaction categories and VAT settings"},
+    {"name": "Chart of Accounts", "description": "Per-client Chart of Accounts — accounts, hierarchy, and template seeding"},
     {"name": "Rules", "description": "Create and manage categorization rules"},
     {"name": "Reconciliation", "description": "Monthly and overall account reconciliation"},
     {"name": "Invoices", "description": "Upload and match invoices to transactions"},
@@ -343,6 +344,7 @@ def health_check(db: Session = Depends(get_db)):
 # REGISTER ROUTERS
 # =============================================================================
 
+from routers.accounts import router as accounts_router
 from routers.auth import router as auth_router
 from routers.categories import router as categories_router
 from routers.clients import router as clients_router
@@ -361,6 +363,7 @@ from routers.financial_years import router as financial_years_router
 from routers.backups import router as backups_router
 
 app.include_router(auth_router)
+app.include_router(accounts_router)
 app.include_router(categories_router)
 app.include_router(clients_router)
 app.include_router(rules_router)

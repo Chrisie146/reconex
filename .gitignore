@@ -67,3 +67,10 @@ s3-policy.json
 # OS
 .DS_Store
 Thumbs.db
+
+# Claude AI worktrees
+.claude/
+
+# Python venv
+backend/.venv/
+*.exe

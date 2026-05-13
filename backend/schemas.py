@@ -2,8 +2,8 @@
 Pydantic schemas for request/response validation
 """
 
-from pydantic import BaseModel, EmailStr
-from typing import Optional
+from pydantic import BaseModel, EmailStr, Field
+from typing import List, Literal, Optional
 from datetime import datetime
 
 
@@ -108,10 +108,93 @@ class TransactionResponse(BaseModel):
     date: str
     description: str
     amount: float
+    account_id: Optional[int]
     category: str
-    
+
     class Config:
         from_attributes = True
+
+
+# ==================== Account / Chart-of-Accounts Schemas ====================
+
+
+AccountType = Literal["asset", "liability", "equity", "revenue", "expense"]
+NormalBalance = Literal["DR", "CR"]
+CashFlowSection = Literal["operating", "investing", "financing", "none"]
+VATTreatment = Literal["standard_15", "zero_rated", "exempt", "out_of_scope"]
+
+
+class AccountCreate(BaseModel):
+    """Create a new (user-defined) account."""
+    client_id: int
+    code: str
+    name: str
+    parent_id: Optional[int] = None
+    account_type: AccountType
+    account_subtype: Optional[str] = None
+    normal_balance: NormalBalance
+    cash_flow_section: CashFlowSection = "none"
+    is_vat_control: bool = False
+    vat_treatment: Optional[VATTreatment] = None
+    vat_rate: Optional[float] = None
+    is_postable: bool = True
+    description: Optional[str] = None
+
+
+class AccountUpdate(BaseModel):
+    """Patch an account.
+
+    For system (template-seeded) accounts the API only honours
+    name / description / cash_flow_section / vat_rate / vat_treatment.
+    """
+    name: Optional[str] = None
+    description: Optional[str] = None
+    parent_id: Optional[int] = None
+    account_subtype: Optional[str] = None
+    cash_flow_section: Optional[CashFlowSection] = None
+    vat_treatment: Optional[VATTreatment] = None
+    vat_rate: Optional[float] = None
+    is_postable: Optional[bool] = None
+    is_active: Optional[bool] = None
+
+
+class AccountResponse(BaseModel):
+    """Account row returned by the API."""
+    id: int
+    client_id: int
+    code: str
+    name: str
+    parent_id: Optional[int]
+    path: str
+    level: int
+    account_type: AccountType
+    account_subtype: Optional[str]
+    normal_balance: NormalBalance
+    cash_flow_section: CashFlowSection
+    is_vat_control: bool
+    vat_treatment: Optional[VATTreatment]
+    vat_rate: Optional[float]
+    is_postable: bool
+    is_active: bool
+    is_system: bool
+    description: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+
+class AccountNode(AccountResponse):
+    """Tree variant — same payload plus a `children` list of the same shape."""
+    children: List["AccountNode"] = Field(default_factory=list)
+
+
+AccountNode.model_rebuild()
+
+
+class SeedTemplateRequest(BaseModel):
+    """Body for POST /accounts/seed-template — idempotent re-seed."""
+    client_id: int
+    template_name: str = "sa_sme_v1"
 
 
 # ==================== Session Schemas ====================

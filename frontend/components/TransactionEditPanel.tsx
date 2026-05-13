@@ -3,6 +3,7 @@
 import { X, Loader2, AlertCircle, CheckCircle, AlertTriangle, Plus, Pencil, Tag, Store, Sparkles, Copy, Save } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import axios from '@/lib/axiosClient'
+import AccountSelector from './AccountSelector'
 
 import { API_BASE_URL } from '@/lib/apiBase'
 
@@ -23,6 +24,9 @@ interface Transaction {
   description: string
   amount: number
   category: string
+  account_id?: number | null
+  account_code?: string | null
+  account_name?: string | null
   merchant?: string | null
   vat_amount?: number | null
   amount_excl_vat?: number | null
@@ -54,6 +58,7 @@ export default function TransactionEditPanel({
   onRefresh,
 }: TransactionEditPanelProps) {
   const [category, setCategory] = useState('')
+  const [accountId, setAccountId] = useState<number | null>(null)
   const [merchant, setMerchant] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -165,6 +170,7 @@ export default function TransactionEditPanel({
   useEffect(() => {
     if (transaction) {
       setCategory(transaction.category || '')
+      setAccountId(transaction.account_id ?? null)
       setMerchant(transaction.merchant || '')
       setDescription(cleanDescription(transaction.description))
       setEditingDescription(false)
@@ -364,6 +370,7 @@ export default function TransactionEditPanel({
       const cleanedOriginalDesc = cleanDescription(transaction.description)
 
       const categoryChanged = category !== (transaction.category || '')
+      const accountChanged = accountId !== (transaction.account_id ?? null)
       const descriptionChanged = editingDescription && description !== cleanedOriginalDesc
 
       // Track API response data (includes recalculated VAT fields)
@@ -391,6 +398,15 @@ export default function TransactionEditPanel({
         )
         // The API response includes recalculated VAT fields
         apiResponseData = response.data
+      }
+
+      if (accountChanged) {
+        const acctResponse = await axios.put(
+          `${API_BASE_URL}/transactions/${transaction.id}/account`,
+          { account_id: accountId },
+          { params: { session_id: effectiveSessionId } }
+        )
+        if (!apiResponseData) apiResponseData = acctResponse.data
       }
 
       if (merchant !== (transaction.merchant || '')) {
@@ -427,6 +443,7 @@ export default function TransactionEditPanel({
       const updatedTxn: Transaction = {
         ...transaction,
         category,
+        account_id: accountId,
         merchant: merchant || null,
         description: editingDescription ? description : cleanDescription(transaction.description),
       }
@@ -464,7 +481,7 @@ export default function TransactionEditPanel({
   }
 
   const descriptionChangedLocally = editingDescription && description !== cleanDescription(transaction.description)
-  const hasChanges = category !== (transaction.category || '') || merchant !== (transaction.merchant || '') || descriptionChangedLocally
+  const hasChanges = category !== (transaction.category || '') || accountId !== (transaction.account_id ?? null) || merchant !== (transaction.merchant || '') || descriptionChangedLocally
 
   return (
     <>
@@ -741,6 +758,26 @@ export default function TransactionEditPanel({
               </div>
             </div>
           )}
+
+          {/* ─── Account Section (Phase 2: Chart of Accounts) ─── */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M4 5h16a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V7a2 2 0 012-2z" />
+              </svg>
+              <label className="text-sm font-semibold text-neutral-700">Account (CoA)</label>
+            </div>
+            <AccountSelector
+              clientId={clientId ?? null}
+              value={accountId}
+              onChange={(id, _acct) => setAccountId(id)}
+              postableOnly
+              placeholder="Select account..."
+            />
+            <p className="text-xs text-neutral-500">
+              Assign a Chart of Accounts account for financial reporting.
+            </p>
+          </div>
 
           {/* ─── Merchant Section ─── */}
           <div className="space-y-3">

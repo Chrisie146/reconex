@@ -9,10 +9,10 @@ from typing import Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from sqlalchemy import String, func, or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from auth import get_current_user
-from models import Client, Rule, SessionState, SessionVATConfig, Transaction, TransactionMerchant, User, get_db
+from models import Account, Client, Rule, SessionState, SessionVATConfig, Transaction, TransactionMerchant, User, get_db
 from routers.dependencies import (
     BulkCategorizeRequest,
     ClearCategoriesRequest,
@@ -45,12 +45,12 @@ async def get_transactions(
     """Get all transactions for a session or client."""
     if session_id:
         ensure_session_access(session_id, current_user, db)
-        query = db.query(Transaction).filter(Transaction.session_id == session_id)
+        query = db.query(Transaction).options(joinedload(Transaction.account)).filter(Transaction.session_id == session_id)
     elif client_id:
         client = db.query(Client).filter(Client.id == client_id, Client.user_id == current_user.id).first()
         if not client:
             raise HTTPException(status_code=404, detail="Client not found")
-        query = db.query(Transaction).filter(Transaction.client_id == client_id)
+        query = db.query(Transaction).options(joinedload(Transaction.account)).filter(Transaction.client_id == client_id)
     else:
         raise HTTPException(status_code=400, detail="Either session_id or client_id must be provided")
 
@@ -113,6 +113,10 @@ async def get_transactions(
                 "amount": t.amount,
                 "category": t.category,
                 "suggested_category": t.suggested_category,
+                "account_id": t.account_id,
+                "account_code": t.account.code if t.account else None,
+                "account_name": t.account.name if t.account else None,
+                "account_type": t.account.account_type if t.account else None,
                 "invoice_id": t.invoice_id,
                 "merchant": (
                     db.query(TransactionMerchant)
@@ -151,9 +155,10 @@ def update_transaction_category(
 
         category = request.get("category")
         new_description = request.get("description")
+        account_id = request.get("account_id")  # Phase 2
 
-        if not category and not new_description:
-            raise HTTPException(status_code=400, detail="Either category or description is required")
+        if not category and not new_description and account_id is None:
+            raise HTTPException(status_code=400, detail="Either category, description, or account_id is required")
 
         transaction = db.query(Transaction).filter(
             Transaction.id == transaction_id,
@@ -180,7 +185,21 @@ def update_transaction_category(
         if new_description is not None and new_description != transaction.description:
             transaction.description = new_description
             print(f"⚠️  Description updated for transaction {transaction_id}")
-
+        if account_id is not None:
+            # Validate the account belongs to the same client
+            if account_id == 0 or account_id == "":
+                transaction.account_id = None
+            else:
+                account = db.query(Account).filter(
+                    Account.id == account_id,
+                    Account.client_id == transaction.client_id,
+                ).first()
+                if not account:
+                    raise HTTPException(status_code=404, detail="Account not found for this client")
+                transaction.account_id = account.id
+                # Keep category in sync with account name for backward compat display
+                if not category:
+                    transaction.category = account.name
         db.commit()
 
         cache = get_cache()
@@ -215,6 +234,7 @@ def update_transaction_category(
                         keyword=keyword,
                         db=db,
                         client_id=transaction.client_id,
+                        account_id=transaction.account_id,  # Phase 2
                     )
                     if learned_rules:
                         print(f"✓ Saved keyword rule: '{keyword.strip().upper()}' \u2192 {category}")
@@ -240,7 +260,7 @@ def update_transaction_category(
             except Exception as learn_error:
                 print(f"Warning: Failed to save keyword rule: {learn_error}")
 
-        transaction = db.query(Transaction).filter(
+        transaction = db.query(Transaction).options(joinedload(Transaction.account)).filter(
             Transaction.id == transaction_id,
             Transaction.session_id == session_id,
         ).first()
@@ -251,11 +271,84 @@ def update_transaction_category(
             "description": transaction.description,
             "amount": transaction.amount,
             "category": transaction.category,
+            "account_id": transaction.account_id,
+            "account_code": transaction.account.code if transaction.account else None,
+            "account_name": transaction.account.name if transaction.account else None,
             "vat_amount": transaction.vat_amount,
             "amount_excl_vat": transaction.amount_excl_vat,
             "amount_incl_vat": transaction.amount_incl_vat,
         }
 
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Update failed: {str(e)}")
+
+
+@router.put("/transactions/{transaction_id}/account")
+def update_transaction_account(
+    transaction_id: int,
+    request: dict,
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Assign (or clear) the Chart-of-Accounts account for a single transaction.
+
+    Body: { account_id: int | null }
+    """
+    try:
+        ensure_session_access(session_id, current_user, db)
+
+        ss = db.query(SessionState).filter(SessionState.session_id == session_id).first()
+        if ss and ss.locked:
+            raise HTTPException(status_code=403, detail="Session is locked and cannot be modified")
+
+        transaction = (
+            db.query(Transaction)
+            .filter(Transaction.id == transaction_id, Transaction.session_id == session_id)
+            .first()
+        )
+        if not transaction:
+            raise HTTPException(status_code=404, detail="Transaction not found")
+
+        new_account_id = request.get("account_id")
+        if new_account_id is None:
+            transaction.account_id = None
+        else:
+            account = db.query(Account).filter(
+                Account.id == new_account_id,
+                Account.client_id == transaction.client_id,
+            ).first()
+            if not account:
+                raise HTTPException(status_code=404, detail="Account not found for this client")
+            transaction.account_id = account.id
+            # Keep category in sync for backward-compat display
+            transaction.category = account.name
+
+        db.commit()
+
+        # Recalculate VAT with the new account
+        force_vat = False
+        if transaction.client_id:
+            client_vat_check = (
+                db.query(SessionVATConfig)
+                .join(Transaction, Transaction.session_id == SessionVATConfig.session_id)
+                .filter(
+                    Transaction.client_id == transaction.client_id,
+                    SessionVATConfig.vat_enabled == 1,
+                )
+                .first()
+            )
+            force_vat = client_vat_check is not None
+        vat_service.apply_vat_to_transaction(transaction_id, session_id, force=force_vat)
+
+        db.refresh(transaction)
+        return {
+            "id": transaction.id,
+            "category": transaction.category,
+            "account_id": transaction.account_id,
+        }
     except HTTPException:
         raise
     except Exception as e:
@@ -468,11 +561,12 @@ def bulk_categorize_by_ids(
 
         ids = payload.get("ids") or []
         category = payload.get("category")
+        account_id = payload.get("account_id")  # Phase 2
 
         if not ids or not isinstance(ids, list):
             raise HTTPException(status_code=400, detail="ids must be a non-empty list")
-        if not category or not category.strip():
-            raise HTTPException(status_code=400, detail="category is required")
+        if not category and account_id is None:
+            raise HTTPException(status_code=400, detail="Either category or account_id is required")
 
         if session_id:
             txns_db = db.query(Transaction).filter(
@@ -490,8 +584,24 @@ def bulk_categorize_by_ids(
 
         original_state = [{"id": t.id, "category": t.category, "description": t.description} for t in txns_db]
 
+        # Resolve account if account_id supplied
+        resolved_account = None
+        if account_id is not None:
+            first_txn = txns_db[0]
+            resolved_account = db.query(Account).filter(
+                Account.id == account_id,
+                Account.client_id == first_txn.client_id,
+            ).first()
+            if not resolved_account:
+                raise HTTPException(status_code=404, detail="Account not found for this client")
+
         for t in txns_db:
-            t.category = category
+            if category:
+                t.category = category
+            if resolved_account:
+                t.account_id = resolved_account.id
+                if not category:
+                    t.category = resolved_account.name
         db.commit()
 
         # When working in client mode, check if VAT is enabled for any session

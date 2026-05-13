@@ -9,13 +9,13 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from auth import get_current_user
-from models import Client, Transaction, TransactionMerchant, User, get_db
+from models import Account, Client, SessionVATConfig, Transaction, TransactionMerchant, User, get_db
 from routers.dependencies import ensure_session_access, ensure_session_access_lenient
 from services.cache import cached
-from services.summary import ExcelExporter, calculate_monthly_summary, get_category_summary
+from services.summary import ExcelExporter, calculate_monthly_summary, get_category_summary, get_account_summary
 from services.analytics import (
     get_cashflow_series,
     get_merchant_analytics,
@@ -766,3 +766,254 @@ def export_unusual_transactions(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unusual transactions Excel export failed: {str(e)}")
+
+
+# =============================================================================
+# CHART-OF-ACCOUNTS REPORTS (Phase 2)
+# =============================================================================
+
+
+@router.get("/reports/profit-loss")
+def get_profit_and_loss(
+    session_id: Optional[str] = Query(default=None),
+    client_id: Optional[int] = Query(default=None),
+    date_from: Optional[str] = Query(default=None),
+    date_to: Optional[str] = Query(default=None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Profit & Loss statement grouped by revenue / expense accounts.
+
+    Only includes transactions that have been assigned an account_id whose
+    account_type is 'revenue' or 'expense'.  Unassigned transactions are listed
+    as 'Unclassified' at the bottom.
+    """
+    try:
+        if not session_id and not client_id:
+            raise HTTPException(status_code=400, detail="Either session_id or client_id must be provided")
+
+        if session_id:
+            ensure_session_access(session_id, current_user, db)
+        elif client_id:
+            client = db.query(Client).filter(Client.id == client_id, Client.user_id == current_user.id).first()
+            if not client:
+                raise HTTPException(status_code=404, detail="Client not found")
+
+        query = (
+            db.query(Transaction)
+            .options(joinedload(Transaction.account))
+        )
+        if session_id:
+            query = query.filter(Transaction.session_id == session_id)
+        else:
+            query = query.filter(Transaction.client_id == client_id)
+
+        if date_from:
+            from datetime import datetime as _dt
+            query = query.filter(Transaction.date >= _dt.strptime(date_from, "%Y-%m-%d").date())
+        if date_to:
+            from datetime import datetime as _dt
+            query = query.filter(Transaction.date <= _dt.strptime(date_to, "%Y-%m-%d").date())
+
+        transactions = query.all()
+
+        revenue: dict = {}
+        expenses: dict = {}
+        unclassified_income = 0.0
+        unclassified_expense = 0.0
+
+        for t in transactions:
+            acct = t.account
+            if acct and t.account_id:
+                if acct.account_type == "revenue":
+                    key = f"{acct.code} · {acct.name}"
+                    revenue.setdefault(key, {"account_id": acct.id, "code": acct.code, "name": acct.name, "total": 0.0})
+                    revenue[key]["total"] += abs(t.amount)
+                elif acct.account_type == "expense":
+                    key = f"{acct.code} · {acct.name}"
+                    expenses.setdefault(key, {"account_id": acct.id, "code": acct.code, "name": acct.name, "total": 0.0})
+                    expenses[key]["total"] += abs(t.amount)
+            else:
+                if t.amount >= 0:
+                    unclassified_income += t.amount
+                else:
+                    unclassified_expense += abs(t.amount)
+
+        total_revenue = sum(v["total"] for v in revenue.values())
+        total_expenses = sum(v["total"] for v in expenses.values())
+        net_profit = total_revenue - total_expenses
+
+        return {
+            "revenue": sorted(revenue.values(), key=lambda x: x["code"] or ""),
+            "expenses": sorted(expenses.values(), key=lambda x: x["code"] or ""),
+            "totals": {
+                "total_revenue": round(total_revenue, 2),
+                "total_expenses": round(total_expenses, 2),
+                "net_profit": round(net_profit, 2),
+            },
+            "unclassified": {
+                "income": round(unclassified_income, 2),
+                "expense": round(unclassified_expense, 2),
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Profit & Loss report failed: {str(e)}")
+
+
+@router.get("/reports/balance-sheet")
+def get_balance_sheet(
+    session_id: Optional[str] = Query(default=None),
+    client_id: Optional[int] = Query(default=None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Balance Sheet grouped by asset / liability / equity accounts.
+
+    Only includes transactions assigned to account_id with account_type in
+    ('asset', 'liability', 'equity').
+    """
+    try:
+        if not session_id and not client_id:
+            raise HTTPException(status_code=400, detail="Either session_id or client_id must be provided")
+
+        if session_id:
+            ensure_session_access(session_id, current_user, db)
+        elif client_id:
+            client = db.query(Client).filter(Client.id == client_id, Client.user_id == current_user.id).first()
+            if not client:
+                raise HTTPException(status_code=404, detail="Client not found")
+
+        query = (
+            db.query(Transaction)
+            .options(joinedload(Transaction.account))
+            .filter(Transaction.account_id.isnot(None))
+        )
+        if session_id:
+            query = query.filter(Transaction.session_id == session_id)
+        else:
+            query = query.filter(Transaction.client_id == client_id)
+
+        transactions = query.all()
+
+        assets: dict = {}
+        liabilities: dict = {}
+        equity: dict = {}
+
+        for t in transactions:
+            acct = t.account
+            if not acct:
+                continue
+            key = f"{acct.code} · {acct.name}"
+            bucket = None
+            if acct.account_type == "asset":
+                bucket = assets
+            elif acct.account_type == "liability":
+                bucket = liabilities
+            elif acct.account_type == "equity":
+                bucket = equity
+            else:
+                continue
+            bucket.setdefault(key, {"account_id": acct.id, "code": acct.code, "name": acct.name, "total": 0.0})
+            bucket[key]["total"] += abs(t.amount)
+
+        total_assets = sum(v["total"] for v in assets.values())
+        total_liabilities = sum(v["total"] for v in liabilities.values())
+        total_equity = sum(v["total"] for v in equity.values())
+
+        return {
+            "assets": sorted(assets.values(), key=lambda x: x["code"] or ""),
+            "liabilities": sorted(liabilities.values(), key=lambda x: x["code"] or ""),
+            "equity": sorted(equity.values(), key=lambda x: x["code"] or ""),
+            "totals": {
+                "total_assets": round(total_assets, 2),
+                "total_liabilities": round(total_liabilities, 2),
+                "total_equity": round(total_equity, 2),
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Balance Sheet report failed: {str(e)}")
+
+
+@router.get("/reports/trial-balance")
+def get_trial_balance(
+    session_id: Optional[str] = Query(default=None),
+    client_id: Optional[int] = Query(default=None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Trial Balance: all accounts with debit and credit totals.
+
+    Debit-normal accounts (asset / expense): positive amounts → debit side.
+    Credit-normal accounts (liability / equity / revenue): positive amounts → credit side.
+    """
+    try:
+        if not session_id and not client_id:
+            raise HTTPException(status_code=400, detail="Either session_id or client_id must be provided")
+
+        if session_id:
+            ensure_session_access(session_id, current_user, db)
+        elif client_id:
+            client = db.query(Client).filter(Client.id == client_id, Client.user_id == current_user.id).first()
+            if not client:
+                raise HTTPException(status_code=404, detail="Client not found")
+
+        query = (
+            db.query(Transaction)
+            .options(joinedload(Transaction.account))
+            .filter(Transaction.account_id.isnot(None))
+        )
+        if session_id:
+            query = query.filter(Transaction.session_id == session_id)
+        else:
+            query = query.filter(Transaction.client_id == client_id)
+
+        transactions = query.all()
+
+        rows: dict = {}  # account_id → row dict
+        for t in transactions:
+            acct = t.account
+            if not acct:
+                continue
+            if acct.id not in rows:
+                rows[acct.id] = {
+                    "account_id": acct.id,
+                    "code": acct.code,
+                    "name": acct.name,
+                    "account_type": acct.account_type,
+                    "normal_balance": acct.normal_balance,
+                    "debit": 0.0,
+                    "credit": 0.0,
+                }
+            # DR-normal: asset, expense
+            if acct.normal_balance == "DR" or acct.account_type in ("asset", "expense"):
+                if t.amount >= 0:
+                    rows[acct.id]["debit"] += t.amount
+                else:
+                    rows[acct.id]["credit"] += abs(t.amount)
+            else:
+                # CR-normal: liability, equity, revenue
+                if t.amount >= 0:
+                    rows[acct.id]["credit"] += t.amount
+                else:
+                    rows[acct.id]["debit"] += abs(t.amount)
+
+        rows_list = sorted(rows.values(), key=lambda x: x["code"] or "")
+        total_debit = sum(r["debit"] for r in rows_list)
+        total_credit = sum(r["credit"] for r in rows_list)
+
+        return {
+            "rows": rows_list,
+            "totals": {
+                "total_debit": round(total_debit, 2),
+                "total_credit": round(total_credit, 2),
+                "balanced": abs(total_debit - total_credit) < 0.01,
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Trial Balance report failed: {str(e)}")

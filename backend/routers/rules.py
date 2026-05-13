@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from auth import get_current_user
 from exceptions import AppException
-from models import Client, Rule, SessionState, Transaction, TransactionMerchant, User, UserCategorizationRule, get_db
+from models import Account, Client, Rule, SessionState, Transaction, TransactionMerchant, User, UserCategorizationRule, get_db
 from routers.dependencies import (
     BulkApplyRulesRequest,
     CreateRuleRequest,
@@ -473,6 +473,31 @@ def apply_rule(
                 )
             except Exception:
                 pass
+
+        elif action.get("type") == "set_account" and action.get("account_code"):
+            account_code = action["account_code"]
+            # Resolve account — scope to rule's client for security
+            acct_query = db.query(Account).filter(Account.code == account_code)
+            if r.client_id:
+                acct_query = acct_query.filter(Account.client_id == r.client_id)
+            account = acct_query.first()
+            if not account:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Account with code '{account_code}' not found for this client",
+                )
+            for tid in matched:
+                db.query(Transaction).filter(Transaction.id == tid).update(
+                    {"account_id": account.id}
+                )
+                updated_count += 1
+            db.commit()
+
+            # Also update the category field from the account name for backward-compat display
+            db.query(Transaction).filter(Transaction.id.in_(matched)).update(
+                {"category": account.name}, synchronize_session=False
+            )
+            db.commit()
 
         elif action.get("type") == "set_merchant" and action.get("merchant"):
             newm = action["merchant"]

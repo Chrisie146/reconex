@@ -1,6 +1,11 @@
 """
 VAT Calculation Service
-Handles VAT calculations for transactions based on category settings
+Handles VAT calculations for transactions based on account or category settings.
+
+Phase 2: VAT logic now prefers the transaction's linked Account (account_id) when
+available — deriving vat_treatment/vat_rate directly from Account.vat_treatment
+and Account.vat_rate — and falls back to the legacy category-based lookup so that
+transactions that have not yet been assigned an account continue to work.
 """
 
 import sys
@@ -10,34 +15,37 @@ from datetime import datetime, date
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from sqlalchemy.orm import Session
-from models import Transaction, CustomCategory, SessionVATConfig, SessionLocal
+from sqlalchemy.orm import Session, joinedload
+from models import Account, Transaction, CustomCategory, SessionVATConfig, SessionLocal
 
-# Import VAT defaults from categories_service to keep them in sync
-try:
-    from services.categories_service import BUILT_IN_CATEGORY_VAT_DEFAULTS
-except ImportError:
-    # Fallback if import fails
-    BUILT_IN_CATEGORY_VAT_DEFAULTS = {
-        "Fuel": {"applicable": True, "rate": 15.0},
-        "Bank Fees": {"applicable": False, "rate": 0.0},
-        "Rent": {"applicable": False, "rate": 0.0},
-        "Salary": {"applicable": False, "rate": 0.0},
-        "Groceries": {"applicable": True, "rate": 15.0},
-        "Utilities": {"applicable": True, "rate": 15.0},
-        "Transport": {"applicable": True, "rate": 15.0},
-        "Healthcare": {"applicable": False, "rate": 0.0},
-        "Insurance": {"applicable": False, "rate": 0.0},
-        "Entertainment": {"applicable": True, "rate": 15.0},
-        "Clothing": {"applicable": True, "rate": 15.0},
-        "Dining": {"applicable": True, "rate": 15.0},
-        "Travel": {"applicable": True, "rate": 15.0},
-        "Education": {"applicable": False, "rate": 0.0},
-        "Other": {"applicable": False, "rate": 0.0},
-    }
+# Legacy category → VAT defaults (kept for backward-compat while transactions still
+# reference free-text category and have no account_id assigned).
+BUILT_IN_CATEGORY_VAT_DEFAULTS: Dict[str, Dict] = {
+    "Fuel": {"applicable": True, "rate": 15.0},
+    "Bank Fees": {"applicable": False, "rate": 0.0},
+    "Rent": {"applicable": False, "rate": 0.0},
+    "Salary": {"applicable": False, "rate": 0.0},
+    "Groceries": {"applicable": True, "rate": 15.0},
+    "Utilities": {"applicable": True, "rate": 15.0},
+    "Transport": {"applicable": True, "rate": 15.0},
+    "Healthcare": {"applicable": False, "rate": 0.0},
+    "Insurance": {"applicable": False, "rate": 0.0},
+    "Entertainment": {"applicable": True, "rate": 15.0},
+    "Clothing": {"applicable": True, "rate": 15.0},
+    "Dining": {"applicable": True, "rate": 15.0},
+    "Travel": {"applicable": True, "rate": 15.0},
+    "Education": {"applicable": False, "rate": 0.0},
+    "Other": {"applicable": False, "rate": 0.0},
+}
 
-# Income/Sales categories (VAT Output) - vs expenses (VAT Input)
+# Income/Sales categories — used only when no Account is linked
 INCOME_CATEGORIES = {"Salary", "Income", "Sales"}
+
+# Account types that represent income / VAT output
+INCOME_ACCOUNT_TYPES = {"revenue"}
+
+# VAT treatment values that mean VAT applies
+VAT_APPLICABLE_TREATMENTS = {"standard_15", "zero_rated"}
 
 
 class VATService:
@@ -50,57 +58,79 @@ class VATService:
         """Get a database session"""
         return SessionLocal()
     
-    def _is_vat_output(self, category: str, client_id: Optional[int] = None) -> bool:
-        """Determine if a transaction is VAT Output (income/sales) or Input (expenses)
-        
-        Uses hybrid approach:
-        1. Check hardcoded built-in income categories first (fast)
-        2. Check custom categories in database (flexible)
-        
+    def _is_vat_output(self, category: str, client_id: Optional[int] = None, account: Optional[Account] = None) -> bool:
+        """Determine if a transaction is VAT Output (income/sales) or Input (expenses).
+
+        Phase 2 — account-first, category fallback:
+        1. If an Account is supplied, classify by account.account_type ("revenue" → output).
+        2. Otherwise fall back to the legacy category-string check.
+
         Args:
-            category: Transaction category name
-            client_id: Optional client ID for client-scoped lookup
-            
+            category: Transaction category name (used as fallback)
+            client_id: Optional client ID for custom-category lookup
+            account: Linked Account ORM object (preferred)
+
         Returns:
-            True if VAT Output (income), False if VAT Input (expense)
+            True if VAT Output (income/sales), False if VAT Input (expense)
         """
-        # Fast path: Check built-in income categories
+        # Account-based classification (Phase 2)
+        if account is not None:
+            return account.account_type in INCOME_ACCOUNT_TYPES
+
+        # Legacy category-based classification (Phase 1 fallback)
         if category in INCOME_CATEGORIES:
             return True
-        
-        # Slow path: Check custom categories in database
+
         db = self._get_db()
         try:
-            query = db.query(CustomCategory).filter(
-                CustomCategory.name == category
-            )
+            query = db.query(CustomCategory).filter(CustomCategory.name == category)
             if client_id is not None:
                 query = query.filter(CustomCategory.client_id == client_id)
             custom_cat = query.first()
-            
             if custom_cat:
                 return custom_cat.is_income == 1
-            
-            # Not found - default to VAT Input (expense)
             return False
         finally:
             db.close()
-    
-    def _split_transactions_by_type(self, transactions: List[Transaction], client_id: Optional[int] = None) -> Tuple[List[Transaction], List[Transaction]]:
-        """Split transactions into VAT Input (expenses) and VAT Output (income/sales)
 
-        Args:
-            transactions: List of transactions
-            client_id: Optional client ID for scoped custom category lookup
+    def _get_vat_settings_for_transaction(self, transaction: Transaction) -> Dict:
+        """Resolve VAT settings for a transaction.
+
+        Phase 2: prefers account.vat_treatment / account.vat_rate when the
+        transaction has an account_id assigned; falls back to the legacy
+        category-based lookup so un-migrated transactions still work.
 
         Returns:
-            Tuple of (vat_input_transactions, vat_output_transactions)
+            {"applicable": bool, "rate": float, "is_output": bool}
+        """
+        account: Optional[Account] = getattr(transaction, "account", None)
+        if account is not None and transaction.account_id is not None:
+            # Derive applicability from vat_treatment
+            applicable = account.vat_treatment in VAT_APPLICABLE_TREATMENTS
+            rate = account.vat_rate if (applicable and account.vat_rate) else 0.0
+            is_output = account.account_type in INCOME_ACCOUNT_TYPES
+            return {"applicable": applicable, "rate": rate, "is_output": is_output}
+
+        # Legacy path — use category
+        cat_settings = self.get_category_vat_settings(transaction.category, getattr(transaction, "client_id", None))
+        is_output = self._is_vat_output(transaction.category, getattr(transaction, "client_id", None))
+        return {
+            "applicable": cat_settings["applicable"],
+            "rate": cat_settings["rate"],
+            "is_output": is_output,
+        }
+    
+    def _split_transactions_by_type(self, transactions: List[Transaction], client_id: Optional[int] = None) -> Tuple[List[Transaction], List[Transaction]]:
+        """Split transactions into VAT Input (expenses) and VAT Output (income/sales).
+
+        Phase 2: uses account.account_type when account is loaded; falls back to category.
         """
         vat_input = []
         vat_output = []
 
         for txn in transactions:
-            if self._is_vat_output(txn.category, client_id=client_id):
+            account = getattr(txn, "account", None)
+            if self._is_vat_output(txn.category, client_id=client_id, account=account):
                 vat_output.append(txn)
             else:
                 vat_input.append(txn)
@@ -294,48 +324,44 @@ class VATService:
         session_id: str,
         force: bool = False
     ) -> Tuple[bool, str]:
+        """Calculate and apply VAT to a transaction.
+
+        Phase 2: prefers account-based VAT settings when account_id is set.
         """
-        Calculate and apply VAT to a transaction based on its category
-        
-        Args:
-            transaction_id: ID of the transaction
-            session_id: Session ID
-            force: If True, apply even if VAT is disabled
-        """
-        # Check if VAT is enabled for this session
         if not force and not self.is_vat_enabled(session_id):
             return False, "VAT calculation is not enabled for this session"
-        
+
         db = self._get_db()
         try:
-            transaction = db.query(Transaction).filter(
-                Transaction.id == transaction_id,
-                Transaction.session_id == session_id
-            ).first()
-            
+            transaction = (
+                db.query(Transaction)
+                .options(joinedload(Transaction.account))
+                .filter(
+                    Transaction.id == transaction_id,
+                    Transaction.session_id == session_id,
+                )
+                .first()
+            )
+
             if not transaction:
                 return False, "Transaction not found"
-            
-            # Get VAT settings for the transaction's category
-            vat_settings = self.get_category_vat_settings(transaction.category)
-            
+
+            vat_settings = self._get_vat_settings_for_transaction(transaction)
+
             if not vat_settings["applicable"]:
-                # Clear VAT fields if not applicable
                 transaction.vat_amount = None
                 transaction.amount_excl_vat = None
                 transaction.amount_incl_vat = None
             else:
-                # Calculate VAT (assuming amount is VAT inclusive)
                 vat_calc = self.calculate_vat(
                     transaction.amount,
                     vat_settings["rate"],
-                    amount_includes_vat=True
+                    amount_includes_vat=True,
                 )
-                
                 transaction.vat_amount = vat_calc["vat_amount"]
                 transaction.amount_excl_vat = vat_calc["amount_excl_vat"]
                 transaction.amount_incl_vat = vat_calc["amount_incl_vat"]
-            
+
             db.commit()
             return True, "VAT calculated successfully"
         except Exception as e:
@@ -345,47 +371,50 @@ class VATService:
             db.close()
     
     def recalculate_all_transactions(self, session_id: str) -> Tuple[bool, str, Dict]:
-        """Recalculate VAT for all transactions in a session"""
+        """Recalculate VAT for all transactions in a session.
+
+        Phase 2: uses account-based settings when account_id is set.
+        """
         if not self.is_vat_enabled(session_id):
             return False, "VAT calculation is not enabled for this session", {}
-        
+
         db = self._get_db()
         try:
-            transactions = db.query(Transaction).filter(
-                Transaction.session_id == session_id
-            ).all()
-            
+            transactions = (
+                db.query(Transaction)
+                .options(joinedload(Transaction.account))
+                .filter(Transaction.session_id == session_id)
+                .all()
+            )
+
             updated_count = 0
             skipped_count = 0
-            
+
             for transaction in transactions:
-                vat_settings = self.get_category_vat_settings(transaction.category)
-                
+                vat_settings = self._get_vat_settings_for_transaction(transaction)
+
                 if not vat_settings["applicable"]:
-                    # Clear VAT fields
                     transaction.vat_amount = None
                     transaction.amount_excl_vat = None
                     transaction.amount_incl_vat = None
                     skipped_count += 1
                 else:
-                    # Calculate VAT
                     vat_calc = self.calculate_vat(
                         transaction.amount,
                         vat_settings["rate"],
-                        amount_includes_vat=True
+                        amount_includes_vat=True,
                     )
-                    
                     transaction.vat_amount = vat_calc["vat_amount"]
                     transaction.amount_excl_vat = vat_calc["amount_excl_vat"]
                     transaction.amount_incl_vat = vat_calc["amount_incl_vat"]
                     updated_count += 1
-            
+
             db.commit()
-            
+
             return True, "VAT recalculated for all transactions", {
                 "total": len(transactions),
                 "updated": updated_count,
-                "skipped": skipped_count
+                "skipped": skipped_count,
             }
         except Exception as e:
             db.rollback()
@@ -394,111 +423,137 @@ class VATService:
             db.close()
     
     def recalculate_all_transactions_for_client(self, client_id: int) -> Tuple[bool, str, Dict]:
-        """Recalculate VAT for all transactions across all statements for a client
-        
-        This is useful when viewing a client with multiple statements, and you want to
-        ensure VAT is calculated for all transactions regardless of when VAT was enabled.
+        """Recalculate VAT for all transactions across all statements for a client.
+
+        Phase 2: uses account-based settings when account_id is set.
         """
         db = self._get_db()
         try:
-            # Get all transactions for this client
-            transactions = db.query(Transaction).filter(
-                Transaction.client_id == client_id
-            ).all()
-            
+            transactions = (
+                db.query(Transaction)
+                .options(joinedload(Transaction.account))
+                .filter(Transaction.client_id == client_id)
+                .all()
+            )
+
             if not transactions:
                 return False, "No transactions found for this client", {}
-            
-            # Check if VAT is enabled for any session of this client
-            vat_enabled_sessions = db.query(SessionVATConfig).join(
-                Transaction, Transaction.session_id == SessionVATConfig.session_id
-            ).filter(
-                Transaction.client_id == client_id,
-                SessionVATConfig.vat_enabled == 1
-            ).all()
-            
+
+            vat_enabled_sessions = (
+                db.query(SessionVATConfig)
+                .join(Transaction, Transaction.session_id == SessionVATConfig.session_id)
+                .filter(
+                    Transaction.client_id == client_id,
+                    SessionVATConfig.vat_enabled == 1,
+                )
+                .all()
+            )
+
             if not vat_enabled_sessions:
                 return False, "VAT is not enabled for any statement of this client", {}
-            
+
             updated_count = 0
             skipped_count = 0
-            
+
             for transaction in transactions:
-                vat_settings = self.get_category_vat_settings(transaction.category)
-                
+                vat_settings = self._get_vat_settings_for_transaction(transaction)
+
                 if not vat_settings["applicable"]:
-                    # Clear VAT fields
                     transaction.vat_amount = None
                     transaction.amount_excl_vat = None
                     transaction.amount_incl_vat = None
                     skipped_count += 1
                 else:
-                    # Calculate VAT
                     vat_calc = self.calculate_vat(
                         transaction.amount,
                         vat_settings["rate"],
-                        amount_includes_vat=True
+                        amount_includes_vat=True,
                     )
-                    
                     transaction.vat_amount = vat_calc["vat_amount"]
                     transaction.amount_excl_vat = vat_calc["amount_excl_vat"]
                     transaction.amount_incl_vat = vat_calc["amount_incl_vat"]
                     updated_count += 1
-            
+
             db.commit()
-            
+
             return True, "VAT recalculated for all client transactions", {
                 "total": len(transactions),
                 "updated": updated_count,
                 "skipped": skipped_count,
-                "vat_enabled_sessions": len(vat_enabled_sessions)
+                "vat_enabled_sessions": len(vat_enabled_sessions),
             }
         except Exception as e:
             db.rollback()
             return False, f"Failed to recalculate VAT: {str(e)}", {}
         finally:
             db.close()
-    
+
     def get_vat_summary(self, session_id: str, start_date: Optional[date] = None, end_date: Optional[date] = None) -> Dict:
-        """
-        Get VAT summary for a session
-        
-        Returns:
-            Dict with total_vat, total_excl_vat, total_incl_vat, transactions_count
+        """Get VAT summary for a session.
+
+        Phase 2: groups by account (code · name) when account_id is set; falls
+        back to grouping by category string for legacy transactions.
         """
         db = self._get_db()
         try:
-            query = db.query(Transaction).filter(
-                Transaction.session_id == session_id,
-                Transaction.vat_amount.isnot(None)
+            query = (
+                db.query(Transaction)
+                .options(joinedload(Transaction.account))
+                .filter(
+                    Transaction.session_id == session_id,
+                    Transaction.vat_amount.isnot(None),
+                )
             )
-            
+
             if start_date:
                 query = query.filter(Transaction.date >= start_date)
             if end_date:
                 query = query.filter(Transaction.date <= end_date)
-            
+
             transactions = query.all()
-            
+
             total_vat = sum(t.vat_amount or 0 for t in transactions)
             total_excl_vat = sum(t.amount_excl_vat or 0 for t in transactions)
             total_incl_vat = sum(t.amount_incl_vat or 0 for t in transactions)
-            
-            # Group by category
-            by_category = {}
+
+            # Group by account (Phase 2) when available, else by category (Phase 1)
+            by_account: Dict = {}
+            # Keep the legacy by_category structure for API backward-compat
+            by_category: Dict = {}
+
             for t in transactions:
-                if t.category not in by_category:
-                    by_category[t.category] = {
+                acct = getattr(t, "account", None)
+                if acct and t.account_id:
+                    key = f"{acct.code} · {acct.name}"
+                    if key not in by_account:
+                        by_account[key] = {
+                            "account_id": acct.id,
+                            "account_code": acct.code,
+                            "account_name": acct.name,
+                            "account_type": acct.account_type,
+                            "count": 0,
+                            "total_vat": 0.0,
+                            "total_excl_vat": 0.0,
+                            "total_incl_vat": 0.0,
+                        }
+                    by_account[key]["count"] += 1
+                    by_account[key]["total_vat"] += t.vat_amount or 0
+                    by_account[key]["total_excl_vat"] += t.amount_excl_vat or 0
+                    by_account[key]["total_incl_vat"] += t.amount_incl_vat or 0
+
+                # Legacy grouping (always populated for backward compat)
+                cat_key = t.category or "Uncategorized"
+                if cat_key not in by_category:
+                    by_category[cat_key] = {
                         "count": 0,
                         "total_vat": 0.0,
                         "total_excl_vat": 0.0,
-                        "total_incl_vat": 0.0
+                        "total_incl_vat": 0.0,
                     }
-                
-                by_category[t.category]["count"] += 1
-                by_category[t.category]["total_vat"] += t.vat_amount or 0
-                by_category[t.category]["total_excl_vat"] += t.amount_excl_vat or 0
-                by_category[t.category]["total_incl_vat"] += t.amount_incl_vat or 0
+                by_category[cat_key]["count"] += 1
+                by_category[cat_key]["total_vat"] += t.vat_amount or 0
+                by_category[cat_key]["total_excl_vat"] += t.amount_excl_vat or 0
+                by_category[cat_key]["total_incl_vat"] += t.amount_incl_vat or 0
             
             return {
                 "total_vat": round(total_vat, 2),
@@ -506,10 +561,11 @@ class VATService:
                 "total_incl_vat": round(total_incl_vat, 2),
                 "transactions_count": len(transactions),
                 "by_category": by_category,
+                "by_account": by_account,
                 "period": {
                     "start_date": start_date.isoformat() if start_date else None,
-                    "end_date": end_date.isoformat() if end_date else None
-                }
+                    "end_date": end_date.isoformat() if end_date else None,
+                },
             }
         finally:
             db.close()

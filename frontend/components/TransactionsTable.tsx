@@ -82,6 +82,10 @@ interface Transaction {
   vat_amount?: number | null
   amount_excl_vat?: number | null
   amount_incl_vat?: number | null
+  account_id?: number | null
+  account_code?: string | null
+  account_name?: string | null
+  account_type?: string | null
 }
 
 type QuickFilter = 'all' | 'income' | 'expenses' | 'uncategorized'
@@ -1173,17 +1177,23 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
                               const catStyle = getCategoryStyle(txn.category)
                               return (
                                 <td key={`${txn.id}-${col}`} className="px-4 py-2.5">
-                                  <div onClick={(e) => { e.stopPropagation(); setSelectedTransactionForEdit(txn); setShowEditPanel(true) }} className="cursor-pointer group/cat">
+                                  <div onClick={(e) => { e.stopPropagation(); setSelectedTransactionForEdit(txn); setShowEditPanel(true) }} className="cursor-pointer group/cat space-y-1">
+                                    {txn.account_id ? (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 hover:shadow-sm transition-shadow">
+                                        {txn.account_code && <span className="font-mono opacity-70">{txn.account_code}</span>}
+                                        {txn.account_name}
+                                      </span>
+                                    ) : null}
                                     {txn.category && txn.category !== 'Uncategorized' ? (
                                       <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${catStyle.bg} ${catStyle.text} ${catStyle.border} hover:shadow-sm transition-shadow`}>
                                         {txn.category}
                                         <span className="text-[10px] opacity-0 group-hover/cat:opacity-60 transition-opacity">✎</span>
                                       </span>
-                                    ) : (
+                                    ) : !txn.account_id ? (
                                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium text-neutral-400 border border-dashed border-neutral-200 hover:border-neutral-400 hover:text-neutral-500 transition-colors">
                                         + Add category
                                       </span>
-                                    )}
+                                    ) : null}
                                   </div>
                                 </td>
                               )

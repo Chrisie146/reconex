@@ -5,7 +5,7 @@ Handles storage of transactions and session data
 
 from sqlalchemy import Column, Integer, String, Float, Date, DateTime, create_engine, ForeignKey, Boolean, UniqueConstraint, text
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
 
 Base = declarative_base()
@@ -41,6 +41,66 @@ class Client(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class Account(Base):
+    """
+    Chart-of-Accounts node for a single client.
+
+    Hierarchical (adjacency list + materialized `path`). Each client has its own
+    independent CoA seeded from a template on client creation. Phase 1 is
+    strictly additive: the legacy free-text Transaction.category column and
+    CustomCategory table remain in place until Phase 2 sweeps them.
+    """
+    __tablename__ = "accounts"
+    __table_args__ = (
+        UniqueConstraint("client_id", "code", name="uq_accounts_client_code"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    client_id = Column(Integer, ForeignKey("clients.id", ondelete="CASCADE"), index=True, nullable=False)
+
+    code = Column(String, nullable=False, index=True)  # e.g. "4100"
+    name = Column(String, nullable=False)              # e.g. "Sales (Standard-rated)"
+
+    parent_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=True, index=True)
+    path = Column(String, nullable=False, default="")  # Materialized: "4000/4100" — keeps tree queries cheap
+    level = Column(Integer, nullable=False, default=0) # 0 = root, 1 = first child, ...
+
+    # Accounting type. Values: asset | liability | equity | revenue | expense
+    account_type = Column(String, nullable=False, index=True)
+    # Finer grouping used by P&L / Balance Sheet (e.g. current_asset, fixed_asset,
+    # current_liability, long_term_liability, cost_of_sales, operating_expense,
+    # finance_cost, other_income, tax_expense). NULL on header rows allowed.
+    account_subtype = Column(String, nullable=True, index=True)
+    # 'DR' (asset/expense) or 'CR' (liability/equity/revenue) — the side that increases the balance
+    normal_balance = Column(String, nullable=False)
+
+    # Forward-compat for the Statement of Cash Flows (deferred phase).
+    # Values: operating | investing | financing | none
+    cash_flow_section = Column(String, nullable=False, default="none")
+
+    # VAT control accounts (2200 Output, 2210 Input) get is_vat_control=True so
+    # VAT aggregation knows where to look. Other accounts carry vat_treatment to
+    # describe how postings to them should be treated for VAT calculation.
+    is_vat_control = Column(Boolean, nullable=False, default=False)
+    # Values: standard_15 | zero_rated | exempt | out_of_scope | NULL (for balance-sheet accounts)
+    vat_treatment = Column(String, nullable=True)
+    vat_rate = Column(Float, nullable=True)  # e.g. 15.0 for standard-rated; NULL otherwise
+
+    # Only leaf accounts are postable; header nodes (e.g. "4000 Revenue") are not.
+    is_postable = Column(Boolean, nullable=False, default=True)
+    # Soft delete — preserves historical reporting integrity for accounts that have postings.
+    is_active = Column(Boolean, nullable=False, default=True, index=True)
+    # System (template-seeded) accounts can only have name/description/cash_flow_section/vat_rate edited.
+    is_system = Column(Boolean, nullable=False, default=False)
+
+    description = Column(String, nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    parent = relationship("Account", remote_side=[id], backref="children")
+
+
 class Transaction(Base):
     """
     Represents a parsed transaction from a bank statement
@@ -52,18 +112,21 @@ class Transaction(Base):
     client_id = Column(Integer, ForeignKey("clients.id"), index=True)
     session_id = Column(String, index=True)  # Track session for stateless operation
     invoice_id = Column(Integer, nullable=True)  # Link to confirmed invoice (set when invoice is confirmed)
-    
+
     # Normalized transaction data
     date = Column(Date, nullable=False)
     description = Column(String, nullable=False)
     amount = Column(Float, nullable=False)
-    category = Column(String, nullable=False)  # Rent, Utilities, Fuel, Groceries, Fees, Income, Other
-    
+    category = Column(String, nullable=False)  # Legacy free-text category — kept until Phase 2 sweep migrates everything to account_id
+    # New CoA link (Phase 1: nullable, populated alongside category as services are swept in Phase 2)
+    account_id = Column(Integer, ForeignKey("accounts.id"), nullable=True, index=True)
+    suggested_account_id = Column(Integer, ForeignKey("accounts.id"), nullable=True)
+
     # VAT calculation fields (when VAT is enabled)
     vat_amount = Column(Float, nullable=True)  # Calculated VAT amount
     amount_excl_vat = Column(Float, nullable=True)  # Amount excluding VAT
     amount_incl_vat = Column(Float, nullable=True)  # Amount including VAT (same as amount when VAT applies)
-    
+
     # Bank source tracking
     bank_source = Column(String, nullable=True, default="unknown")  # standard_bank, absa, capitec, unknown
 
@@ -78,6 +141,9 @@ class Transaction(Base):
 
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    account = relationship("Account", foreign_keys=[account_id])
+    suggested_account = relationship("Account", foreign_keys=[suggested_account_id])
 
 
 class Reconciliation(Base):
@@ -202,8 +268,10 @@ class UserCategorizationRule(Base):
     user_id = Column(String, index=True)  # Persistent user identifier across sessions
     client_id = Column(Integer, ForeignKey("clients.id", ondelete="CASCADE"), index=True, nullable=True)
     session_id = Column(String, index=True, nullable=True)  # Optional: track which session created the rule
-    category = Column(String, nullable=False)
-    
+    category = Column(String, nullable=False)  # Legacy free-text — Phase 2 replaces this with account_id
+    # New CoA link — nullable until Phase 2 sweep populates it.
+    account_id = Column(Integer, ForeignKey("accounts.id"), nullable=True, index=True)
+
     # Pattern matching fields
     pattern_type = Column(String, nullable=False)  # 'exact', 'contains', 'starts_with', 'merchant'
     pattern_value = Column(String, nullable=False)  # The actual pattern to match
@@ -351,6 +419,12 @@ class ArchivedTransaction(Base):
     description = Column(String, nullable=False)
     amount = Column(Float, nullable=False)
     category = Column(String, nullable=False)
+    # Denormalized snapshots of the linked Account at archive time so historical
+    # reports survive even after a live account is renamed or deleted. No FK —
+    # the live account row may be gone by the time anyone reads this.
+    account_id = Column(Integer, nullable=True)
+    account_code = Column(String, nullable=True)
+    account_name = Column(String, nullable=True)
     vat_amount = Column(Float, nullable=True)
     amount_excl_vat = Column(Float, nullable=True)
     amount_incl_vat = Column(Float, nullable=True)
@@ -535,6 +609,12 @@ def init_db():
     with engine.connect() as conn:
         for ddl in [
             "ALTER TABLE transactions ADD COLUMN suggested_category VARCHAR",
+            "ALTER TABLE transactions ADD COLUMN account_id INTEGER",
+            "ALTER TABLE transactions ADD COLUMN suggested_account_id INTEGER",
+            "ALTER TABLE user_categorization_rules ADD COLUMN account_id INTEGER",
+            "ALTER TABLE archived_transactions ADD COLUMN account_id INTEGER",
+            "ALTER TABLE archived_transactions ADD COLUMN account_code VARCHAR",
+            "ALTER TABLE archived_transactions ADD COLUMN account_name VARCHAR",
         ]:
             try:
                 conn.execute(text(ddl))

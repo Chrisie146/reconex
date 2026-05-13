@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from auth import get_current_user
 from models import (
+    Account,
     Client,
     Invoice,
     OverallReconciliation,
@@ -18,6 +19,9 @@ from models import (
     get_db,
 )
 from routers.dependencies import logger
+from services import coa_service
+
+DEFAULT_COA_TEMPLATE = "sa_sme_v1"
 
 router = APIRouter(tags=["Clients"])
 
@@ -72,6 +76,17 @@ def create_client(
         db.add(client)
         db.commit()
         db.refresh(client)
+
+        # Seed the client's Chart of Accounts from the default SA SME template.
+        # Idempotent; a seed failure shouldn't prevent client creation, so we log
+        # and continue — the user can re-seed manually via POST /accounts/seed-template.
+        try:
+            coa_service.seed_template_for_client(client.id, DEFAULT_COA_TEMPLATE, db)
+        except Exception as seed_exc:
+            logger.error(
+                "Failed to seed CoA template '%s' for new client %s: %s",
+                DEFAULT_COA_TEMPLATE, client.id, seed_exc,
+            )
 
         return {
             "client": {
@@ -130,11 +145,18 @@ def delete_client(
         if not client:
             raise HTTPException(status_code=404, detail="Client not found")
 
+        # Transactions reference accounts via FK — null them out before deleting accounts
+        # so the FK constraint passes regardless of ON DELETE behaviour.
+        db.query(Transaction).filter(Transaction.client_id == client_id).update(
+            {Transaction.account_id: None, Transaction.suggested_account_id: None},
+            synchronize_session=False,
+        )
         db.query(Transaction).filter(Transaction.client_id == client_id).delete()
         db.query(Rule).filter(Rule.client_id == client_id).delete()
         db.query(Invoice).filter(Invoice.client_id == client_id).delete()
         db.query(Reconciliation).filter(Reconciliation.client_id == client_id).delete()
         db.query(OverallReconciliation).filter(OverallReconciliation.client_id == client_id).delete()
+        db.query(Account).filter(Account.client_id == client_id).delete()
         db.query(Client).filter(Client.id == client_id).delete()
         db.commit()
 
