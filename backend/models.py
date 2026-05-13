@@ -271,6 +271,7 @@ class UserCategorizationRule(Base):
     category = Column(String, nullable=False)  # Legacy free-text — Phase 2 replaces this with account_id
     # New CoA link — nullable until Phase 2 sweep populates it.
     account_id = Column(Integer, ForeignKey("accounts.id"), nullable=True, index=True)
+    account = relationship("Account", foreign_keys=[account_id])
 
     # Pattern matching fields
     pattern_type = Column(String, nullable=False)  # 'exact', 'contains', 'starts_with', 'merchant'

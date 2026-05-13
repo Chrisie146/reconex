@@ -333,6 +333,9 @@ class CategorizationLearningService:
             {
                 'id': rule.id,
                 'category': rule.category,
+                'account_id': rule.account_id,
+                'account_code': rule.account.code if getattr(rule, 'account', None) else None,
+                'account_name': rule.account.name if getattr(rule, 'account', None) else None,
                 'pattern_type': rule.pattern_type,
                 'pattern_value': rule.pattern_value,
                 'confidence_score': rule.confidence_score,
@@ -369,6 +372,8 @@ class CategorizationLearningService:
             rule.enabled = 1 if updates['enabled'] else 0
         if 'pattern_value' in updates:
             rule.pattern_value = updates['pattern_value']
+        if 'account_id' in updates:
+            rule.account_id = updates['account_id']
         
         db.commit()
         return True, "Rule updated successfully"

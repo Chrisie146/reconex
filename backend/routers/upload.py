@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Upl
 from sqlalchemy.orm import Session
 
 from auth import get_current_user
-from models import Client, Rule, SessionState, Transaction, User, get_db
+from models import Account, Client, Rule, SessionState, Transaction, User, get_db
 from routers.dependencies import (
     learning_service,
     logger,
@@ -98,6 +98,22 @@ def _sanitize_amounts(transactions: list) -> None:
             t["amount"] = 0.0
 
 
+def _resolve_action_account(db: Session, client_id: Optional[int], action: dict) -> Optional[Account]:
+    if client_id is None:
+        return None
+    account_id = action.get("account_id")
+    query = db.query(Account).filter(
+        Account.client_id == client_id,
+        Account.is_active == True,  # noqa: E712
+        Account.is_postable == True,  # noqa: E712
+    )
+    if account_id is not None:
+        return query.filter(Account.id == account_id).first()
+    if action.get("account_code"):
+        return query.filter(Account.code == action["account_code"]).first()
+    return None
+
+
 def _apply_rules_and_save(
     normalized_transactions: list,
     enabled_rules: list,
@@ -127,15 +143,28 @@ def _apply_rules_and_save(
         }
 
         # User-created auto-apply rules override and confirm directly
+        account_id = None
         for r in enabled_rules:
             if not r.get("auto_apply"):
                 continue
             try:
                 if txn_matches_conditions(tdict, r.get("conditions", {})):
                     act = r.get("action", {})
-                    if act.get("type") == "set_category" and act.get("category"):
-                        category = act["category"]
+                    if act.get("type") == "set_category" and (act.get("category") or act.get("account_id") is not None):
+                        account = _resolve_action_account(db, client_id, act)
+                        if act.get("category"):
+                            category = act["category"]
+                        elif account:
+                            category = account.name
+                        if account:
+                            account_id = account.id
                         break
+                    if act.get("type") == "set_account":
+                        account = _resolve_action_account(db, client_id, act)
+                        if account:
+                            account_id = account.id
+                            category = account.name
+                            break
                     if act.get("type") == "set_merchant" and act.get("merchant"):
                         txn_data["_merchant"] = act["merchant"]
                         break
@@ -161,6 +190,7 @@ def _apply_rules_and_save(
             description=txn_data["description"],
             amount=txn_data["amount"],
             category=category,
+            account_id=account_id,
             suggested_category=None,
             bank_source=bank_source,
             balance_verified=txn_data.get("balance_verified"),
@@ -187,10 +217,16 @@ def _apply_rules_and_save(
         )
 
         updated_count = 0
-        for txn_id, cat in confirmed.items():
+        for txn_id, suggestion in confirmed.items():
+            if isinstance(suggestion, (tuple, list)):
+                cat, account_id = suggestion[0], suggestion[1] if len(suggestion) > 1 else None
+            else:
+                cat, account_id = suggestion, None
             txn = db.query(Transaction).filter(Transaction.id == txn_id).first()
             if txn:
                 txn.category = cat
+                if account_id is not None:
+                    txn.account_id = account_id
                 txn.suggested_category = None
                 categories_found.add(cat)
                 updated_count += 1
@@ -457,15 +493,28 @@ def save_parsed_transactions(
 
             tdict = {"description": desc, "amount": amount, "date": date_obj, "category": category}
 
+            account_id = None
             for r in enabled_rules:
                 if not r.get("auto_apply"):
                     continue
                 try:
                     if txn_matches_conditions(tdict, r.get("conditions", {})):
                         act = r.get("action", {})
-                        if act.get("type") == "set_category" and act.get("category"):
-                            category = act["category"]
+                        if act.get("type") == "set_category" and (act.get("category") or act.get("account_id") is not None):
+                            account = _resolve_action_account(db, client_id, act)
+                            if act.get("category"):
+                                category = act["category"]
+                            elif account:
+                                category = account.name
+                            if account:
+                                account_id = account.id
                             break
+                        if act.get("type") == "set_account":
+                            account = _resolve_action_account(db, client_id, act)
+                            if account:
+                                account_id = account.id
+                                category = account.name
+                                break
                         if act.get("type") == "set_merchant" and act.get("merchant"):
                             item["_merchant"] = act["merchant"]
                             break
@@ -491,6 +540,7 @@ def save_parsed_transactions(
                 description=desc,
                 amount=amount,
                 category=category,
+                account_id=account_id,
                 suggested_category=None,
                 balance_verified=item.get("balance_verified"),
                 balance_difference=item.get("balance_difference"),
@@ -512,10 +562,16 @@ def save_parsed_transactions(
             confirmed = learning_service.apply_learned_rules(
                 effective_user_id, all_transactions, db, client_id=client_id, override_existing=True
             )
-            for txn_id, cat in confirmed.items():
+            for txn_id, suggestion in confirmed.items():
+                if isinstance(suggestion, (tuple, list)):
+                    cat, account_id = suggestion[0], suggestion[1] if len(suggestion) > 1 else None
+                else:
+                    cat, account_id = suggestion, None
                 txn = db.query(Transaction).filter(Transaction.id == txn_id).first()
                 if txn:
                     txn.category = cat
+                    if account_id is not None:
+                        txn.account_id = account_id
                     txn.suggested_category = None
                     categories_found.add(cat)
             if confirmed:

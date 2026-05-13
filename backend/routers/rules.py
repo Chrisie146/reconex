@@ -29,6 +29,74 @@ from routers.dependencies import (
 router = APIRouter(tags=["Rules"])
 
 
+def _get_session_client_id(session_id: str, db: Session) -> Optional[int]:
+    row = db.query(Transaction.client_id).filter(Transaction.session_id == session_id).first()
+    return row[0] if row else None
+
+
+def _get_account_or_400(account_id: Optional[int], client_id: Optional[int], db: Session) -> Optional[Account]:
+    if account_id is None:
+        return None
+    if client_id is None:
+        raise HTTPException(status_code=400, detail="client_id is required to assign an account")
+    account = db.query(Account).filter(
+        Account.id == account_id,
+        Account.client_id == client_id,
+    ).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found for this client")
+    if not account.is_active:
+        raise HTTPException(status_code=400, detail="Account is inactive")
+    if not account.is_postable:
+        raise HTTPException(status_code=400, detail="Account is not postable")
+    return account
+
+
+def _resolve_action_account(action: dict, client_id: Optional[int], db: Session) -> Optional[Account]:
+    if action.get("account_id") is not None:
+        return _get_account_or_400(action.get("account_id"), client_id, db)
+    if action.get("type") == "set_account" and action.get("account_code"):
+        if client_id is None:
+            raise HTTPException(status_code=400, detail="client_id is required to assign an account")
+        account = db.query(Account).filter(
+            Account.client_id == client_id,
+            Account.code == action["account_code"],
+        ).first()
+        if not account:
+            raise HTTPException(status_code=404, detail=f"Account with code '{action['account_code']}' not found for this client")
+        if not account.is_active:
+            raise HTTPException(status_code=400, detail="Account is inactive")
+        if not account.is_postable:
+            raise HTTPException(status_code=400, detail="Account is not postable")
+        return account
+    return None
+
+
+def _validate_rule_action(action: dict, client_id: Optional[int], db: Session) -> None:
+    if not isinstance(action, dict):
+        raise HTTPException(status_code=400, detail="action must be an object")
+    action_type = action.get("type")
+    if action_type == "set_category":
+        if not action.get("category") and action.get("account_id") is None:
+            raise HTTPException(status_code=400, detail="Rule action must set a category or account")
+        _resolve_action_account(action, client_id, db)
+    elif action_type == "set_account":
+        if action.get("account_id") is None and not action.get("account_code"):
+            raise HTTPException(status_code=400, detail="Rule action must set an account")
+        _resolve_action_account(action, client_id, db)
+    elif action_type == "set_merchant":
+        if not action.get("merchant"):
+            raise HTTPException(status_code=400, detail="merchant is required")
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported rule action type")
+
+
+def _split_learned_suggestion(suggestion):
+    if isinstance(suggestion, (tuple, list)):
+        return suggestion[0], suggestion[1] if len(suggestion) > 1 else None
+    return suggestion, None
+
+
 # =============================================================================
 # SESSION-BASED RULES (via CategoriesService in-memory)
 # =============================================================================
@@ -61,12 +129,15 @@ def create_session_rule(
     """Create a new categorization rule (in-memory, session scope)"""
     try:
         ensure_session_access(session_id, current_user, db)
+        session_client_id = _get_session_client_id(session_id, db)
+        _get_account_or_400(request.account_id, session_client_id, db)
         rule_id = str(uuid.uuid4())
         success, message = categories_service.create_rule(
             session_id=session_id,
             rule_id=rule_id,
             name=request.name,
             category=request.category,
+            account_id=request.account_id,
             keywords=request.keywords,
             priority=request.priority,
             auto_apply=request.auto_apply,
@@ -99,6 +170,9 @@ def update_session_rule(
     try:
         ensure_session_access(session_id, current_user, db)
         updates = {k: v for k, v in request.dict().items() if v is not None}
+        if "account_id" in updates:
+            session_client_id = _get_session_client_id(session_id, db)
+            _get_account_or_400(updates["account_id"], session_client_id, db)
         success, message = categories_service.update_rule(session_id, rule_id, **updates)
         if not success:
             raise HTTPException(status_code=400, detail=message)
@@ -141,7 +215,7 @@ def preview_session_rule(
         ensure_session_access(session_id, current_user, db)
         transactions = db.query(Transaction).filter(Transaction.session_id == session_id).all()
         txn_dicts = [
-            {"id": t.id, "date": t.date, "description": t.description, "amount": t.amount, "category": t.category}
+            {"id": t.id, "date": t.date, "description": t.description, "amount": t.amount, "category": t.category, "account_id": t.account_id}
             for t in transactions
         ]
         preview = categories_service.preview_rule_matches(session_id, rule_id, txn_dicts)
@@ -164,7 +238,7 @@ def apply_rules_bulk(
         ensure_session_access(session_id, current_user, db)
         transactions = db.query(Transaction).filter(Transaction.session_id == session_id).all()
         txn_dicts = [
-            {"id": t.id, "date": t.date, "description": t.description, "amount": t.amount, "category": t.category}
+            {"id": t.id, "date": t.date, "description": t.description, "amount": t.amount, "category": t.category, "account_id": t.account_id}
             for t in transactions
         ]
 
@@ -172,11 +246,35 @@ def apply_rules_bulk(
             session_id, txn_dicts, rule_ids=request.rule_ids, auto_apply_only=request.auto_apply_only
         )
 
+        account_ids = {
+            txn_dict.get("account_id")
+            for txn_dict in result["transactions"]
+            if txn_dict.get("account_id") is not None
+        }
+        accounts = {
+            a.id: a
+            for a in db.query(Account).filter(Account.id.in_(account_ids)).all()
+        } if account_ids else {}
+
         updated_ids = []
         for txn_dict in result["transactions"]:
             txn = db.query(Transaction).filter(Transaction.id == txn_dict["id"]).first()
-            if txn and txn.category != txn_dict.get("category"):
-                txn.category = txn_dict.get("category")
+            if not txn:
+                continue
+            changed = False
+            next_category = txn_dict.get("category")
+            next_account_id = txn_dict.get("account_id")
+            if next_category and txn.category != next_category:
+                txn.category = next_category
+                changed = True
+            if next_account_id is not None and txn.account_id != next_account_id:
+                account = accounts.get(next_account_id)
+                if account:
+                    txn.account_id = account.id
+                    if not next_category:
+                        txn.category = account.name
+                    changed = True
+            if changed:
                 updated_ids.append(txn.id)
 
         db.commit()
@@ -207,7 +305,7 @@ def get_rule_statistics(
         ensure_session_access(session_id, current_user, db)
         transactions = db.query(Transaction).filter(Transaction.session_id == session_id).all()
         txn_dicts = [
-            {"id": t.id, "date": t.date, "description": t.description, "amount": t.amount, "category": t.category}
+            {"id": t.id, "date": t.date, "description": t.description, "amount": t.amount, "category": t.category, "account_id": t.account_id}
             for t in transactions
         ]
         stats = categories_service.get_rule_statistics(session_id, txn_dicts)
@@ -281,6 +379,7 @@ def create_rule(
             client = db.query(Client).filter(Client.id == client_id, Client.user_id == current_user.id).first()
             if not client:
                 raise HTTPException(status_code=404, detail="Client not found")
+        _validate_rule_action(action, client_id, db)
 
         r = Rule(
             client_id=client_id,
@@ -329,7 +428,9 @@ def update_rule(
         if "conditions" in request:
             r.conditions = json.dumps(request.get("conditions"))
         if "action" in request:
-            r.action = json.dumps(request.get("action"))
+            action = request.get("action")
+            _validate_rule_action(action, r.client_id, db)
+            r.action = json.dumps(action)
         if "auto_apply" in request:
             r.auto_apply = 1 if request.get("auto_apply") else 0
         db.commit()
@@ -396,9 +497,9 @@ def preview_rule(
         txns_db = db.query(Transaction).filter(Transaction.session_id == sid).all()
         matches = []
         for t in txns_db:
-            td = {"id": t.id, "description": t.description, "amount": t.amount, "date": t.date, "category": t.category}
+            td = {"id": t.id, "description": t.description, "amount": t.amount, "date": t.date, "category": t.category, "account_id": t.account_id}
             if txn_matches_conditions(td, conds):
-                matches.append({"id": t.id, "description": t.description, "amount": t.amount, "category": t.category})
+                matches.append({"id": t.id, "description": t.description, "amount": t.amount, "category": t.category, "account_id": t.account_id})
         return {"matches": matches, "count": len(matches)}
     except HTTPException:
         raise
@@ -440,24 +541,32 @@ def apply_rule(
 
         conds = json.loads(r.conditions)
         action = json.loads(r.action)
+        account = _resolve_action_account(action, r.client_id, db)
 
         txns_db = db.query(Transaction).filter(Transaction.session_id == sid).all()
         matched = []
         original_state = []
         for t in txns_db:
-            td = {"id": t.id, "description": t.description, "amount": t.amount, "date": t.date, "category": t.category}
+            td = {"id": t.id, "description": t.description, "amount": t.amount, "date": t.date, "category": t.category, "account_id": t.account_id}
             if txn_matches_conditions(td, conds):
                 matched.append(t.id)
-                original_state.append({"id": t.id, "category": t.category, "description": t.description})
+                original_state.append({"id": t.id, "category": t.category, "account_id": t.account_id, "description": t.description})
 
         if not matched:
             return {"updated_count": 0, "message": "No matching transactions"}
 
         updated_count = 0
-        if action.get("type") == "set_category" and action.get("category"):
-            newcat = action["category"]
+        if action.get("type") == "set_category" and (action.get("category") or account):
+            newcat = action.get("category")
             for tid in matched:
-                db.query(Transaction).filter(Transaction.id == tid).update({"category": newcat})
+                updates = {}
+                if newcat:
+                    updates["category"] = newcat
+                if account:
+                    updates["account_id"] = account.id
+                    if not newcat:
+                        updates["category"] = account.name
+                db.query(Transaction).filter(Transaction.id == tid).update(updates)
                 updated_count += 1
             db.commit()
 
@@ -466,7 +575,7 @@ def apply_rule(
                 bulk_categorizer.last_action = BulkAction(
                     action_id=action_id,
                     keyword=f"rule:{r.id}",
-                    category=newcat,
+                    category=newcat or (account.name if account else ""),
                     timestamp=datetime.utcnow().isoformat(),
                     matched_transactions=original_state,
                     transaction_ids=[t["id"] for t in original_state],
@@ -474,18 +583,8 @@ def apply_rule(
             except Exception:
                 pass
 
-        elif action.get("type") == "set_account" and action.get("account_code"):
-            account_code = action["account_code"]
+        elif action.get("type") == "set_account" and account:
             # Resolve account — scope to rule's client for security
-            acct_query = db.query(Account).filter(Account.code == account_code)
-            if r.client_id:
-                acct_query = acct_query.filter(Account.client_id == r.client_id)
-            account = acct_query.first()
-            if not account:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"Account with code '{account_code}' not found for this client",
-                )
             for tid in matched:
                 db.query(Transaction).filter(Transaction.id == tid).update(
                     {"account_id": account.id}
@@ -513,9 +612,23 @@ def apply_rule(
                         updated_count += 1
             db.commit()
 
+        if updated_count > 0 and action.get("type") in ("set_category", "set_account"):
+            for tid in matched:
+                vat_service.apply_vat_to_transaction(tid, sid, force=False)
+            db.expire_all()
+
         updated_txns_db = db.query(Transaction).filter(Transaction.session_id == sid).all()
         updated_transactions = [
-            {"id": t.id, "date": t.date.isoformat(), "description": t.description, "amount": t.amount, "category": t.category}
+            {
+                "id": t.id,
+                "date": t.date.isoformat(),
+                "description": t.description,
+                "amount": t.amount,
+                "category": t.category,
+                "account_id": t.account_id,
+                "account_code": t.account.code if t.account else None,
+                "account_name": t.account.name if t.account else None,
+            }
             for t in updated_txns_db
         ]
 
@@ -570,6 +683,14 @@ def update_learned_rule(
     """Update a learned rule (enable/disable, change category, edit pattern)"""
     try:
         effective_user_id = str(current_user.id)
+        if "account_id" in request and request.get("account_id") is not None:
+            rule = db.query(UserCategorizationRule).filter(
+                UserCategorizationRule.id == rule_id,
+                UserCategorizationRule.user_id == effective_user_id,
+            ).first()
+            if not rule:
+                raise HTTPException(status_code=404, detail="Rule not found")
+            _get_account_or_400(request.get("account_id"), rule.client_id, db)
         success, message = learning_service.update_rule(rule_id, effective_user_id, request, db)
         if not success:
             raise HTTPException(status_code=404, detail=message)
@@ -668,10 +789,14 @@ def apply_learned_rules(
 
         updated_count = 0
         updated_ids = []
-        for txn_id, category in suggestions.items():
+        for txn_id, suggestion in suggestions.items():
+            category, account_id = _split_learned_suggestion(suggestion)
             txn = db.query(Transaction).filter(Transaction.id == txn_id).first()
             if txn:
                 txn.category = category
+                if account_id is not None:
+                    account = _get_account_or_400(account_id, txn.client_id, db)
+                    txn.account_id = account.id
                 updated_count += 1
                 updated_ids.append((txn_id, txn.session_id))
 

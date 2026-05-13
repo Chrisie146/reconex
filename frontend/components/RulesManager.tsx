@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react'
 import { apiFetch } from '@/lib/apiFetch'
 import { useClient } from '@/lib/clientContext'
+import AccountSelector from './AccountSelector'
+import { useAccounts } from '@/lib/hooks/useAccounts'
 import {
   Plus, Trash2, Zap, Eye, EyeOff, ChevronDown, ChevronRight, X,
   Check, Loader2, AlertCircle, CheckCircle2, Settings2, Tag,
@@ -14,7 +16,8 @@ interface RulesManagerProps { sessionId: string }
 interface Rule {
   rule_id: string
   name: string
-  category: string
+  category: string | null
+  account_id?: number | null
   keywords: string[]
   priority: number
   auto_apply: boolean
@@ -26,7 +29,8 @@ interface RulePreview {
   count: number
   percentage: number
   rule_name: string
-  category: string
+  category: string | null
+  account_id?: number | null
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -34,6 +38,7 @@ interface RulePreview {
    ══════════════════════════════════════════════════════════════════════ */
 export default function RulesManager({ sessionId }: RulesManagerProps) {
   const { currentClient } = useClient()
+  const { accounts } = useAccounts(currentClient?.id ?? null, { postable: true })
   const [rules, setRules] = useState<Rule[]>([])
   const [categories, setCategories] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
@@ -43,7 +48,7 @@ export default function RulesManager({ sessionId }: RulesManagerProps) {
   // form
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [formData, setFormData] = useState({
-    name: '', category: '', keywords: '', priority: 10, auto_apply: true, match_compound_words: false
+    name: '', category: '', account_id: null as number | null, keywords: '', priority: 10, auto_apply: true, match_compound_words: false
   })
 
   // preview
@@ -81,17 +86,17 @@ export default function RulesManager({ sessionId }: RulesManagerProps) {
   /* ── actions ───────────────────────────────────────────────────── */
   const handleCreateRule = async (e: React.FormEvent) => {
     e.preventDefault(); setError(null); setSuccess(null)
-    if (!formData.name.trim() || !formData.category || !formData.keywords.trim()) { flash('Fill in all fields', 'error'); return }
-    if (!categories.includes(formData.category)) { flash(`Category "${formData.category}" doesn't exist — create it in the Categories tab first.`, 'error'); return }
+    if (!formData.name.trim() || !formData.keywords.trim() || (!formData.category && !formData.account_id)) { flash('Fill in all required fields', 'error'); return }
+    if (formData.category && !categories.includes(formData.category)) { flash(`Category "${formData.category}" doesn't exist in this client.`, 'error'); return }
     const keywords = formData.keywords.split('\n').map(k => k.trim()).filter(k => k)
     if (keywords.length === 0) { flash('Enter at least one keyword', 'error'); return }
     setLoading(true)
     try {
       const data = await apiFetch(`/session-rules?session_id=${sessionId}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: formData.name, category: formData.category, keywords, priority: formData.priority, auto_apply: formData.auto_apply, match_compound_words: formData.match_compound_words })
+        body: JSON.stringify({ name: formData.name, category: formData.category || null, account_id: formData.account_id, keywords, priority: formData.priority, auto_apply: formData.auto_apply, match_compound_words: formData.match_compound_words })
       })
-      setRules(data.rules || []); setFormData({ name: '', category: '', keywords: '', priority: 10, auto_apply: true, match_compound_words: false }); setShowCreateForm(false)
+      setRules(data.rules || []); setFormData({ name: '', category: '', account_id: null, keywords: '', priority: 10, auto_apply: true, match_compound_words: false }); setShowCreateForm(false)
       flash('Rule created', 'success')
     } catch (err) { flash(err instanceof Error ? err.message : 'Failed to create rule', 'error') }
     finally { setLoading(false) }
@@ -128,6 +133,7 @@ export default function RulesManager({ sessionId }: RulesManagerProps) {
   }
 
   const keywordsParsed = formData.keywords.split('\n').filter(k => k.trim())
+  const selectedAccount = accounts.find(a => a.id === formData.account_id) || null
 
   /* ══════════════════════════════════════════════════════════════════
      RENDER
@@ -211,8 +217,21 @@ export default function RulesManager({ sessionId }: RulesManagerProps) {
               </div>
             </div>
 
+            <div>
+              <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
+                Target Account <span className="font-normal text-neutral-400">(optional)</span>
+              </label>
+              <AccountSelector
+                clientId={currentClient?.id ?? null}
+                value={formData.account_id}
+                onChange={(id) => setFormData({ ...formData, account_id: id })}
+                placeholder="Select account..."
+                postableOnly
+              />
+            </div>
+
             {/* live preview */}
-            {keywordsParsed.length > 0 && formData.category && (
+            {keywordsParsed.length > 0 && (formData.category || selectedAccount) && (
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
                 <p className="text-xs text-neutral-700">
                   If transaction contains
@@ -222,10 +241,17 @@ export default function RulesManager({ sessionId }: RulesManagerProps) {
                     ))}
                     {keywordsParsed.length > 4 && <span className="text-[11px] text-neutral-400">+{keywordsParsed.length - 4} more</span>}
                   </span>
-                  then categorize as
-                  <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-blue-100 text-blue-700 border border-blue-200 px-2 py-0.5 text-[11px] font-semibold">
-                    <Tag className="w-3 h-3" /> {formData.category}
-                  </span>
+                  then map to
+                  {formData.category && (
+                    <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-blue-100 text-blue-700 border border-blue-200 px-2 py-0.5 text-[11px] font-semibold">
+                      <Tag className="w-3 h-3" /> {formData.category}
+                    </span>
+                  )}
+                  {selectedAccount && (
+                    <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-0.5 text-[11px] font-semibold">
+                      <Layers className="w-3 h-3" /> <span className="font-mono">{selectedAccount.code}</span> {selectedAccount.name}
+                    </span>
+                  )}
                 </p>
               </div>
             )}
@@ -259,7 +285,7 @@ export default function RulesManager({ sessionId }: RulesManagerProps) {
 
             {/* buttons */}
             <div className="flex gap-2 pt-3 border-t border-blue-100">
-              <button type="submit" disabled={loading || !formData.keywords.trim() || !formData.category || !formData.name.trim()}
+              <button type="submit" disabled={loading || !formData.keywords.trim() || (!formData.category && !formData.account_id) || !formData.name.trim()}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-40 transition-colors">
                 {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Create Rule
               </button>
@@ -286,6 +312,7 @@ export default function RulesManager({ sessionId }: RulesManagerProps) {
         <div className="space-y-3">
           {rules.map(rule => {
             const isPreviewOpen = previewingRuleId === rule.rule_id
+            const account = accounts.find(a => a.id === rule.account_id) || null
             return (
               <div key={rule.rule_id} className="rounded-xl border border-neutral-200 bg-white shadow-sm overflow-hidden transition-shadow hover:shadow-md">
                 <div className="px-5 py-4">
@@ -299,10 +326,17 @@ export default function RulesManager({ sessionId }: RulesManagerProps) {
                         ))}
                         {rule.keywords.length > 4 && <span className="text-[11px] text-neutral-400">+{rule.keywords.length - 4} more</span>}
                       </span>
-                      then categorize as
-                      <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 text-[11px] font-semibold">
-                        <Tag className="w-3 h-3" /> {rule.category}
-                      </span>
+                      then map to
+                      {rule.category && (
+                        <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 text-[11px] font-semibold">
+                          <Tag className="w-3 h-3" /> {rule.category}
+                        </span>
+                      )}
+                      {account && (
+                        <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 text-[11px] font-semibold">
+                          <Layers className="w-3 h-3" /> <span className="font-mono">{account.code}</span> {account.name}
+                        </span>
+                      )}
                     </p>
                   </div>
 

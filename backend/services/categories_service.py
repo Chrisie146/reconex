@@ -63,7 +63,8 @@ class CategoryRule:
     """Represents a categorization rule with keywords and priority"""
     rule_id: str
     name: str
-    category: str
+    category: Optional[str]
+    account_id: Optional[int]
     keywords: List[str]  # Can be in English or Afrikaans
     priority: int  # Lower number = higher priority (0 is highest)
     auto_apply: bool  # If True, apply automatically; if False, require approval
@@ -243,11 +244,12 @@ class CategoriesService:
         session_id: str,
         rule_id: str,
         name: str,
-        category: str,
+        category: Optional[str],
         keywords: List[str],
         priority: int,
         auto_apply: bool = True,
-        match_compound_words: bool = False
+        match_compound_words: bool = False,
+        account_id: Optional[int] = None,
     ) -> Tuple[bool, str]:
         """Create a new categorization rule
         
@@ -262,10 +264,15 @@ class CategoriesService:
         if not keywords or len(keywords) == 0:
             return False, "Rule must have at least one keyword"
         
-        # Validate category exists
-        valid_cats = self.get_all_categories(session_id)
-        if category not in valid_cats:
-            return False, f"Category '{category}' does not exist"
+        if not category and account_id is None:
+            return False, "Rule must set a category or account"
+
+        # Validate category exists when one is supplied. Account validation lives
+        # in the API layer because it needs tenant/client ownership checks.
+        if category:
+            valid_cats = self.get_all_categories(session_id)
+            if category not in valid_cats:
+                return False, f"Category '{category}' does not exist"
         
         if session_id not in self.session_rules:
             self.session_rules[session_id] = []
@@ -278,6 +285,7 @@ class CategoriesService:
             rule_id=rule_id,
             name=name,
             category=category,
+            account_id=account_id,
             keywords=[kw.strip().lower() for kw in keywords if kw.strip()],
             priority=priority,
             auto_apply=auto_apply,
@@ -316,10 +324,13 @@ class CategoriesService:
         if "name" in kwargs:
             rule.name = kwargs["name"]
         if "category" in kwargs:
-            valid_cats = self.get_all_categories(session_id)
-            if kwargs["category"] not in valid_cats:
-                return False, f"Category '{kwargs['category']}' does not exist"
+            if kwargs["category"]:
+                valid_cats = self.get_all_categories(session_id)
+                if kwargs["category"] not in valid_cats:
+                    return False, f"Category '{kwargs['category']}' does not exist"
             rule.category = kwargs["category"]
+        if "account_id" in kwargs:
+            rule.account_id = kwargs["account_id"]
         if "keywords" in kwargs:
             rule.keywords = [kw.strip().lower() for kw in kwargs["keywords"] if kw.strip()]
         if "priority" in kwargs:
@@ -328,6 +339,8 @@ class CategoriesService:
             rule.auto_apply = kwargs["auto_apply"]
         if "enabled" in kwargs:
             rule.enabled = kwargs["enabled"]
+        if not rule.category and rule.account_id is None:
+            return False, "Rule must set a category or account"
         
         # Re-sort by priority
         self.session_rules[session_id].sort(key=lambda r: r.priority)
@@ -401,7 +414,8 @@ class CategoriesService:
             "count": len(matched_txns),
             "percentage": percentage,
             "rule_name": rule.name,
-            "category": rule.category
+            "category": rule.category,
+            "account_id": rule.account_id,
         }
     
     def apply_rules_to_transactions(
@@ -446,6 +460,7 @@ class CategoriesService:
                 
                 if matched:
                     txn["category"] = rule.category
+                    txn["account_id"] = rule.account_id
                     updated_count += 1
                     break  # First match wins
         
@@ -471,6 +486,7 @@ class CategoriesService:
                 "rule_id": rule.rule_id,
                 "name": rule.name,
                 "category": rule.category,
+                "account_id": rule.account_id,
                 "priority": rule.priority,
                 "auto_apply": rule.auto_apply,
                 "enabled": rule.enabled,

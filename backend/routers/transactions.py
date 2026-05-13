@@ -250,6 +250,8 @@ def update_transaction_category(
                     updated_count = 0
                     for txn in matching_transactions:
                         txn.category = category
+                        if transaction.account_id is not None:
+                            txn.account_id = transaction.account_id
                         updated_count += 1
 
                     if updated_count > 0:
