@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useEffect, useMemo, useState } from 'react'
-import { AlertCircle, Check, CheckCircle2, Layers, Loader2, Plus, RefreshCw, Search, Tag, Trash2, X, Zap } from 'lucide-react'
+import { AlertCircle, Check, CheckCircle2, Layers, Loader2, Plus, RefreshCw, Search, Tag, Trash2, X, Zap, Edit2, Save } from 'lucide-react'
 import { apiFetch } from '@/lib/apiFetch'
 import { useClient } from '@/lib/clientContext'
 import AccountSelector from './AccountSelector'
@@ -45,6 +45,13 @@ interface PreviewState {
   count: number
 }
 
+interface EditingState {
+  ruleId: number
+  keyword: string
+  category: string
+  account_id: number | null
+}
+
 const defaultForm = {
   keyword: '',
   name: '',
@@ -70,6 +77,7 @@ export default function RulesManager({ sessionId }: RulesManagerProps) {
   const [showCreate, setShowCreate] = useState(false)
   const [search, setSearch] = useState('')
   const [preview, setPreview] = useState<PreviewState | null>(null)
+  const [editing, setEditing] = useState<EditingState | null>(null)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [applying, setApplying] = useState(false)
@@ -163,6 +171,61 @@ export default function RulesManager({ sessionId }: RulesManagerProps) {
       flash('success', 'Rule deleted')
     } catch (err) {
       flash('error', err instanceof Error ? err.message : 'Failed to delete rule')
+    }
+  }
+
+  async function updateRule(rule: Rule, updates: Partial<Rule>) {
+    try {
+      await apiFetch(`/rules/${rule.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      })
+      setRules(rules.map(r => r.id === rule.id ? { ...r, ...updates } : r))
+      setEditing(null)
+      flash('success', 'Rule updated')
+    } catch (err) {
+      flash('error', err instanceof Error ? err.message : 'Failed to update rule')
+    }
+  }
+
+  async function updateRuleQuick(rule: Rule, updates: Partial<Rule>) {
+    try {
+      await apiFetch(`/rules/${rule.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      })
+      setRules(rules.map(r => r.id === rule.id ? { ...r, ...updates } : r))
+      flash('success', 'Rule updated')
+    } catch (err) {
+      flash('error', err instanceof Error ? err.message : 'Failed to update rule')
+    }
+  }
+
+  async function saveEditing(rule: Rule) {
+    if (!editing || editing.ruleId !== rule.id) return
+    const keyword = editing.keyword.trim()
+    if (keyword.length < 3) {
+      flash('error', 'Keyword must be at least 3 characters')
+      return
+    }
+    setSaving(true)
+    try {
+      const updates: Partial<Rule> = {
+        conditions: {
+          match_type: 'any',
+          conditions: [{ field: 'description', op: 'contains', value: keyword }],
+        },
+        action: {
+          ...rule.action,
+          category: editing.category || null,
+          account_id: editing.account_id ?? null,
+        },
+      }
+      await updateRule(rule, updates)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -400,80 +463,190 @@ export default function RulesManager({ sessionId }: RulesManagerProps) {
           <p className="mt-1 text-xs text-neutral-400">Create a rule to map repeated bank descriptions to categories and accounts.</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {filteredRules.map(rule => {
-            const keywords = getRuleKeywords(rule)
-            const account = accounts.find(a => a.id === rule.action.account_id) || null
-            const isPreviewOpen = preview?.ruleId === rule.id
-            return (
-              <div key={rule.id} className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium text-neutral-900">{rule.name}</p>
-                      {rule.auto_apply && <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">Auto-apply</span>}
-                      {!rule.enabled && <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-semibold text-neutral-500">Disabled</span>}
-                    </div>
-                    <div className="mt-2 text-sm text-neutral-700">
-                      <span>When description contains </span>
-                      {keywords.length > 0 ? keywords.map(k => (
-                        <code key={k} className="mx-1 rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] font-mono">{k}</code>
-                      )) : <span className="text-neutral-400">custom conditions</span>}
-                      <span> map to </span>
-                      {rule.action.category && <TargetPill icon="category" label={rule.action.category} />}
-                      {account && <TargetPill icon="account" label={`${account.code} ${account.name}`} />}
-                    </div>
-                  </div>
+        <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-neutral-200 bg-neutral-50">
+                <th className="px-4 py-3 text-left font-semibold text-neutral-700">Description</th>
+                <th className="px-4 py-3 text-left font-semibold text-neutral-700">Contains</th>
+                <th className="px-4 py-3 text-left font-semibold text-neutral-700">Map to Account</th>
+                <th className="px-4 py-3 text-left font-semibold text-neutral-700">Map to Category</th>
+                <th className="px-4 py-3 text-left font-semibold text-neutral-700">Auto-apply</th>
+                <th className="px-4 py-3 text-left font-semibold text-neutral-700">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-200">
+              {filteredRules.map(rule => {
+                const keywords = getRuleKeywords(rule)
+                const account = accounts.find(a => a.id === rule.action.account_id) || null
+                const isEditing = editing?.ruleId === rule.id
+                const isPreviewOpen = preview?.ruleId === rule.id
 
-                  <div className="flex shrink-0 flex-wrap gap-2">
-                    <button
-                      onClick={() => isPreviewOpen ? setPreview(null) : previewRule(rule)}
-                      className="rounded-lg border border-neutral-200 px-3 py-1.5 text-xs font-medium text-neutral-600 hover:bg-neutral-50"
-                    >
-                      {isPreviewOpen ? 'Hide preview' : 'Preview'}
-                    </button>
-                    <button
-                      onClick={() => applyRule(rule)}
-                      disabled={applying}
-                      className="rounded-lg border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-40"
-                    >
-                      Apply
-                    </button>
-                    <button
-                      onClick={() => deleteRule(rule)}
-                      className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
-                    >
-                      <Trash2 className="inline h-3.5 w-3.5" /> Delete
-                    </button>
-                  </div>
-                </div>
+                return (
+                  <React.Fragment key={rule.id}>
+                    <tr className={`${isEditing ? 'bg-blue-50' : 'hover:bg-neutral-50'} ${!rule.enabled ? 'opacity-50' : ''}`}>
+                      {/* Description */}
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-neutral-900">{rule.name}</p>
+                        {!rule.enabled && <span className="text-[10px] font-semibold text-neutral-500">Disabled</span>}
+                      </td>
 
-                {isPreviewOpen && (
-                  <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50 p-3">
-                    {preview.loading ? (
-                      <div className="flex items-center gap-2 text-sm text-neutral-500">
-                        <Loader2 className="h-4 w-4 animate-spin" /> Loading preview...
-                      </div>
-                    ) : preview.count === 0 ? (
-                      <p className="text-sm text-neutral-500">No transactions in this statement match this rule.</p>
-                    ) : (
-                      <>
-                        <p className="mb-2 text-xs font-semibold text-blue-800">{preview.count} matching transaction(s)</p>
-                        <div className="max-h-56 divide-y divide-blue-100 overflow-y-auto rounded-lg border border-blue-100 bg-white">
-                          {preview.matches.slice(0, 8).map(txn => (
-                            <div key={txn.id} className="px-3 py-2 text-xs">
-                              <p className="truncate font-medium text-neutral-800">{txn.description}</p>
-                              <p className="mt-0.5 text-neutral-500">R {Math.abs(txn.amount).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</p>
-                            </div>
-                          ))}
+                      {/* Contains */}
+                      <td className="px-4 py-3">
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editing.keyword}
+                            onChange={e => setEditing({ ...editing, keyword: e.target.value })}
+                            className="w-full rounded border border-blue-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            placeholder="e.g. CHECKERS, FNB FEE"
+                          />
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {keywords.length > 0 ? keywords.map(k => (
+                              <code key={k} className="rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-[11px]">{k}</code>
+                            )) : <span className="text-neutral-400 text-[11px]">custom conditions</span>}
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Map to Account */}
+                      <td className="px-4 py-3">
+                        {isEditing ? (
+                          <AccountSelector
+                            clientId={currentClient.id}
+                            value={editing.account_id}
+                            onChange={(id) => setEditing({ ...editing, account_id: id })}
+                            placeholder="None"
+                            postableOnly
+                          />
+                        ) : (
+                          <span className={account ? 'font-medium text-neutral-900' : 'text-neutral-400'}>
+                            {account ? `${account.code} ${account.name}` : '—'}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Map to Category */}
+                      <td className="px-4 py-3">
+                        {isEditing ? (
+                          <select
+                            value={editing.category}
+                            onChange={e => setEditing({ ...editing, category: e.target.value })}
+                            className="w-full rounded border border-blue-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          >
+                            <option value="">None</option>
+                            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                        ) : (
+                          <span className={rule.action.category ? 'font-medium text-neutral-900' : 'text-neutral-400'}>
+                            {rule.action.category || '—'}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Auto-apply */}
+                      <td className="px-4 py-3">
+                        <input
+                          type="checkbox"
+                          checked={rule.auto_apply}
+                          onChange={e => updateRuleQuick(rule, { auto_apply: e.target.checked })}
+                          aria-label={`Toggle auto-apply for ${rule.name}`}
+                          className="h-4 w-4 rounded border-neutral-300 text-blue-600 cursor-pointer"
+                        />
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-4 py-3">
+                        <div className="flex gap-1.5">
+                          {isEditing ? (
+                            <>
+                              <button
+                                onClick={() => saveEditing(rule)}
+                                disabled={saving}
+                                aria-label="Save rule"
+                                className="rounded px-2 py-1 text-xs font-medium text-emerald-700 border border-emerald-200 hover:bg-emerald-50 disabled:opacity-40"
+                              >
+                                <Save className="inline h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setEditing(null)}
+                                aria-label="Cancel editing"
+                                className="rounded px-2 py-1 text-xs font-medium text-neutral-600 border border-neutral-200 hover:bg-neutral-50"
+                              >
+                                <X className="inline h-3.5 w-3.5" />
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => setEditing({
+                                  ruleId: rule.id,
+                                  keyword: keywords.join(', '),
+                                  category: rule.action.category || '',
+                                  account_id: rule.action.account_id ?? null,
+                                })}
+                                aria-label={`Edit ${rule.name}`}
+                                className="rounded px-2 py-1 text-xs font-medium text-neutral-600 border border-neutral-200 hover:bg-neutral-50"
+                              >
+                                <Edit2 className="inline h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => isPreviewOpen ? setPreview(null) : previewRule(rule)}
+                                className="rounded px-2 py-1 text-xs font-medium text-neutral-600 border border-neutral-200 hover:bg-neutral-50"
+                              >
+                                Preview
+                              </button>
+                              <button
+                                onClick={() => applyRule(rule)}
+                                disabled={applying}
+                                className="rounded px-2 py-1 text-xs font-medium text-blue-700 border border-blue-200 hover:bg-blue-50 disabled:opacity-40"
+                              >
+                                Apply
+                              </button>
+                              <button
+                                onClick={() => deleteRule(rule)}
+                                aria-label={`Delete ${rule.name}`}
+                                className="rounded px-2 py-1 text-xs font-medium text-red-600 border border-red-200 hover:bg-red-50"
+                              >
+                                <Trash2 className="inline h-3.5 w-3.5" />
+                              </button>
+                            </>
+                          )}
                         </div>
-                      </>
+                      </td>
+                    </tr>
+
+                    {isPreviewOpen && (
+                      <tr className="bg-blue-50">
+                        <td colSpan={6} className="px-4 py-3">
+                          {preview.loading ? (
+                            <div className="flex items-center gap-2 text-sm text-neutral-500">
+                              <Loader2 className="h-4 w-4 animate-spin" /> Loading preview...
+                            </div>
+                          ) : preview.count === 0 ? (
+                            <p className="text-sm text-neutral-500">No transactions in this statement match this rule.</p>
+                          ) : (
+                            <>
+                              <p className="mb-2 text-xs font-semibold text-blue-800">{preview.count} matching transaction(s)</p>
+                              <div className="max-h-56 divide-y divide-blue-100 overflow-y-auto rounded border border-blue-100 bg-white">
+                                {preview.matches.slice(0, 8).map(txn => (
+                                  <div key={txn.id} className="px-3 py-2 text-xs">
+                                    <p className="truncate font-medium text-neutral-800">{txn.description}</p>
+                                    <p className="mt-0.5 text-neutral-500">R {Math.abs(txn.amount).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </>
+                          )}
+                        </td>
+                      </tr>
                     )}
-                  </div>
-                )}
-              </div>
-            )
-          })}
+                  </React.Fragment>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
