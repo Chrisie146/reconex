@@ -63,6 +63,9 @@ interface Transaction {
   mapping_confidence?: number | null
   mapping_source?: string | null
   mapping_reason?: string | null
+  task_id?: string | null
+  _optimistic?: boolean
+  _rollback?: boolean
 }
 
 type QuickFilter = 'all' | 'income' | 'expenses' | 'uncategorized'
@@ -162,6 +165,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
   const [refreshKey, setRefreshKey] = useState(0)
   const [searchTrigger, setSearchTrigger] = useState(0)
   const [txnFilter, setTxnFilter] = useState<string | null>(null)
+  const [savingTransactionIds, setSavingTransactionIds] = useState<Set<number>>(new Set())
 
   // New UX state
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('all')
@@ -181,6 +185,40 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
 
   const handleRefreshData = () => {
     setRefreshKey(prev => prev + 1)
+  }
+
+  const patchTransactionsById = (ids: number[], patch: Partial<Transaction>) => {
+    const idSet = new Set(ids)
+    setTransactions(prev => prev.map(t => idSet.has(t.id) ? { ...t, ...patch } : t))
+  }
+
+  const pollMappingTask = (taskId: string) => {
+    setSuccessMessage('Mapping applied. Final VAT refresh running...')
+    let attempts = 0
+    const interval = window.setInterval(async () => {
+      attempts += 1
+      try {
+        const res = await axios.get(`${API_BASE_URL}/tasks/${taskId}/status`)
+        const status = res.data?.status
+        if (status === 'SUCCESS') {
+          window.clearInterval(interval)
+          setSuccessMessage('Mapping refresh completed')
+          setTimeout(() => setSuccessMessage(''), 3000)
+          refetchTransactions()
+        } else if (status === 'FAILED') {
+          window.clearInterval(interval)
+          setSuccessMessage('Mapping saved, but VAT refresh failed. Refreshing table...')
+          setTimeout(() => setSuccessMessage(''), 5000)
+          refetchTransactions()
+        }
+      } catch (error) {
+        if (attempts >= 3) {
+          window.clearInterval(interval)
+          console.error('Task polling failed', error)
+        }
+      }
+      if (attempts >= 120) window.clearInterval(interval)
+    }, 1500)
   }
 
   useEffect(() => {
@@ -1000,13 +1038,37 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
         categories={categoriesList}
         sessionId={sessionId || ''}
         clientId={currentClient?.id}
-        onApplied={(message, count) => {
+        onApplied={(message, count, details) => {
           setShowBulkEditModal(false)
           setFilteredModalTransactions(null)
           setSuccessMessage(message)
           setSelectedIds(new Set())
-          setTimeout(() => setSuccessMessage(''), 4000)
-          refetchTransactions()
+          if (!details.taskId) setTimeout(() => setSuccessMessage(''), 4000)
+          if (details.transactions && details.transactions.length > 0) {
+            setTransactions(prev => {
+              const updates = new Map(details.transactions!.map(t => [t.id, t]))
+              return prev.map(t => updates.has(t.id) ? { ...t, ...updates.get(t.id)! } : t)
+            })
+          }
+          if (
+            details.category !== undefined ||
+            details.account !== undefined ||
+            details.merchant !== undefined ||
+            !details.transactions?.length
+          ) {
+            patchTransactionsById(details.ids, {
+              ...(details.category !== undefined ? { category: details.category } : {}),
+              ...(details.account !== undefined ? {
+                account_id: details.account?.id ?? null,
+                account_code: details.account?.code ?? null,
+                account_name: details.account?.name ?? null,
+                account_type: details.account?.account_type ?? null,
+                suggested_account_id: details.account ? null : undefined,
+              } : {}),
+              ...(details.merchant !== undefined ? { merchant: details.merchant } : {}),
+            })
+          }
+          if (details.taskId) pollMappingTask(details.taskId)
         }}
       />
 
@@ -1114,13 +1176,14 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
                   return paginatedTransactions.map((txn, idx) => {
                     const isSelected = selectedIds.has(txn.id)
                     const isHighlighted = highlightTxnId === txn.id
+                    const isSaving = savingTransactionIds.has(txn.id)
                     return (
                       <tr
                         key={txn.id}
                         tabIndex={0}
                         onClick={() => setFocusedTxnId(txn.id)}
                         onDoubleClick={() => { setFocusedTxnId(txn.id); setSelectedTransactionForEdit(txn); setShowEditPanel(true) }}
-                        className={`group cursor-default outline-none transition-colors ${
+                        className={`group cursor-default outline-none transition-colors ${isSaving ? 'opacity-70' : ''} ${
                           isHighlighted ? 'bg-amber-50 hover:bg-amber-100'
                           : isSelected ? 'bg-blue-50 hover:bg-blue-50'
                           : focusedTxnId === txn.id ? 'bg-sky-50 hover:bg-sky-50'
@@ -1203,6 +1266,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
                                       <span className="inline-flex items-center gap-1 text-xs font-medium text-neutral-800 hover:text-neutral-950">
                                         {txn.account_code && <span className="font-mono text-[11px] text-neutral-500">{txn.account_code}</span>}
                                         {txn.account_name}
+                                        {isSaving && <span className="text-[10px] text-blue-500">Saving...</span>}
                                         <Pencil size={11} className="opacity-0 transition-opacity group-hover/account:opacity-50" />
                                       </span>
                                     ) : (
@@ -1498,8 +1562,23 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
         onSave={(updatedTransaction) => {
           // Merge updated fields with existing transaction data to preserve all fields (VAT, statement_name, etc.)
           setTransactions(prev => prev.map(t => t.id === updatedTransaction.id ? { ...t, ...updatedTransaction } : t))
-          setSuccessMessage('Transaction updated')
-          setTimeout(() => setSuccessMessage(''), 2000)
+          if (updatedTransaction._optimistic || updatedTransaction._rollback) {
+            return
+          }
+          if (updatedTransaction.task_id) {
+            pollMappingTask(updatedTransaction.task_id)
+          } else {
+            setSuccessMessage('Transaction updated')
+            setTimeout(() => setSuccessMessage(''), 2000)
+          }
+        }}
+        onSavingChange={(transactionId, saving) => {
+          setSavingTransactionIds(prev => {
+            const next = new Set(prev)
+            if (saving) next.add(transactionId)
+            else next.delete(transactionId)
+            return next
+          })
         }}
         onCategoryCreated={(newCategories) => setCategoriesList(newCategories)}
         onRefresh={refetchTransactions}

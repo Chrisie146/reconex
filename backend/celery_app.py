@@ -73,6 +73,7 @@ celery_app.autodiscover_tasks(['backend'], force=True)
 celery_app.conf.task_routes = {
     'tasks.parse_pdf_async': {'queue': 'pdf_processing'},
     'tasks.bulk_categorize_async': {'queue': 'bulk_operations'},
+    'tasks.transaction_mapping_postprocess_async': {'queue': 'bulk_operations'},
     'tasks.generate_report_async': {'queue': 'reports'},
     'tasks.*': {'queue': 'default'},
 }

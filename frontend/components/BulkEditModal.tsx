@@ -5,6 +5,7 @@ import { AlertCircle, CheckSquare, Layers, Loader2, Search, Store, Tag, X } from
 import { toast } from 'sonner'
 import axios from '@/lib/axiosClient'
 import AccountSelector from './AccountSelector'
+import type { Account } from '@/lib/hooks/useAccounts'
 import { API_BASE_URL } from '@/lib/apiBase'
 
 interface Transaction {
@@ -26,7 +27,18 @@ interface BulkEditModalProps {
   categories: string[]
   sessionId: string
   clientId?: number | null
-  onApplied?: (message: string, updatedCount: number) => void
+  onApplied?: (
+    message: string,
+    updatedCount: number,
+    details: {
+      ids: number[]
+      category?: string
+      account?: Account | null
+      merchant?: string | null
+      taskId?: string | null
+      transactions?: Transaction[]
+    }
+  ) => void
 }
 
 export default function BulkEditModal({
@@ -41,6 +53,7 @@ export default function BulkEditModal({
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [category, setCategory] = useState('')
   const [accountId, setAccountId] = useState<number | null>(null)
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null)
   const [merchant, setMerchant] = useState('')
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(false)
@@ -51,6 +64,7 @@ export default function BulkEditModal({
     setSelectedIds(transactions.map((t) => t.id))
     setCategory('')
     setAccountId(null)
+    setSelectedAccount(null)
     setMerchant('')
     setSearch('')
     setOnlyVisible(false)
@@ -103,6 +117,8 @@ export default function BulkEditModal({
     try {
       let updatedCount = 0
       const messages: string[] = []
+      let taskId: string | null = null
+      let updatedTransactions: Transaction[] | undefined
 
       if (hasMappingChange) {
         const res = await axios.post(
@@ -111,6 +127,8 @@ export default function BulkEditModal({
           { params }
         )
         updatedCount = Math.max(updatedCount, res.data?.updated_count || 0)
+        taskId = res.data?.task_id || null
+        updatedTransactions = res.data?.transactions
         messages.push('mapping')
       }
 
@@ -124,7 +142,14 @@ export default function BulkEditModal({
         messages.push('merchant')
       }
 
-      onApplied?.(`Updated ${messages.join(' and ')} for ${targetIds.length} transaction(s)`, updatedCount || targetIds.length)
+      onApplied?.(`Updated ${messages.join(' and ')} for ${targetIds.length} transaction(s)`, updatedCount || targetIds.length, {
+        ids: targetIds,
+        category: category || undefined,
+        account: selectedAccount,
+        merchant: hasMerchantChange ? merchant.trim() : undefined,
+        taskId,
+        transactions: updatedTransactions,
+      })
       onClose()
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || 'Bulk edit failed')
@@ -169,7 +194,7 @@ export default function BulkEditModal({
                   <AccountSelector
                     clientId={clientId ?? null}
                     value={accountId}
-                    onChange={(id) => setAccountId(id)}
+                    onChange={(id, account) => { setAccountId(id); setSelectedAccount(account) }}
                     postableOnly
                     placeholder="Leave CoA account unchanged"
                   />

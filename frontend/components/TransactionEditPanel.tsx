@@ -4,6 +4,7 @@ import { X, Loader2, AlertCircle, CheckCircle, AlertTriangle, Plus, Pencil, Tag,
 import { useState, useEffect } from 'react'
 import axios from '@/lib/axiosClient'
 import AccountSelector from './AccountSelector'
+import type { Account } from '@/lib/hooks/useAccounts'
 
 import { API_BASE_URL } from '@/lib/apiBase'
 
@@ -40,6 +41,9 @@ interface Transaction {
   amount_excl_vat?: number | null
   amount_incl_vat?: number | null
   statement_name?: string
+  task_id?: string | null
+  _optimistic?: boolean
+  _rollback?: boolean
 }
 
 interface TransactionEditPanelProps {
@@ -50,6 +54,7 @@ interface TransactionEditPanelProps {
   categories: string[]
   onClose: () => void
   onSave?: (updatedTransaction: Transaction) => void
+  onSavingChange?: (transactionId: number, saving: boolean) => void
   onCategoryCreated?: (newCategories: string[]) => void
   onRefresh?: () => void
 }
@@ -62,11 +67,13 @@ export default function TransactionEditPanel({
   categories,
   onClose,
   onSave,
+  onSavingChange,
   onCategoryCreated,
   onRefresh,
 }: TransactionEditPanelProps) {
   const [category, setCategory] = useState('')
   const [accountId, setAccountId] = useState<number | null>(null)
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null)
   const [merchant, setMerchant] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -180,6 +187,7 @@ export default function TransactionEditPanel({
     if (transaction) {
       setCategory(transaction.category || '')
       setAccountId(transaction.account_id ?? null)
+      setSelectedAccount(null)
       setMerchant(transaction.merchant || '')
       setDescription(cleanDescription(transaction.description))
       setEditingDescription(false)
@@ -409,77 +417,74 @@ export default function TransactionEditPanel({
     setError(null)
     setSuccess(null)
     setLoading(true)
+    onSavingChange?.(transaction.id, true)
+
+    const previousTransaction = transaction
+    const cleanedOriginalDesc = cleanDescription(transaction.description)
+    const categoryChanged = category !== (transaction.category || '')
+    const accountChanged = accountId !== (transaction.account_id ?? null)
+    const merchantChanged = merchant !== (transaction.merchant || '')
+    const descriptionChanged = editingDescription && description !== cleanedOriginalDesc
+
+    const optimisticTxn: Transaction = {
+      ...transaction,
+      category,
+      account_id: accountId,
+      account_code: selectedAccount
+        ? selectedAccount.code
+        : accountId === transaction.account_id
+          ? transaction.account_code
+          : accountId === transaction.suggested_account_id
+            ? transaction.suggested_account_code
+            : null,
+      account_name: selectedAccount
+        ? selectedAccount.name
+        : accountId === transaction.account_id
+          ? transaction.account_name
+          : accountId === transaction.suggested_account_id
+            ? transaction.suggested_account_name
+            : null,
+      suggested_account_id: accountId ? null : transaction.suggested_account_id,
+      merchant: merchant || null,
+      description: descriptionChanged ? description : cleanedOriginalDesc,
+      mapping_confidence: accountChanged && accountId ? 1 : transaction.mapping_confidence,
+      mapping_source: accountChanged && accountId ? 'user_confirmed' : transaction.mapping_source,
+      mapping_reason: accountChanged && accountId ? 'User confirmed this account mapping.' : transaction.mapping_reason,
+      _optimistic: true,
+    }
+
+    onSave?.(optimisticTxn)
 
     try {
-      const cleanedOriginalDesc = cleanDescription(transaction.description)
+      const requestBody: any = {}
+      if (categoryChanged || category) requestBody.category = category
+      if (accountChanged) requestBody.account_id = accountId
+      if (merchantChanged) requestBody.merchant = merchant || null
+      if (descriptionChanged) requestBody.description = description
+      if (rememberMappingRule) requestBody.remember_mapping_rule = true
+      if (keyword.trim().length >= 3) requestBody.keyword = keyword.trim()
+      if (applyCategorySimilar) requestBody.apply_similar = true
 
-      const categoryChanged = category !== (transaction.category || '')
-      const accountChanged = accountId !== (transaction.account_id ?? null)
-      const descriptionChanged = editingDescription && description !== cleanedOriginalDesc
-
-      // Track API response data (includes recalculated VAT fields)
-      let apiResponseData: any = null
-
-      if (categoryChanged || descriptionChanged) {
-        const requestBody: any = {}
-        if (categoryChanged) {
-          requestBody.category = category
-        }
-        if (descriptionChanged) {
-          requestBody.description = description
-        }
-
-        const response = await axios.put(
-          `${API_BASE_URL}/transactions/${transaction.id}`,
-          requestBody,
-          {
-            params: {
-              session_id: effectiveSessionId,
-              learn_rule: false
-            }
+      const response = await axios.put(
+        `${API_BASE_URL}/transactions/${transaction.id}`,
+        requestBody,
+        {
+          params: {
+            session_id: effectiveSessionId,
+            learn_rule: false
           }
-        )
-        // The API response includes recalculated VAT fields
-        apiResponseData = response.data
-      }
+        }
+      )
 
-      if (accountChanged) {
-        const acctResponse = await axios.put(
-          `${API_BASE_URL}/transactions/${transaction.id}/account`,
-          { account_id: accountId },
-          { params: { session_id: effectiveSessionId } }
-        )
-        if (!apiResponseData) apiResponseData = acctResponse.data
-      }
-
-      if (merchant !== (transaction.merchant || '')) {
-        await axios.put(
-          `${API_BASE_URL}/transactions/${transaction.id}/merchant`,
-          { merchant: merchant || null },
-          { params: { session_id: effectiveSessionId } }
-        )
-      }
-
-      let createdRuleId: number | null = null
-      if (rememberMappingRule && keyword.trim().length >= 3 && (category.trim() || accountId != null)) {
-        createdRuleId = await createManualMappingRule()
-      }
-
-      if (applyCategorySimilar && createdRuleId) {
-        await axios.post(
-          `${API_BASE_URL}/rules/${createdRuleId}/apply`,
-          { session_id: effectiveSessionId }
-        )
-        setApplyCategorySimilar(false)
-        onRefresh?.()
-      }
+      const apiResponseData = response.data || {}
+      const createdRuleId = apiResponseData.created_rule_id ?? null
 
       setSuccess(createdRuleId ? 'Saved and added to Manual Rules' : 'Changes saved')
       setTimeout(() => setSuccess(null), 2000)
 
-      // Merge API response (with VAT fields) with existing transaction data
       const updatedTxn: Transaction = {
-        ...transaction,
+        ...optimisticTxn,
+        _optimistic: false,
         category,
         account_id: accountId,
         suggested_account_id: accountId ? null : transaction.suggested_account_id,
@@ -487,8 +492,14 @@ export default function TransactionEditPanel({
         description: editingDescription ? description : cleanDescription(transaction.description),
       }
 
-      // If the API returned VAT data, include it in the update
       if (apiResponseData) {
+        if (apiResponseData.description !== undefined) updatedTxn.description = apiResponseData.description
+        if (apiResponseData.category !== undefined) updatedTxn.category = apiResponseData.category
+        if (apiResponseData.account_id !== undefined) updatedTxn.account_id = apiResponseData.account_id
+        if (apiResponseData.account_code !== undefined) updatedTxn.account_code = apiResponseData.account_code
+        if (apiResponseData.account_name !== undefined) updatedTxn.account_name = apiResponseData.account_name
+        if (apiResponseData.account_type !== undefined) (updatedTxn as any).account_type = apiResponseData.account_type
+        if (apiResponseData.merchant !== undefined) updatedTxn.merchant = apiResponseData.merchant
         if (apiResponseData.vat_amount !== undefined) updatedTxn.vat_amount = apiResponseData.vat_amount
         if (apiResponseData.amount_excl_vat !== undefined) updatedTxn.amount_excl_vat = apiResponseData.amount_excl_vat
         if (apiResponseData.amount_incl_vat !== undefined) updatedTxn.amount_incl_vat = apiResponseData.amount_incl_vat
@@ -496,11 +507,14 @@ export default function TransactionEditPanel({
         if (apiResponseData.mapping_confidence !== undefined) updatedTxn.mapping_confidence = apiResponseData.mapping_confidence
         if (apiResponseData.mapping_source !== undefined) updatedTxn.mapping_source = apiResponseData.mapping_source
         if (apiResponseData.mapping_reason !== undefined) updatedTxn.mapping_reason = apiResponseData.mapping_reason
+        if (apiResponseData.task_id !== undefined) updatedTxn.task_id = apiResponseData.task_id
       }
 
       onSave?.(updatedTxn)
+      setApplyCategorySimilar(false)
     } catch (err: any) {
       console.error('Failed to save transaction:', err)
+      onSave?.({ ...previousTransaction, _rollback: true })
       let errorMessage = err.response?.data?.detail || 'Failed to save changes'
 
       if (err.response?.status === 404) {
@@ -516,6 +530,7 @@ export default function TransactionEditPanel({
       setError(errorMessage)
     } finally {
       setLoading(false)
+      onSavingChange?.(transaction.id, false)
     }
   }
 
@@ -740,7 +755,10 @@ export default function TransactionEditPanel({
                           </div>
                           <button
                             type="button"
-                            onClick={() => setAccountId(transaction.suggested_account_id ?? null)}
+                            onClick={() => {
+                              setAccountId(transaction.suggested_account_id ?? null)
+                              setSelectedAccount(null)
+                            }}
                             className="shrink-0 rounded-md bg-amber-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-amber-700"
                           >
                             Use
@@ -751,7 +769,7 @@ export default function TransactionEditPanel({
                     <AccountSelector
                       clientId={clientId ?? null}
                       value={accountId}
-                      onChange={(id, _acct) => setAccountId(id)}
+                      onChange={(id, acct) => { setAccountId(id); setSelectedAccount(acct) }}
                       postableOnly
                       placeholder="No CoA account"
                     />
@@ -1128,7 +1146,7 @@ export default function TransactionEditPanel({
             <AccountSelector
               clientId={clientId ?? null}
               value={accountId}
-              onChange={(id, _acct) => setAccountId(id)}
+              onChange={(id, acct) => { setAccountId(id); setSelectedAccount(acct) }}
               postableOnly
               placeholder="Select account..."
             />

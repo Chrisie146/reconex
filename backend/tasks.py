@@ -260,6 +260,98 @@ def bulk_categorize_async(self: Task, session_id: str, user_id: int,
             db.close()
 
 
+@celery_app.task(bind=True, name='tasks.transaction_mapping_postprocess_async')
+def transaction_mapping_postprocess_async(
+    self: Task,
+    transaction_ids: List[int],
+    session_id: Optional[str],
+    client_id: Optional[int],
+    user_id: int,
+    category: Optional[str] = None,
+    account_id: Optional[int] = None,
+    keyword: Optional[str] = None,
+    source_transaction_id: Optional[int] = None,
+) -> dict:
+    """Run slower mapping side effects after the UI has already updated."""
+    db = None
+    try:
+        db = get_db_session()
+        from models import Transaction
+        from services.cache import get_cache
+        from routers.dependencies import vat_service
+
+        affected_ids = set(transaction_ids or [])
+        update_task_status(db, self.request.id, 'PROCESSING', 5, 'Preparing mapping post-processing...')
+
+        if keyword and len(keyword.strip()) >= 3 and (category or account_id is not None):
+            like_pattern = f"%{keyword.strip()}%"
+            query = db.query(Transaction).filter(Transaction.description.ilike(like_pattern))
+            if session_id:
+                query = query.filter(Transaction.session_id == session_id)
+            elif client_id:
+                query = query.filter(Transaction.client_id == client_id)
+            if source_transaction_id:
+                query = query.filter(Transaction.id != source_transaction_id)
+
+            matches = query.all()
+            for txn in matches:
+                if category:
+                    txn.category = category
+                if account_id is not None:
+                    txn.account_id = account_id
+                    txn.suggested_account_id = None
+                    txn.mapping_confidence = 1.0
+                    txn.mapping_source = "user_confirmed"
+                    txn.mapping_reason = "User applied this mapping to similar transactions."
+                affected_ids.add(txn.id)
+            db.commit()
+
+        txns = []
+        if affected_ids:
+            txns = db.query(Transaction).filter(Transaction.id.in_(list(affected_ids))).all()
+
+        total = len(txns)
+        force_vat = False
+        if client_id:
+            from models import SessionVATConfig
+            force_vat = (
+                db.query(SessionVATConfig)
+                .join(Transaction, Transaction.session_id == SessionVATConfig.session_id)
+                .filter(Transaction.client_id == client_id, SessionVATConfig.vat_enabled == 1)
+                .first()
+                is not None
+            )
+
+        for idx, txn in enumerate(txns):
+            if idx % 10 == 0 or idx == total - 1:
+                progress = 10 + int(((idx + 1) / max(total, 1)) * 85)
+                update_task_status(db, self.request.id, 'PROCESSING', progress, f'Refreshing VAT {idx + 1}/{total}...')
+            vat_service.apply_vat_to_transaction(txn.id, txn.session_id, force=force_vat)
+
+        cache = get_cache()
+        sessions = {txn.session_id for txn in txns if txn.session_id}
+        if session_id:
+            sessions.add(session_id)
+        for sid in sessions:
+            cache.invalidate_session(sid)
+
+        result = {
+            'status': 'success',
+            'updated_count': total,
+            'transaction_ids': sorted(affected_ids),
+        }
+        update_task_status(db, self.request.id, 'SUCCESS', 100, 'Mapping refresh completed', result=result)
+        return result
+    except Exception as e:
+        if db:
+            db.rollback()
+            update_task_status(db, self.request.id, 'FAILED', 0, error_message=str(e))
+        raise self.retry(exc=e, countdown=2 ** self.request.retries)
+    finally:
+        if db:
+            db.close()
+
+
 @celery_app.task(bind=True, name='tasks.generate_report_async')
 def generate_report_async(self: Task, session_id: str, user_id: int, 
                           report_type: str = 'excel',

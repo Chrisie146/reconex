@@ -12,7 +12,7 @@ from sqlalchemy import String, func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from auth import get_current_user
-from models import Account, Client, Rule, SessionState, SessionVATConfig, Transaction, TransactionMerchant, User, get_db
+from models import Account, Client, Rule, SessionState, SessionVATConfig, TaskStatus, Transaction, TransactionMerchant, User, get_db
 from routers.dependencies import (
     BulkCategorizeRequest,
     ClearCategoriesRequest,
@@ -27,6 +27,47 @@ from services.categoriser import extract_merchant
 from services import posthog_tracker
 
 router = APIRouter(tags=["Transactions"])
+
+
+def _serialize_transaction_row(t: Transaction, merchant: Optional[str] = None) -> dict:
+    return {
+        "id": t.id,
+        "session_id": t.session_id,
+        "date": t.date.isoformat(),
+        "description": t.description,
+        "amount": t.amount,
+        "category": t.category,
+        "suggested_category": t.suggested_category,
+        "account_id": t.account_id,
+        "account_code": t.account.code if t.account else None,
+        "account_name": t.account.name if t.account else None,
+        "account_type": t.account.account_type if t.account else None,
+        "suggested_account_id": t.suggested_account_id,
+        "suggested_account_code": t.suggested_account.code if t.suggested_account else None,
+        "suggested_account_name": t.suggested_account.name if t.suggested_account else None,
+        "suggested_account_type": t.suggested_account.account_type if t.suggested_account else None,
+        "mapping_confidence": t.mapping_confidence,
+        "mapping_source": t.mapping_source,
+        "mapping_reason": t.mapping_reason,
+        "invoice_id": t.invoice_id,
+        "merchant": merchant,
+        "vat_amount": t.vat_amount,
+        "amount_excl_vat": t.amount_excl_vat,
+        "amount_incl_vat": t.amount_incl_vat,
+    }
+
+
+def _create_task_status(db: Session, task_id: str, user_id: int, task_name: str, message: str) -> None:
+    task_status = TaskStatus(
+        task_id=task_id,
+        user_id=user_id,
+        task_name=task_name,
+        status="PENDING",
+        progress_percent=0,
+        progress_message=message,
+    )
+    db.add(task_status)
+    db.commit()
 
 
 @router.get("/transactions")
@@ -157,7 +198,7 @@ def update_transaction_category(
     keyword: Optional[str] = Query(default=None),
     db: Session = Depends(get_db),
 ):
-    """Update the category of a single transaction."""
+    """Update a single transaction mapping/details in one request."""
     try:
         ensure_session_access(session_id, current_user, db)
 
@@ -167,10 +208,23 @@ def update_transaction_category(
 
         category = request.get("category")
         new_description = request.get("description")
+        account_supplied = "account_id" in request
         account_id = request.get("account_id")  # Phase 2
+        merchant_supplied = "merchant" in request
+        merchant = request.get("merchant")
+        remember_mapping_rule = bool(request.get("remember_mapping_rule"))
+        apply_similar = bool(request.get("apply_similar"))
+        rule_keyword = (request.get("keyword") or keyword or "").strip()
 
-        if not category and not new_description and account_id is None:
-            raise HTTPException(status_code=400, detail="Either category, description, or account_id is required")
+        if (
+            not category
+            and new_description is None
+            and not account_supplied
+            and not merchant_supplied
+            and not remember_mapping_rule
+            and not apply_similar
+        ):
+            raise HTTPException(status_code=400, detail="At least one transaction field is required")
 
         transaction = db.query(Transaction).filter(
             Transaction.id == transaction_id,
@@ -197,10 +251,14 @@ def update_transaction_category(
         if new_description is not None and new_description != transaction.description:
             transaction.description = new_description
             print(f"⚠️  Description updated for transaction {transaction_id}")
-        if account_id is not None:
+        if account_supplied:
             # Validate the account belongs to the same client
-            if account_id == 0 or account_id == "":
+            if account_id is None or account_id == 0 or account_id == "":
                 transaction.account_id = None
+                transaction.suggested_account_id = None
+                transaction.mapping_confidence = None
+                transaction.mapping_source = None
+                transaction.mapping_reason = None
             else:
                 account = db.query(Account).filter(
                     Account.id == account_id,
@@ -213,15 +271,23 @@ def update_transaction_category(
                 transaction.mapping_confidence = 1.0
                 transaction.mapping_source = "user_confirmed"
                 transaction.mapping_reason = "User confirmed this account mapping."
-                # Keep category in sync with account name for backward compat display
-                if not category:
-                    transaction.category = account.name
+
+        if merchant_supplied:
+            merchant_value = (merchant or "").strip() or None
+            tm = db.query(TransactionMerchant).filter(TransactionMerchant.transaction_id == transaction.id).first()
+            if merchant_value:
+                if tm:
+                    tm.merchant = merchant_value
+                else:
+                    db.add(TransactionMerchant(transaction_id=transaction.id, session_id=session_id, merchant=merchant_value))
+            elif tm:
+                db.delete(tm)
         db.commit()
 
         cache = get_cache()
         cache.invalidate_session(session_id)
 
-        if category:
+        if category or account_supplied:
             # Check if we should force VAT based on client having any VAT-enabled sessions
             force_vat = False
             if transaction.client_id:
@@ -278,28 +344,61 @@ def update_transaction_category(
             except Exception as learn_error:
                 print(f"Warning: Failed to save keyword rule: {learn_error}")
 
-        transaction = db.query(Transaction).options(joinedload(Transaction.account)).filter(
+        created_rule_id = None
+        task_id = None
+        if (remember_mapping_rule or learn_rule) and rule_keyword and len(rule_keyword) >= 3 and (transaction.category or transaction.account_id is not None):
+            try:
+                learned_rules = learning_service.learn_from_categorization(
+                    user_id=str(current_user.id),
+                    session_id=session_id,
+                    description=transaction.description,
+                    category=transaction.category,
+                    merchant=None,
+                    keyword=rule_keyword,
+                    db=db,
+                    client_id=transaction.client_id,
+                    account_id=transaction.account_id,
+                )
+                if learned_rules and isinstance(learned_rules[0], dict):
+                    created_rule_id = learned_rules[0].get("id")
+            except Exception as learn_error:
+                print(f"Warning: Failed to save keyword rule: {learn_error}")
+
+        if apply_similar and rule_keyword and len(rule_keyword) >= 3:
+            try:
+                from tasks import transaction_mapping_postprocess_async
+
+                task = transaction_mapping_postprocess_async.delay(
+                    transaction_ids=[transaction.id],
+                    session_id=session_id,
+                    client_id=transaction.client_id,
+                    user_id=current_user.id,
+                    category=transaction.category,
+                    account_id=transaction.account_id,
+                    keyword=rule_keyword,
+                    source_transaction_id=transaction.id,
+                )
+                task_id = task.id
+                _create_task_status(
+                    db,
+                    task.id,
+                    current_user.id,
+                    "transaction_mapping_postprocess_async",
+                    "Applying mapping to similar transactions...",
+                )
+            except Exception as task_error:
+                print(f"Warning: Failed to submit mapping post-process task: {task_error}")
+
+        tm = db.query(TransactionMerchant).filter(TransactionMerchant.transaction_id == transaction.id).first()
+        transaction = db.query(Transaction).options(joinedload(Transaction.account), joinedload(Transaction.suggested_account)).filter(
             Transaction.id == transaction_id,
             Transaction.session_id == session_id,
         ).first()
 
-        return {
-            "id": transaction.id,
-            "date": transaction.date.isoformat(),
-            "description": transaction.description,
-            "amount": transaction.amount,
-            "category": transaction.category,
-            "account_id": transaction.account_id,
-            "account_code": transaction.account.code if transaction.account else None,
-            "account_name": transaction.account.name if transaction.account else None,
-            "suggested_account_id": transaction.suggested_account_id,
-            "mapping_confidence": transaction.mapping_confidence,
-            "mapping_source": transaction.mapping_source,
-            "mapping_reason": transaction.mapping_reason,
-            "vat_amount": transaction.vat_amount,
-            "amount_excl_vat": transaction.amount_excl_vat,
-            "amount_incl_vat": transaction.amount_incl_vat,
-        }
+        response = _serialize_transaction_row(transaction, merchant=tm.merchant if tm else None)
+        response["created_rule_id"] = created_rule_id
+        response["task_id"] = task_id
+        return response
 
     except HTTPException:
         raise
@@ -349,8 +448,6 @@ def update_transaction_account(
             transaction.mapping_confidence = 1.0
             transaction.mapping_source = "user_confirmed"
             transaction.mapping_reason = "User confirmed this account mapping."
-            # Keep category in sync for backward-compat display
-            transaction.category = account.name
 
         db.commit()
 
@@ -630,27 +727,15 @@ def bulk_categorize_by_ids(
                 t.category = category
             if resolved_account:
                 t.account_id = resolved_account.id
-                if not category:
-                    t.category = resolved_account.name
+                t.suggested_account_id = None
+                t.mapping_confidence = 1.0
+                t.mapping_source = "user_confirmed"
+                t.mapping_reason = "User confirmed this account mapping."
         db.commit()
 
-        # When working in client mode, check if VAT is enabled for any session
-        force_vat = False
-        if client_id:
-            # Check if any session for this client has VAT enabled
-            client_vat_check = db.query(SessionVATConfig).join(
-                Transaction, Transaction.session_id == SessionVATConfig.session_id
-            ).filter(
-                Transaction.client_id == client_id,
-                SessionVATConfig.vat_enabled == 1
-            ).first()
-            force_vat = client_vat_check is not None
-
-        for t in txns_db:
-            vat_service.apply_vat_to_transaction(t.id, t.session_id, force=force_vat)
-
-        # Expire all objects to reload with VAT updates from the service's session
-        db.expire_all()
+        cache = get_cache()
+        if session_id:
+            cache.invalidate_session(session_id)
 
         try:
             from services.bulk_categorizer import BulkAction
@@ -667,26 +752,45 @@ def bulk_categorize_by_ids(
         except Exception:
             pass
 
-        if session_id:
-            updated_transactions_db = db.query(Transaction).filter(Transaction.session_id == session_id).all()
-        else:
-            updated_transactions_db = db.query(Transaction).filter(Transaction.client_id == client_id).all()
+        task_id = None
+        try:
+            from tasks import transaction_mapping_postprocess_async
+
+            task = transaction_mapping_postprocess_async.delay(
+                transaction_ids=[t.id for t in txns_db],
+                session_id=session_id,
+                client_id=client_id,
+                user_id=current_user.id,
+                category=category,
+                account_id=resolved_account.id if resolved_account else None,
+                keyword=None,
+                source_transaction_id=None,
+            )
+            task_id = task.id
+            _create_task_status(
+                db,
+                task.id,
+                current_user.id,
+                "transaction_mapping_postprocess_async",
+                "Refreshing VAT for mapped transactions...",
+            )
+        except Exception as task_error:
+            print(f"Warning: Failed to submit mapping post-process task: {task_error}")
+
+        updated_transactions_db = (
+            db.query(Transaction)
+            .options(joinedload(Transaction.account), joinedload(Transaction.suggested_account))
+            .filter(Transaction.id.in_([t.id for t in txns_db]))
+            .all()
+        )
         updated_transactions = [
-            {
-                "id": t.id,
-                "date": t.date.isoformat(),
-                "description": t.description,
-                "amount": t.amount,
-                "category": t.category,
-                "vat_amount": t.vat_amount,
-                "amount_excl_vat": t.amount_excl_vat,
-                "amount_incl_vat": t.amount_incl_vat,
-            }
+            _serialize_transaction_row(t)
             for t in updated_transactions_db
         ]
 
         return {
             "updated_count": len(txns_db),
+            "task_id": task_id,
             "transactions": updated_transactions,
             "undo_available": bulk_categorizer.get_last_action_info() is not None,
             "message": f"Updated {len(txns_db)} transaction(s)",
