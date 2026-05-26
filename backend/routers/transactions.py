@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
-from sqlalchemy import String, func, or_
+from sqlalchemy import String, case, func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from auth import get_current_user
@@ -80,55 +80,130 @@ async def get_transactions(
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
     limit: Optional[int] = None,
+    page: int = 1,
+    page_size: int = 50,
+    sort_by: str = "date",
+    sort_dir: str = "desc",
+    amount_filter: Optional[str] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Get all transactions for a session or client."""
+    """Get transactions for a session or client with server-side filtering, sorting and pagination."""
+    # Build base filter conditions (shared between summary and data queries)
+    base_conds = []
     if session_id:
         ensure_session_access(session_id, current_user, db)
-        query = db.query(Transaction).options(joinedload(Transaction.account), joinedload(Transaction.suggested_account)).filter(Transaction.session_id == session_id)
+        base_conds.append(Transaction.session_id == session_id)
     elif client_id:
         client = db.query(Client).filter(Client.id == client_id, Client.user_id == current_user.id).first()
         if not client:
             raise HTTPException(status_code=404, detail="Client not found")
-        query = db.query(Transaction).options(joinedload(Transaction.account), joinedload(Transaction.suggested_account)).filter(Transaction.client_id == client_id)
+        base_conds.append(Transaction.client_id == client_id)
     else:
         raise HTTPException(status_code=400, detail="Either session_id or client_id must be provided")
 
     if category and category.strip():
-        query = query.filter(Transaction.category == category)
+        base_conds.append(Transaction.category == category)
 
     if date_from:
         try:
             df = datetime.strptime(date_from, "%Y-%m-%d").date()
-            query = query.filter(Transaction.date >= df)
+            base_conds.append(Transaction.date >= df)
         except Exception:
             raise HTTPException(status_code=400, detail="date_from must be YYYY-MM-DD")
 
     if date_to:
         try:
             dt = datetime.strptime(date_to, "%Y-%m-%d").date()
-            query = query.filter(Transaction.date <= dt)
+            base_conds.append(Transaction.date <= dt)
         except Exception:
             raise HTTPException(status_code=400, detail="date_to must be YYYY-MM-DD")
 
     if q and q.strip():
         like_pattern = f"%{q.strip()}%"
-        query = query.filter(
+        base_conds.append(
             or_(
                 Transaction.description.ilike(like_pattern),
                 func.cast(Transaction.amount, String).ilike(like_pattern),
             )
         )
 
-    query = query.order_by(Transaction.date.desc())
+    # Reusable uncategorized condition
+    _uncategorized_cond = or_(
+        Transaction.category == None,
+        Transaction.category == "",
+        Transaction.category == "Other",
+        Transaction.category == "Uncategorized",
+    )
+
+    # Summary stats across ALL base-filtered rows (before amount_filter) — powers the quick-filter chips
+    agg = db.query(
+        func.count(Transaction.id).label("total"),
+        func.coalesce(func.sum(case([(Transaction.amount > 0, 1)], else_=0)), 0).label("income_count"),
+        func.coalesce(func.sum(case([(Transaction.amount < 0, 1)], else_=0)), 0).label("expenses_count"),
+        func.coalesce(func.sum(case([(_uncategorized_cond, 1)], else_=0)), 0).label("uncategorized_count"),
+        func.coalesce(func.sum(case([(Transaction.amount > 0, Transaction.amount)], else_=0)), 0).label("income_total"),
+        func.coalesce(func.sum(case([(Transaction.amount < 0, Transaction.amount)], else_=0)), 0).label("expenses_total"),
+    ).filter(*base_conds).first()
+
+    summary = {
+        "total": int(agg.total or 0),
+        "income_count": int(agg.income_count or 0),
+        "expenses_count": int(agg.expenses_count or 0),
+        "uncategorized_count": int(agg.uncategorized_count or 0),
+        "income": float(agg.income_total or 0),
+        "expenses": float(abs(agg.expenses_total or 0)),
+        "net": float((agg.income_total or 0) + (agg.expenses_total or 0)),
+    }
+
+    # Apply amount_filter on top of base conditions
+    data_conds = list(base_conds)
+    if amount_filter == "income":
+        data_conds.append(Transaction.amount > 0)
+    elif amount_filter == "expenses":
+        data_conds.append(Transaction.amount < 0)
+    elif amount_filter == "uncategorized":
+        data_conds.append(_uncategorized_cond)
+
+    # Sort column mapping
+    _sort_map = {
+        "date": Transaction.date,
+        "amount": Transaction.amount,
+        "description": Transaction.description,
+        "category": Transaction.category,
+    }
+    sort_col = _sort_map.get(sort_by, Transaction.date)
+    sort_fn = sort_col.asc() if sort_dir == "asc" else sort_col.desc()
 
     if limit and limit > 0:
-        query = query.limit(limit)
+        # Legacy: return a fixed number of rows without pagination
+        txn_list = (
+            db.query(Transaction)
+            .options(joinedload(Transaction.account), joinedload(Transaction.suggested_account))
+            .filter(*data_conds)
+            .order_by(sort_fn)
+            .limit(limit)
+            .all()
+        )
+        total_filtered = len(txn_list)
+        page_actual = 1
+        page_size_actual = limit
+    else:
+        page_actual = max(1, page)
+        page_size_actual = min(max(1, page_size), 500)
+        total_filtered = db.query(func.count(Transaction.id)).filter(*data_conds).scalar() or 0
+        offset = (page_actual - 1) * page_size_actual
+        txn_list = (
+            db.query(Transaction)
+            .options(joinedload(Transaction.account), joinedload(Transaction.suggested_account))
+            .filter(*data_conds)
+            .order_by(sort_fn)
+            .offset(offset)
+            .limit(page_size_actual)
+            .all()
+        )
 
-    transactions = query.all()
-
-    transaction_ids = [t.id for t in transactions]
+    transaction_ids = [t.id for t in txn_list]
     merchant_map = {}
     if transaction_ids:
         merchant_rows = (
@@ -155,7 +230,11 @@ async def get_transactions(
 
     return {
         "session_id": session_id,
-        "count": len(transactions),
+        "count": len(txn_list),
+        "total": total_filtered,
+        "page": page_actual,
+        "page_size": page_size_actual,
+        "summary": summary,
         "transactions": [
             {
                 "id": t.id,
@@ -183,7 +262,7 @@ async def get_transactions(
                 "amount_excl_vat": t.amount_excl_vat,
                 "amount_incl_vat": t.amount_incl_vat,
             }
-            for t in transactions
+            for t in txn_list
         ],
     }
 

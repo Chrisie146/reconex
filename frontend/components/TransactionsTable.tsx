@@ -171,6 +171,8 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
+  const [totalCount, setTotalCount] = useState(0)
+  const [summary, setSummary] = useState({ total: 0, income_count: 0, expenses_count: 0, uncategorized_count: 0, income: 0, expenses: 0, net: 0 })
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [focusedTxnId, setFocusedTxnId] = useState<number | null>(null)
   const [instantQuery, setInstantQuery] = useState('')
@@ -250,7 +252,17 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
   }
 
   const buildTransactionParams = () => {
-    const params: any = { q: query, _t: Date.now() }
+    const params: any = {
+      q: debouncedInstantQuery || undefined,
+      date_from: dateFrom || undefined,
+      date_to: dateTo || undefined,
+      page: currentPage,
+      page_size: pageSize,
+      sort_by: sortBy,
+      sort_dir: sortDirection,
+      amount_filter: quickFilter !== 'all' ? quickFilter : undefined,
+      _t: Date.now(),
+    }
 
     if (currentClient?.id) {
       params.client_id = currentClient.id
@@ -360,17 +372,10 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
         }
 
         const txnResponse = await axios.get(`${API_BASE_URL}/transactions`, { params })
-        let txns = txnResponse.data.transactions || []
-
-        if (txnFilter) {
-          switch (txnFilter) {
-            case 'expenses': txns = txns.filter((t: any) => Number(t.amount) < 0); break
-            case 'income': txns = txns.filter((t: any) => Number(t.amount) > 0); break
-            case 'uncategorized': txns = txns.filter((t: any) => !t.category || t.category === '' || t.category === 'Other' || t.category === 'Uncategorized'); break
-          }
-        }
-
+        const txns = txnResponse.data.transactions || []
         setTransactions(txns)
+        setTotalCount(txnResponse.data.total ?? txnResponse.data.count ?? 0)
+        if (txnResponse.data.summary) setSummary(txnResponse.data.summary)
         setLoading(false)
 
         const invoiceParams = currentClient?.id ? { client_id: currentClient.id } : (sessionId ? { session_id: sessionId } : {})
@@ -396,7 +401,8 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
     }
 
     fetchData()
-  }, [sessionId, currentClient?.id, refreshTrigger, refreshKey, searchTrigger, selectedStatement, txnFilter])
+  }, [sessionId, currentClient?.id, refreshTrigger, refreshKey, searchTrigger, selectedStatement, txnFilter,
+      currentPage, pageSize, sortBy, sortDirection, quickFilter, debouncedInstantQuery, dateFrom, dateTo])
 
   // Fetch categories whenever session, statement, or client changes
   useEffect(() => {
@@ -578,66 +584,24 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
     return balanceMap
   }
 
-  // -- Computed: sorted + filtered transactions --
-  const sortedAndFilteredTransactions = useMemo(() => {
-    let filtered = [...transactions]
+  // -- Computed: transactions are already filtered/sorted by the server --
+  const sortedAndFilteredTransactions = useMemo(() => transactions, [transactions])
 
-    // Client-side date filtering
-    if (dateFrom) {
-      const fromDate = new Date(dateFrom + 'T00:00:00').getTime()
-      filtered = filtered.filter(t => new Date(t.date).getTime() >= fromDate)
-    }
-    if (dateTo) {
-      const toDate = new Date(dateTo + 'T23:59:59').getTime()
-      filtered = filtered.filter(t => new Date(t.date).getTime() <= toDate)
-    }
+  // -- Summary stats from server --
+  const stats = useMemo(() => ({
+    income: summary.income,
+    expenses: summary.expenses,
+    net: summary.net,
+    uncategorized: summary.uncategorized_count,
+    total: summary.total,
+  }), [summary])
 
-    switch (quickFilter) {
-      case 'income': filtered = filtered.filter(t => t.amount > 0); break
-      case 'expenses': filtered = filtered.filter(t => t.amount < 0); break
-      case 'uncategorized': filtered = filtered.filter(t => !t.category || t.category === '' || t.category === 'Other' || t.category === 'Uncategorized'); break
-    }
-
-    if (debouncedInstantQuery) {
-      const q = debouncedInstantQuery.toLowerCase()
-      filtered = filtered.filter(t =>
-        (t.description || '').toLowerCase().includes(q) ||
-        (t.merchant || '').toLowerCase().includes(q) ||
-        (t.category || '').toLowerCase().includes(q) ||
-        (t.account_code || '').toLowerCase().includes(q) ||
-        (t.account_name || '').toLowerCase().includes(q)
-      )
-    }
-
-    filtered.sort((a, b) => {
-      let cmp = 0
-      switch (sortBy) {
-        case 'date': cmp = new Date(a.date).getTime() - new Date(b.date).getTime(); break
-        case 'amount': cmp = Math.abs(a.amount) - Math.abs(b.amount); break
-        case 'account': cmp = (`${a.account_code || ''} ${a.account_name || ''}`).localeCompare(`${b.account_code || ''} ${b.account_name || ''}`); break
-        case 'category': cmp = (a.category || '').localeCompare(b.category || ''); break
-        case 'description': cmp = (a.description || '').localeCompare(b.description || ''); break
-        case 'merchant': cmp = (a.merchant || '').localeCompare(b.merchant || ''); break
-      }
-      return sortDirection === 'asc' ? cmp : -cmp
-    })
-
-    return filtered
-  }, [transactions, quickFilter, debouncedInstantQuery, sortBy, sortDirection, dateFrom, dateTo])
-
-  // -- Summary stats --
-  const stats = useMemo(() => {
-    const income = transactions.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0)
-    const expenses = transactions.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0)
-    const uncategorized = transactions.filter(t => !t.category || t.category === '' || t.category === 'Other' || t.category === 'Uncategorized').length
-    return { income, expenses, net: income - expenses, uncategorized, total: transactions.length }
-  }, [transactions])
-
-  const filteredStats = useMemo(() => {
-    const income = sortedAndFilteredTransactions.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0)
-    const expenses = sortedAndFilteredTransactions.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0)
-    return { income, expenses, net: income - expenses, count: sortedAndFilteredTransactions.length }
-  }, [sortedAndFilteredTransactions])
+  const filteredStats = useMemo(() => ({
+    income: summary.income,
+    expenses: summary.expenses,
+    net: summary.net,
+    count: totalCount,
+  }), [summary, totalCount])
 
   const selectedStats = useMemo(() => {
     const selected = transactions.filter(t => selectedIds.has(t.id))
@@ -646,12 +610,9 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
     return { income, expenses, net: income - expenses, count: selected.length }
   }, [transactions, selectedIds])
 
-  // -- Pagination --
-  const totalPages = Math.max(1, Math.ceil(sortedAndFilteredTransactions.length / pageSize))
-  const paginatedTransactions = useMemo(() => {
-    const start = (currentPage - 1) * pageSize
-    return sortedAndFilteredTransactions.slice(start, start + pageSize)
-  }, [sortedAndFilteredTransactions, currentPage, pageSize])
+  // -- Pagination: server already paginates, use totalCount for page math --
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
+  const paginatedTransactions = useMemo(() => transactions, [transactions])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -734,7 +695,11 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
     const params = buildTransactionParams()
     if (!params) { setTransactions([]); return }
     axios.get(`${API_BASE_URL}/transactions`, { params })
-      .then((res) => setTransactions(res.data.transactions || []))
+      .then((res) => {
+        setTransactions(res.data.transactions || [])
+        setTotalCount(res.data.total ?? res.data.count ?? 0)
+        if (res.data.summary) setSummary(res.data.summary)
+      })
       .catch((e) => console.error('Refetch failed', e))
   }
 
@@ -753,9 +718,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
           <div className="flex-1 min-w-0">
             <h2 className="text-sm font-semibold tracking-tight text-neutral-950">Transactions</h2>
             <p className="mt-0.5 text-xs text-neutral-500">
-              {sortedAndFilteredTransactions.length === transactions.length
-                ? `${transactions.length} transactions`
-                : `${sortedAndFilteredTransactions.length} of ${transactions.length} transactions`}
+              {totalCount} transactions
               <span className="mx-2 text-neutral-300">|</span>
               Net {filteredStats.net >= 0 ? '+' : '-'}R{Math.abs(filteredStats.net).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
             </p>
@@ -772,7 +735,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
               title="Bulk edit selected or filtered transactions"
             >
               Bulk edit
-              <span className="rounded bg-white/20 px-1 text-xs">{selectedIds.size || sortedAndFilteredTransactions.length}</span>
+              <span className="rounded bg-white/20 px-1 text-xs">{selectedIds.size || paginatedTransactions.length}</span>
             </button>
             <button
               onClick={() => setShowClearCategoriesModal(true)}
@@ -789,10 +752,10 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
           {/* Quick filter chips */}
           <div className="flex items-center gap-1.5">
             {([
-              { key: 'all' as QuickFilter, label: 'All', count: stats.total },
-              { key: 'income' as QuickFilter, label: 'Income', count: transactions.filter(t => t.amount > 0).length },
-              { key: 'expenses' as QuickFilter, label: 'Expenses', count: transactions.filter(t => t.amount < 0).length },
-              { key: 'uncategorized' as QuickFilter, label: 'Uncategorized', count: stats.uncategorized },
+              { key: 'all' as QuickFilter, label: 'All', count: summary.total },
+              { key: 'income' as QuickFilter, label: 'Income', count: summary.income_count },
+              { key: 'expenses' as QuickFilter, label: 'Expenses', count: summary.expenses_count },
+              { key: 'uncategorized' as QuickFilter, label: 'Uncategorized', count: summary.uncategorized_count },
             ]).map(chip => (
               <button
                 key={chip.key}
@@ -1002,7 +965,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
               Net {selectedStats.net >= 0 ? '+' : '-'}R{Math.abs(selectedStats.net).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
             </span>
             <button onClick={selectAllFiltered} className="text-xs font-medium underline text-blue-700 hover:text-blue-900">
-              Select all {sortedAndFilteredTransactions.length}
+              Select all {totalCount}
             </button>
             <button onClick={clearSelection} className="text-xs font-medium underline text-blue-700 hover:text-blue-900">
               Clear
@@ -1084,7 +1047,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
             </div>
             <div className="px-6 py-5 space-y-3">
               <p className="text-sm text-neutral-700">
-                This will remove categories from <strong>all {transactions.length} transactions</strong> in this session.
+                This will remove categories from <strong>all {summary.total} transactions</strong> in this session.
               </p>
               <p className="flex items-center gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
                 <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
@@ -1353,7 +1316,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
                   {visibleCols.map((col) => {
                     switch (col) {
                       case 'description':
-                        return <td key={`footer-${col}`} className="px-4 py-3 text-xs font-semibold text-neutral-600">Page {currentPage} of {totalPages} · {paginatedTransactions.length} of {sortedAndFilteredTransactions.length}</td>
+                        return <td key={`footer-${col}`} className="px-4 py-3 text-xs font-semibold text-neutral-600">Page {currentPage} of {totalPages} · {paginatedTransactions.length} of {totalCount}</td>
                       case 'amount':
                         return (
                           <td key={`footer-${col}`} className="px-4 py-3 text-right">
@@ -1389,7 +1352,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
           </div>
 
           <div className="text-xs text-neutral-500 tabular-nums">
-            {((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, sortedAndFilteredTransactions.length)} of {sortedAndFilteredTransactions.length}
+            {((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, totalCount)} of {totalCount}
           </div>
 
           <div className="flex items-center gap-1">
@@ -1442,7 +1405,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
         </div>
       )}
 
-      {sortedAndFilteredTransactions.length === 0 && transactions.length > 0 && (
+      {sortedAndFilteredTransactions.length === 0 && summary.total > 0 && !loading && (
         <div className="px-6 py-12 text-center">
           <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-neutral-100 mb-3">
             <Search size={16} className="text-neutral-400" />
