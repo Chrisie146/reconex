@@ -19,7 +19,7 @@ interface BackupRecord {
 }
 
 const fmtBytes = (b: number | null) => {
-  if (b == null) return '—'
+  if (b == null) return '-'
   if (b < 1024) return `${b} B`
   if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`
   return `${(b / 1024 / 1024).toFixed(1)} MB`
@@ -176,8 +176,9 @@ export default function BackupsPage() {
                   <code className="bg-white px-1 rounded text-xs">.db.gz</code> (SQLite) backup file to restore
                   the database to that point in time.
                 </p>
-                <p className="text-sm text-amber-700 font-medium mt-1">
-                  ⚠ This will permanently overwrite all current data.
+                <p className="mt-2 flex items-center gap-2 text-sm text-amber-800 font-medium">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <span>This will permanently overwrite all current data.</span>
                 </p>
               </div>
             </div>

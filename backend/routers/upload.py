@@ -21,11 +21,12 @@ from routers.dependencies import (
     vat_service,
 )
 from services.bank_detector import BankDetector
-from services.categoriser import MERCHANT_MAPPINGS, categorize_transaction
+from services.categoriser import MERCHANT_MAPPINGS
 from services.parser import _find_data_start, normalize_csv, parse_date, validate_csv
 from services.system_rule_engine import apply_system_rules
 from services.pdf_parser import ParserError as PDFParserError
 from services.pdf_parser import pdf_to_csv_bytes
+from services.transaction_mapping_service import transaction_mapping_service
 from rate_limiter import upload_limiter
 from validators import validate_csv_upload, validate_pdf_upload
 from services import posthog_tracker
@@ -136,55 +137,31 @@ def _apply_rules_and_save(
     system_hits = apply_system_rules(normalized_transactions, client, db)
 
     for idx, txn_data in enumerate(normalized_transactions):
-        raw_category, is_expense = categorize_transaction(txn_data["description"], txn_data["amount"])
+        mapping = transaction_mapping_service.resolve(
+            db=db,
+            client_id=client_id,
+            user_id=str(current_user.id),
+            description=txn_data["description"],
+            amount=txn_data["amount"],
+            bank_source=bank_source,
+            enabled_rules=enabled_rules,
+            condition_matcher=txn_matches_conditions,
+        )
 
         # Built-in rules always confirm directly — no suggestions needed.
         # "Other" means no built-in rule matched → Uncategorized.
-        category = raw_category if raw_category != "Other" else "Uncategorized"
+        category = mapping.category
 
-        tdict = {
-            "description": txn_data["description"],
-            "amount": txn_data["amount"],
-            "date": txn_data.get("date"),
-            "category": category,
-        }
-
-        # User-created auto-apply rules override and confirm directly
-        account_id = None
-        for r in enabled_rules:
-            if not r.get("auto_apply"):
-                continue
-            try:
-                if txn_matches_conditions(tdict, r.get("conditions", {})):
-                    act = r.get("action", {})
-                    if act.get("type") == "set_category" and (act.get("category") or act.get("account_id") is not None):
-                        account = _resolve_action_account(db, client_id, act)
-                        if act.get("category"):
-                            category = act["category"]
-                        elif account:
-                            category = account.name
-                        if account:
-                            account_id = account.id
-                        break
-                    if act.get("type") == "set_account":
-                        account = _resolve_action_account(db, client_id, act)
-                        if account:
-                            account_id = account.id
-                            category = account.name
-                            break
-                    if act.get("type") == "set_merchant" and act.get("merchant"):
-                        txn_data["_merchant"] = act["merchant"]
-                        break
-            except Exception:
-                continue
+        account_id = mapping.account_id
+        txn_data["_merchant"] = mapping.merchant
 
         # Auto-assign merchant from built-in MERCHANT_MAPPINGS if not already set by a user rule
         if not txn_data.get("_merchant"):
             desc_lower = txn_data["description"].lower()
-            for mapping in MERCHANT_MAPPINGS:
-                for pattern in mapping.get("patterns", []):
+            for merchant_mapping in MERCHANT_MAPPINGS:
+                for pattern in merchant_mapping.get("patterns", []):
                     if pattern.lower() in desc_lower:
-                        txn_data["_merchant"] = mapping["merchant"]
+                        txn_data["_merchant"] = merchant_mapping["merchant"]
                         break
                 if txn_data.get("_merchant"):
                     break
@@ -205,6 +182,9 @@ def _apply_rules_and_save(
         elif sys_hit is not None:
             suggestion_reason = sys_hit.reason
 
+        if suggested_account_id is None:
+            suggested_account_id = mapping.suggested_account_id
+
         categories_found.add(category)
         transaction = Transaction(
             client_id=client_id,
@@ -217,6 +197,9 @@ def _apply_rules_and_save(
             suggested_account_id=suggested_account_id,
             suggested_category=None,
             suggestion_reason=suggestion_reason,
+            mapping_confidence=mapping.confidence,
+            mapping_source=mapping.source,
+            mapping_reason=mapping.reason,
             bank_source=bank_source,
             balance_verified=txn_data.get("balance_verified"),
             balance_difference=txn_data.get("balance_difference"),
@@ -252,6 +235,10 @@ def _apply_rules_and_save(
                 txn.category = cat
                 if account_id is not None:
                     txn.account_id = account_id
+                    txn.suggested_account_id = None
+                    txn.mapping_confidence = 0.98
+                    txn.mapping_source = "learned_rule"
+                    txn.mapping_reason = "Matched a user-learned keyword/account rule."
                 txn.suggested_category = None
                 categories_found.add(cat)
                 updated_count += 1
@@ -511,48 +498,30 @@ def save_parsed_transactions(
             else:
                 date_obj = d
 
-            category, _is_expense = categorize_transaction(desc, amount)
+            mapping = transaction_mapping_service.resolve(
+                db=db,
+                client_id=client_id,
+                user_id=str(current_user.id),
+                description=desc,
+                amount=amount,
+                bank_source="manual_save",
+                enabled_rules=enabled_rules,
+                condition_matcher=txn_matches_conditions,
+            )
 
             # Built-in rules always confirm directly — "Other" maps to Uncategorized
-            category = category if category != "Other" else "Uncategorized"
+            category = mapping.category
 
-            tdict = {"description": desc, "amount": amount, "date": date_obj, "category": category}
-
-            account_id = None
-            for r in enabled_rules:
-                if not r.get("auto_apply"):
-                    continue
-                try:
-                    if txn_matches_conditions(tdict, r.get("conditions", {})):
-                        act = r.get("action", {})
-                        if act.get("type") == "set_category" and (act.get("category") or act.get("account_id") is not None):
-                            account = _resolve_action_account(db, client_id, act)
-                            if act.get("category"):
-                                category = act["category"]
-                            elif account:
-                                category = account.name
-                            if account:
-                                account_id = account.id
-                            break
-                        if act.get("type") == "set_account":
-                            account = _resolve_action_account(db, client_id, act)
-                            if account:
-                                account_id = account.id
-                                category = account.name
-                                break
-                        if act.get("type") == "set_merchant" and act.get("merchant"):
-                            item["_merchant"] = act["merchant"]
-                            break
-                except Exception:
-                    continue
+            account_id = mapping.account_id
+            item["_merchant"] = mapping.merchant
 
             # Auto-assign merchant from built-in MERCHANT_MAPPINGS if not already set by a user rule
             if not item.get("_merchant"):
                 desc_lower = desc.lower()
-                for mapping in MERCHANT_MAPPINGS:
-                    for pattern in mapping.get("patterns", []):
+                for merchant_mapping in MERCHANT_MAPPINGS:
+                    for pattern in merchant_mapping.get("patterns", []):
                         if pattern.lower() in desc_lower:
-                            item["_merchant"] = mapping["merchant"]
+                            item["_merchant"] = merchant_mapping["merchant"]
                             break
                     if item.get("_merchant"):
                         break
@@ -566,7 +535,11 @@ def save_parsed_transactions(
                 amount=amount,
                 category=category,
                 account_id=account_id,
+                suggested_account_id=mapping.suggested_account_id,
                 suggested_category=None,
+                mapping_confidence=mapping.confidence,
+                mapping_source=mapping.source,
+                mapping_reason=mapping.reason,
                 balance_verified=item.get("balance_verified"),
                 balance_difference=item.get("balance_difference"),
                 validation_message=item.get("validation_message"),
@@ -597,6 +570,10 @@ def save_parsed_transactions(
                     txn.category = cat
                     if account_id is not None:
                         txn.account_id = account_id
+                        txn.suggested_account_id = None
+                        txn.mapping_confidence = 0.98
+                        txn.mapping_source = "learned_rule"
+                        txn.mapping_reason = "Matched a user-learned keyword/account rule."
                     txn.suggested_category = None
                     categories_found.add(cat)
             if confirmed:

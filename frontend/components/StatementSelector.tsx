@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import axios from '@/lib/axiosClient'
-import { ChevronDown, ChevronUp, Settings } from 'lucide-react'
+import { ChevronDown, ChevronUp, FileText, Settings } from 'lucide-react'
 import Link from 'next/link'
 import { useClient } from '@/lib/clientContext'
 
@@ -111,7 +111,7 @@ export default function StatementSelector({ selectedStatement, onStatementChange
             {!isCollapsed ? (
               <span className="truncate text-left">{displayText}</span>
             ) : (
-              <span className="text-xs">📄</span>
+              <FileText size={16} className="text-neutral-400" />
             )}
             {!isCollapsed && !loadingStatements && statements.length > 1 && (
               isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />

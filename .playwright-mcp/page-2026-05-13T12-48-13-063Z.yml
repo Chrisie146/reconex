@@ -1,0 +1,430 @@
+- generic [active] [ref=e1]:
+  - region "Notifications alt+T"
+  - main [ref=e3]:
+    - navigation [ref=e4]:
+      - generic [ref=e6]:
+        - link "R reconex" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e10]: R
+          - generic [ref=e12]: reconex
+        - generic [ref=e13]:
+          - link "Features" [ref=e14] [cursor=pointer]:
+            - /url: "#features"
+          - link "How It Works" [ref=e15] [cursor=pointer]:
+            - /url: "#how-it-works"
+          - link "FAQ" [ref=e16] [cursor=pointer]:
+            - /url: "#faq"
+        - generic [ref=e17]:
+          - link "Sign in" [ref=e18] [cursor=pointer]:
+            - /url: /login
+          - link "Get Started" [ref=e19] [cursor=pointer]:
+            - /url: /register
+            - text: Get Started
+    - generic [ref=e26]:
+      - generic [ref=e27]:
+        - generic [ref=e28]:
+          - img [ref=e29]
+          - generic [ref=e31]: Encrypted & Secure
+        - generic [ref=e33]: Supports
+        - generic [ref=e34]:
+          - generic [ref=e35]: FNB
+          - generic [ref=e36]: Standard Bank
+          - generic [ref=e37]: ABSA
+          - generic [ref=e38]: Capitec
+      - heading "Bank statement analysis done in minutes" [level=1] [ref=e39]:
+        - text: Bank statement analysis
+        - text: done in minutes
+      - paragraph [ref=e40]: Upload CSV or PDF statements from any major SA bank. Auto-categorize transactions, generate VAT reports, and export accountant-ready spreadsheets — all in under a minute.
+      - generic [ref=e41]:
+        - link "Get started free" [ref=e42] [cursor=pointer]:
+          - /url: /register
+          - generic [ref=e43]:
+            - text: Get started free
+            - img [ref=e44]
+        - link "See what it does" [ref=e47] [cursor=pointer]:
+          - /url: "#features"
+      - generic [ref=e48]:
+        - generic [ref=e49]:
+          - img [ref=e50]
+          - generic [ref=e52]: Encrypted at rest & in transit
+        - generic [ref=e53]:
+          - img [ref=e54]
+          - generic [ref=e56]: No credit card required
+        - generic [ref=e57]:
+          - img [ref=e58]
+          - generic [ref=e60]: Setup in 60 seconds
+      - generic [ref=e61]:
+        - generic [ref=e62]:
+          - generic [ref=e63]: "0"
+          - generic [ref=e64]: SA Banks Supported
+        - generic [ref=e65]:
+          - generic [ref=e67]: 0%
+          - generic [ref=e68]: SA VAT Calculated
+        - generic [ref=e69]:
+          - generic [ref=e70]: "0"
+          - generic [ref=e71]: Default Categories
+        - generic [ref=e72]:
+          - generic [ref=e73]: Free
+          - generic [ref=e74]: To Get Started
+    - generic [ref=e78]:
+      - generic [ref=e79]:
+        - generic [ref=e82]: Features
+        - heading "Every feature, real and working" [level=2] [ref=e83]
+        - paragraph [ref=e84]: No vaporware. Every capability listed here is built, tested, and ready to use today.
+      - generic [ref=e85]:
+        - generic [ref=e86]:
+          - img [ref=e88]
+          - heading "Multi-Bank Support" [level=3] [ref=e92]
+          - paragraph [ref=e93]: Auto-detects and parses statements from FNB, Standard Bank, ABSA, Capitec, Nedbank and Investec. Manual column mapping available for any other bank.
+        - generic [ref=e95]:
+          - img [ref=e97]
+          - heading "CSV & PDF Upload" [level=3] [ref=e100]
+          - paragraph [ref=e101]: Upload CSV exports or PDF statements. OCR-powered extraction handles scanned PDFs with support for Afrikaans and English formats.
+        - generic [ref=e103]:
+          - img [ref=e105]
+          - heading "Auto-Categorization" [level=3] [ref=e108]
+          - paragraph [ref=e109]: Rule-based engine with a built-in South African merchant database. 15 default categories, custom categories, and learned patterns that improve over time.
+        - generic [ref=e111]:
+          - img [ref=e113]
+          - heading "VAT Calculation" [level=3] [ref=e116]
+          - paragraph [ref=e117]: Automatic 15% SA VAT computation per transaction. Configure VAT per category. Export VAT Input and Output reports with date range filtering.
+        - generic [ref=e119]:
+          - img [ref=e121]
+          - heading "Excel & PDF Export" [level=3] [ref=e124]
+          - paragraph [ref=e125]: Export categorized transactions, monthly summaries, per-category breakdowns and accountant reports. Available in Excel, PDF and CSV.
+        - generic [ref=e127]:
+          - img [ref=e129]
+          - heading "Invoice Matching" [level=3] [ref=e134]
+          - paragraph [ref=e135]: Upload invoices and auto-match them to bank transactions using supplier name similarity, amount matching and date proximity scoring.
+        - generic [ref=e137]:
+          - img [ref=e139]
+          - heading "Multi-Client Management" [level=3] [ref=e144]
+          - paragraph [ref=e145]: Manage multiple clients from a single account. Each client has isolated transactions, rules, categories, invoices and financial years.
+        - generic [ref=e147]:
+          - img [ref=e149]
+          - heading "Inline Editing" [level=3] [ref=e151]
+          - paragraph [ref=e152]: Edit transactions, categories and merchants directly in the table. Bulk-categorize by keyword or selection. Undo bulk actions instantly.
+        - generic [ref=e154]:
+          - img [ref=e156]
+          - heading "Analytics Dashboard" [level=3] [ref=e158]
+          - paragraph [ref=e159]: Cash flow charts, income vs expense trends, category breakdowns, merchant analytics and recurring transaction detection — all in one view.
+        - generic [ref=e161]:
+          - img [ref=e163]
+          - heading "Financial Years" [level=3] [ref=e165]
+          - paragraph [ref=e166]: Define financial year periods per client. Archive completed years and access historical data in read-only mode at any time.
+        - generic [ref=e168]:
+          - img [ref=e170]
+          - heading "Reconciliation" [level=3] [ref=e174]
+          - paragraph [ref=e175]: Set opening and closing balances. Running balance validation with deterministic arithmetic verification and 1-cent tolerance.
+        - generic [ref=e177]:
+          - img [ref=e179]
+          - heading "Custom Rules Engine" [level=3] [ref=e182]
+          - paragraph [ref=e183]: Create keyword-based categorization rules with priority ordering. Clone rules across clients. Auto-apply on every upload.
+    - generic [ref=e188]:
+      - generic [ref=e189]:
+        - generic [ref=e192]: How It Works
+        - heading "Three steps. That's it." [level=2] [ref=e193]
+        - paragraph [ref=e194]: From raw bank statement to categorized, exportable data in under a minute.
+      - generic [ref=e195]:
+        - generic [ref=e199]:
+          - generic [ref=e201]:
+            - img [ref=e203]
+            - generic [ref=e206]: "01"
+          - heading "Upload your statement" [level=3] [ref=e207]
+          - paragraph [ref=e208]: Drag and drop a CSV or PDF bank statement. The system auto-detects whether it is FNB, Standard Bank, ABSA, Capitec, Nedbank or Investec and parses accordingly. For unsupported formats, map your columns manually.
+        - generic [ref=e212]:
+          - generic [ref=e214]:
+            - img [ref=e216]
+            - generic [ref=e218]: "02"
+          - heading "Review & categorize" [level=3] [ref=e219]
+          - paragraph [ref=e220]: Transactions are auto-categorized using built-in rules and learned patterns. Edit inline, bulk-categorize by keyword, or create custom rules that apply to every future upload.
+        - generic [ref=e222]:
+          - generic [ref=e224]:
+            - img [ref=e226]
+            - generic [ref=e229]: "03"
+          - heading "Analyze & export" [level=3] [ref=e230]
+          - paragraph [ref=e231]: View monthly summaries, cash flow charts, category breakdowns and merchant analytics. Export to Excel, PDF or CSV — including dedicated VAT reports for your accountant.
+      - generic [ref=e232]:
+        - link "Try it now" [ref=e233] [cursor=pointer]:
+          - /url: /register
+          - text: Try it now
+          - img [ref=e234]
+        - paragraph [ref=e236]: Free to use. No credit card required.
+    - generic [ref=e238]:
+      - generic [ref=e239]:
+        - generic [ref=e242]: Preview
+        - heading "What you'll actually see" [level=2] [ref=e243]
+        - paragraph [ref=e244]: A clean dashboard built for speed and clarity. No clutter.
+      - generic [ref=e247]:
+        - generic [ref=e257]: app.reconex.co.za/dashboard
+        - generic [ref=e258]:
+          - generic [ref=e259]:
+            - generic [ref=e260]:
+              - generic [ref=e262]: Total Income
+              - generic [ref=e263]: R 45,230.00
+            - generic [ref=e264]:
+              - generic [ref=e266]: Total Expenses
+              - generic [ref=e267]: R 32,150.30
+            - generic [ref=e268]:
+              - generic [ref=e270]: Net Balance
+              - generic [ref=e271]: R 13,079.70
+          - generic [ref=e272]:
+            - generic [ref=e273]:
+              - generic [ref=e274]:
+                - generic [ref=e275]: Recent Transactions
+                - generic [ref=e277]: ⋮
+              - table [ref=e278]:
+                - rowgroup [ref=e279]:
+                  - row "Date Description Amount Category" [ref=e280]:
+                    - columnheader "Date" [ref=e281]
+                    - columnheader "Description" [ref=e282]
+                    - columnheader "Amount" [ref=e283]
+                    - columnheader "Category" [ref=e284]
+                - rowgroup [ref=e285]:
+                  - row "2026-01-15 WOOLWORTHS FOOD - R 892,50 Groceries" [ref=e286]:
+                    - cell "2026-01-15" [ref=e287]
+                    - cell "WOOLWORTHS FOOD" [ref=e288]
+                    - cell "- R 892,50" [ref=e289]
+                    - cell "Groceries" [ref=e290]:
+                      - generic [ref=e291]: Groceries
+                  - row "2026-01-15 SALARY DEPOSIT + R 35 000,00 Salary" [ref=e292]:
+                    - cell "2026-01-15" [ref=e293]
+                    - cell "SALARY DEPOSIT" [ref=e294]
+                    - cell "+ R 35 000,00" [ref=e295]
+                    - cell "Salary" [ref=e296]:
+                      - generic [ref=e297]: Salary
+                  - row "2026-01-14 ENGEN GARAGE - R 650,00 Fuel" [ref=e298]:
+                    - cell "2026-01-14" [ref=e299]
+                    - cell "ENGEN GARAGE" [ref=e300]
+                    - cell "- R 650,00" [ref=e301]
+                    - cell "Fuel" [ref=e302]:
+                      - generic [ref=e303]: Fuel
+                  - row "2026-01-14 CITY OF CPT ELECTRICITY - R 1 245,80 Utilities" [ref=e304]:
+                    - cell "2026-01-14" [ref=e305]
+                    - cell "CITY OF CPT ELECTRICITY" [ref=e306]
+                    - cell "- R 1 245,80" [ref=e307]
+                    - cell "Utilities" [ref=e308]:
+                      - generic [ref=e309]: Utilities
+                  - row "2026-01-13 VODACOM AIRTIME - R 199,00 Telecom" [ref=e310]:
+                    - cell "2026-01-13" [ref=e311]
+                    - cell "VODACOM AIRTIME" [ref=e312]
+                    - cell "- R 199,00" [ref=e313]
+                    - cell "Telecom" [ref=e314]:
+                      - generic [ref=e315]: Telecom
+            - generic [ref=e316]:
+              - generic [ref=e317]: Expense Categories
+              - generic [ref=e318]:
+                - generic [ref=e320]:
+                  - generic [ref=e321]: Groceries
+                  - generic [ref=e322]: R 8,640
+                - generic [ref=e325]:
+                  - generic [ref=e326]: Fuel
+                  - generic [ref=e327]: R 3,200
+                - generic [ref=e330]:
+                  - generic [ref=e331]: Utilities
+                  - generic [ref=e332]: R 4,890
+                - generic [ref=e335]:
+                  - generic [ref=e336]: Insurance
+                  - generic [ref=e337]: R 2,100
+                - generic [ref=e340]:
+                  - generic [ref=e341]: Bank Fees
+                  - generic [ref=e342]: R 450
+    - generic [ref=e347]:
+      - generic [ref=e348]:
+        - generic [ref=e351]: Built for South Africa
+        - heading "Everything you need, nothing you don't" [level=2] [ref=e352]
+        - paragraph [ref=e353]: Reconex is purpose-built for South African bank statement formats, VAT rules and accounting workflows.
+      - generic [ref=e354]:
+        - paragraph [ref=e355]: Supported banks
+        - generic [ref=e356]:
+          - generic [ref=e357]:
+            - generic [ref=e358]: FNB
+            - generic [ref=e359]: Aspire & Premier accounts
+          - generic [ref=e360]:
+            - generic [ref=e361]: Standard Bank
+            - generic [ref=e362]: CSV & PDF statements
+          - generic [ref=e363]:
+            - generic [ref=e364]: ABSA
+            - generic [ref=e365]: CSV & PDF with OCR
+          - generic [ref=e366]:
+            - generic [ref=e367]: Capitec
+            - generic [ref=e368]: CSV export support
+      - generic [ref=e369]:
+        - generic [ref=e370]:
+          - img [ref=e372]
+          - generic [ref=e376]:
+            - heading "4 SA Banks supported" [level=3] [ref=e377]
+            - paragraph [ref=e378]: Statements from FNB, Standard Bank, ABSA and Capitec are parsed automatically. More banks are on the roadmap.
+        - generic [ref=e379]:
+          - img [ref=e381]
+          - generic [ref=e384]:
+            - heading "CSV and PDF — including scanned" [level=3] [ref=e385]
+            - paragraph [ref=e386]: Upload digital bank exports or scanned PDF statements. OCR handles both English and Afrikaans text formats.
+        - generic [ref=e387]:
+          - img [ref=e389]
+          - generic [ref=e392]:
+            - heading "15% SA VAT, per transaction" [level=3] [ref=e393]
+            - paragraph [ref=e394]: Automatic VAT calculation on every transaction. Configure which categories are VAT-applicable. Export VAT Input and Output reports.
+        - generic [ref=e395]:
+          - img [ref=e397]
+          - generic [ref=e400]:
+            - heading "Export to Excel, PDF or CSV" [level=3] [ref=e401]
+            - paragraph [ref=e402]: Export your categorized data as spreadsheets, PDFs or CSV files — including monthly summaries and accountant-ready reports.
+        - generic [ref=e403]:
+          - img [ref=e405]
+          - generic [ref=e407]:
+            - heading "Encrypted at rest and in transit" [level=3] [ref=e408]
+            - paragraph [ref=e409]: All data is encrypted in storage and over the wire. Authentication uses JWT with bcrypt-hashed passwords and rate-limited resets.
+        - generic [ref=e410]:
+          - img [ref=e412]
+          - generic [ref=e414]:
+            - heading "Free plan — no hidden limits" [level=3] [ref=e415]
+            - paragraph [ref=e416]: The free plan has no cap on statements, transactions, clients or exports. Paid tiers add multi-client management and priority support.
+      - generic [ref=e417]:
+        - generic [ref=e420]: Early Access
+        - heading "Try it now — completely free" [level=3] [ref=e421]
+        - paragraph [ref=e422]: Reconex is in active development. Sign up for free access, and your feedback directly shapes what gets built next.
+        - link "Create a free account" [ref=e423] [cursor=pointer]:
+          - /url: /register
+    - generic [ref=e426]:
+      - generic [ref=e427]:
+        - generic [ref=e430]: FAQ
+        - heading "Common questions" [level=2] [ref=e431]
+        - paragraph [ref=e432]: Everything you need to know about Reconex
+      - generic [ref=e433]:
+        - generic [ref=e435]:
+          - button "Which banks are supported?" [ref=e436] [cursor=pointer]:
+            - generic [ref=e437]: Which banks are supported?
+            - img [ref=e439]
+          - generic [ref=e442]: FNB, Standard Bank, ABSA, Capitec, Nedbank and Investec. The system auto-detects the bank from your file. For any other bank, you can manually map the columns using the built-in column mapping tool.
+        - generic [ref=e444]:
+          - button "What file formats can I upload?" [ref=e445] [cursor=pointer]:
+            - generic [ref=e446]: What file formats can I upload?
+            - img [ref=e448]
+          - generic [ref=e450]: CSV files from any bank, and PDF statements (both digital and scanned). Scanned PDFs are processed using OCR with support for Afrikaans and English text. You can also define custom extraction regions for complex layouts.
+        - generic [ref=e452]:
+          - button "How does the auto-categorization work?" [ref=e453] [cursor=pointer]:
+            - generic [ref=e454]: How does the auto-categorization work?
+            - img [ref=e456]
+          - generic [ref=e458]: A rule-based engine matches transaction descriptions against a built-in database of South African merchants and keywords. There are 15 default categories. You can create custom categories and rules, and the system learns from your corrections over time.
+        - generic [ref=e460]:
+          - button "Can I calculate VAT from my statements?" [ref=e461] [cursor=pointer]:
+            - generic [ref=e462]: Can I calculate VAT from my statements?
+            - img [ref=e464]
+          - generic [ref=e466]: Yes. The system calculates 15% SA VAT per transaction automatically. You can configure which categories are VAT-applicable and set custom VAT rates. Export dedicated VAT Input and Output reports with date range filtering.
+        - generic [ref=e468]:
+          - button "What export formats are available?" [ref=e469] [cursor=pointer]:
+            - generic [ref=e470]: What export formats are available?
+            - img [ref=e472]
+          - generic [ref=e474]: "Excel, PDF and CSV. Export options include: all transactions, monthly summaries, per-category breakdowns, accountant reports with executive summaries, and dedicated VAT reports."
+        - generic [ref=e476]:
+          - button "Can I manage multiple clients?" [ref=e477] [cursor=pointer]:
+            - generic [ref=e478]: Can I manage multiple clients?
+            - img [ref=e480]
+          - generic [ref=e482]: Yes. Create separate clients within your account. Each client has isolated transactions, categories, rules, invoices and financial years. Switch between clients from the sidebar.
+        - generic [ref=e484]:
+          - button "Is my data secure?" [ref=e485] [cursor=pointer]:
+            - generic [ref=e486]: Is my data secure?
+            - img [ref=e488]
+          - generic [ref=e490]: Your data is encrypted at rest and in transit. Authentication uses JWT tokens with bcrypt-hashed passwords. Password reset uses single-use tokens with rate limiting. Cloud storage supports S3, Azure Blob or Google Cloud.
+        - generic [ref=e492]:
+          - button "Is there a limit on uploads or transactions?" [ref=e493] [cursor=pointer]:
+            - generic [ref=e494]: Is there a limit on uploads or transactions?
+            - img [ref=e496]
+          - generic [ref=e498]: The free plan has no limits on the number of statements or transactions you can process. CSV uploads support up to 5 MB and PDFs up to 10 MB per file.
+        - generic [ref=e500]:
+          - button "Can I match invoices to bank transactions?" [ref=e501] [cursor=pointer]:
+            - generic [ref=e502]: Can I match invoices to bank transactions?
+            - img [ref=e504]
+          - generic [ref=e506]: Yes. Upload invoice PDFs and the system will auto-extract metadata and match them to bank transactions using supplier name similarity, amount matching and date proximity. You confirm or reject each match.
+        - generic [ref=e508]:
+          - button "What analytics are available?" [ref=e509] [cursor=pointer]:
+            - generic [ref=e510]: What analytics are available?
+            - img [ref=e512]
+          - generic [ref=e514]: "The dashboard includes: daily cash flow / running balance charts, monthly income vs expense trends, category spending breakdowns, top merchant analysis with averages and counts, and auto-detected recurring transactions."
+    - generic [ref=e520]:
+      - heading "Ready to stop categorizing transactions by hand?" [level=2] [ref=e521]:
+        - text: Ready to stop categorizing
+        - text: transactions by hand?
+      - paragraph [ref=e522]: Upload your first statement in under a minute. Free plan includes unlimited uploads, auto-categorization, VAT reports and Excel exports.
+      - generic [ref=e523]:
+        - link "Get started free" [ref=e524] [cursor=pointer]:
+          - /url: /register
+          - text: Get started free
+          - img [ref=e525]
+        - link "Sign in" [ref=e528] [cursor=pointer]:
+          - /url: /login
+      - generic [ref=e529]:
+        - generic [ref=e530]:
+          - img [ref=e532]
+          - generic [ref=e534]: Encrypted & secure
+        - generic [ref=e535]:
+          - img [ref=e537]
+          - generic [ref=e540]: Data encrypted at rest
+        - generic [ref=e541]:
+          - img [ref=e543]
+          - generic [ref=e545]: No credit card needed
+    - generic [ref=e548]:
+      - generic [ref=e549]:
+        - generic [ref=e550]:
+          - link "R reconex" [ref=e551] [cursor=pointer]:
+            - /url: /
+            - generic [ref=e553]: R
+            - generic [ref=e554]: reconex
+          - paragraph [ref=e555]: Bank statement analysis for South African businesses, bookkeepers and accountants. Upload, categorize, export.
+          - generic [ref=e556]:
+            - generic [ref=e557]:
+              - img [ref=e558]
+              - text: Encrypted
+            - generic [ref=e560]:
+              - img [ref=e561]
+              - text: Secure Auth
+            - generic [ref=e564]:
+              - img [ref=e565]
+              - text: Cloud Storage
+        - generic [ref=e568]:
+          - paragraph [ref=e569]: Product
+          - list [ref=e570]:
+            - listitem [ref=e571]:
+              - link "Features" [ref=e572] [cursor=pointer]:
+                - /url: "#features"
+            - listitem [ref=e573]:
+              - link "How It Works" [ref=e574] [cursor=pointer]:
+                - /url: "#how-it-works"
+            - listitem [ref=e575]:
+              - link "Pricing" [ref=e576] [cursor=pointer]:
+                - /url: "#pricing"
+            - listitem [ref=e577]:
+              - link "Get Started" [ref=e578] [cursor=pointer]:
+                - /url: /register
+        - generic [ref=e579]:
+          - paragraph [ref=e580]: Company
+          - list [ref=e581]:
+            - listitem [ref=e582]:
+              - link "Privacy Policy" [ref=e583] [cursor=pointer]:
+                - /url: /privacy
+            - listitem [ref=e584]:
+              - link "Security" [ref=e585] [cursor=pointer]:
+                - /url: /security
+            - listitem [ref=e586]:
+              - link "Terms of Service" [ref=e587] [cursor=pointer]:
+                - /url: /terms
+        - generic [ref=e588]:
+          - paragraph [ref=e589]: Support
+          - list [ref=e590]:
+            - listitem [ref=e591]:
+              - link "FAQ" [ref=e592] [cursor=pointer]:
+                - /url: "#faq"
+            - listitem [ref=e593]:
+              - link "support@reconex.co.za" [ref=e594] [cursor=pointer]:
+                - /url: mailto:support@reconex.co.za
+          - paragraph [ref=e596]: Built for South Africa — Supports 6 major SA banks, 15% VAT calculation, and ZAR currency formatting.
+      - generic [ref=e597]:
+        - paragraph [ref=e598]: © 2026 Reconex. All rights reserved.
+        - generic [ref=e599]:
+          - link "Privacy" [ref=e600] [cursor=pointer]:
+            - /url: /privacy
+          - link "Security" [ref=e601] [cursor=pointer]:
+            - /url: /security
+          - link "Terms" [ref=e602] [cursor=pointer]:
+            - /url: /terms

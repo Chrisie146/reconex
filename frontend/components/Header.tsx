@@ -16,10 +16,10 @@ export default function Header() {
 
   return (
     <header className="bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 transition-colors duration-200">
-      <div className="max-w-6xl mx-auto px-4 py-5">
+      <div className="max-w-6xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <span className="text-2xl font-bold tracking-tight text-neutral-900 dark:text-white lowercase">recon<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-blue-700">ex</span></span>
+            <span className="text-xl font-semibold tracking-tight text-neutral-950 dark:text-white lowercase">reconex</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -32,7 +32,7 @@ export default function Header() {
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md transition-colors"
                 >
                   <LogOut className="w-4 h-4" />
                   Logout

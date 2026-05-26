@@ -1,0 +1,26 @@
+- generic [active] [ref=e1]:
+  - alert [ref=e7]
+  - region "Notifications alt+T"
+  - generic [ref=e32]:
+    - link "R reconex" [ref=e33] [cursor=pointer]:
+      - /url: /
+      - generic [ref=e36]: R
+      - generic [ref=e38]: reconex
+    - generic [ref=e39]:
+      - heading "Create account" [level=1] [ref=e40]
+      - paragraph [ref=e41]: Start analyzing bank statements for free.
+      - generic [ref=e42]:
+        - generic [ref=e43]:
+          - text: Email
+          - textbox "you@company.com" [ref=e44]
+        - generic [ref=e45]:
+          - text: Full name
+          - textbox "Jane Doe" [ref=e46]
+        - generic [ref=e47]:
+          - text: Password
+          - textbox "Min 8 characters" [ref=e48]
+        - button "Create account" [ref=e49] [cursor=pointer]
+    - paragraph [ref=e50]:
+      - text: Already have an account?
+      - link "Sign in" [ref=e51] [cursor=pointer]:
+        - /url: /login

@@ -158,9 +158,9 @@ export default function OCRPage(){
                   {Array.from({length: pageCount}, (_,i)=>i+1).map(p=> (
                     <button key={p} onClick={()=>togglePage(p)} disabled={extracting} className={`px-2 py-1 border rounded ${selectedPages.has(p) ? 'bg-sky-600 text-white' : 'bg-white'}`}>
                       Page {p}
-                      {pageProgress[p] === 'pending' && <span className="ml-2 text-xs text-yellow-600">●</span>}
-                      {pageProgress[p] === 'done' && <span className="ml-2 text-xs text-green-600">✓</span>}
-                      {pageProgress[p] === 'failed' && <span className="ml-2 text-xs text-rose-600">✕</span>}
+                      {pageProgress[p] === 'pending' && <span className="ml-2 text-xs text-yellow-700">Pending</span>}
+                      {pageProgress[p] === 'done' && <span className="ml-2 text-xs text-green-700">Done</span>}
+                      {pageProgress[p] === 'failed' && <span className="ml-2 text-xs text-rose-700">Failed</span>}
                     </button>
                   ))}
                 </div>

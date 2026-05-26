@@ -1,0 +1,12 @@
+- generic [ref=e1]:
+  - alert [ref=e11]
+  - region "Notifications alt+T"
+  - generic [ref=e14]:
+    - heading "404" [level=1] [ref=e15]
+    - heading "Page not found" [level=2] [ref=e16]
+    - paragraph [ref=e17]: The page you're looking for doesn't exist or has been moved.
+    - generic [ref=e18]:
+      - link "Go home" [ref=e19] [cursor=pointer]:
+        - /url: /
+      - link "Go to dashboard" [active] [ref=e20] [cursor=pointer]:
+        - /url: /dashboard

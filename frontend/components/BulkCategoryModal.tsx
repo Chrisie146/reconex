@@ -8,6 +8,7 @@ import { useClient } from '@/lib/clientContext'
 import LoadingButton from './LoadingButton'
 import AccountSelector from './AccountSelector'
 import { API_BASE_URL } from '@/lib/apiBase'
+import { AlertTriangle } from 'lucide-react'
 
 interface BulkCategoryModalProps {
   isOpen: boolean
@@ -391,8 +392,9 @@ export default function BulkCategoryModal({
                   </div>
                 </div>
 
-                <div className="text-sm text-neutral-600 p-3 bg-amber-50 border border-amber-200 rounded">
-                  ⚠ This action can be undone with the Undo button
+                <div className="flex items-center gap-2 text-sm text-amber-800 p-3 bg-amber-50 border border-amber-200 rounded">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <span>This action can be undone with the Undo button</span>
                 </div>
               </div>
 

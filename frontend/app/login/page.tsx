@@ -27,7 +27,7 @@ export default function LoginPage() {
       posthog.capture('user_logged_in', { email: data.email })
       router.push('/dashboard')
     } catch (err: any) {
-      const message = err?.response?.data?.detail || 'Login failed'
+      const message = err?.response?.data?.detail || err?.message || 'Login failed'
       setError(message)
       setLoading(false)
     }
@@ -73,6 +73,7 @@ export default function LoginPage() {
               </label>
               <input
                 type="email"
+                suppressHydrationWarning
                 className="mt-1.5 w-full rounded-lg border border-neutral-700/80 bg-neutral-800/50 px-3 py-2 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-blue-500/70 focus:ring-1 focus:ring-blue-500/50 transition-all"
                 placeholder="you@company.com"
                 value={email}
@@ -91,6 +92,7 @@ export default function LoginPage() {
               </div>
               <input
                 type="password"
+                suppressHydrationWarning
                 className="mt-1.5 w-full rounded-lg border border-neutral-700/80 bg-neutral-800/50 px-3 py-2 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-blue-500/70 focus:ring-1 focus:ring-blue-500/50 transition-all"
                 placeholder="••••••••"
                 value={password}

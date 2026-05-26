@@ -1,0 +1,4 @@
+- generic [active] [ref=e1]:
+  - alert [ref=e2]
+  - region "Notifications alt+T"
+  - paragraph [ref=e7]: Checking authentication...

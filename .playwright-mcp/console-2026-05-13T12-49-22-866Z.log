@@ -1,0 +1,4 @@
+[     736ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom.development.js:38559
+[    1069ms] [ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE @ http://localhost:3000/icon?4939f8524396c45c:0
+[    1176ms] [ERROR] Failed to load resource: net::ERR_EMPTY_RESPONSE @ http://localhost:3000/icon?4939f8524396c45c:0
+[    1220ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3000/login:0

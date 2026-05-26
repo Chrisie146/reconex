@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useClient } from '@/lib/clientContext'
 import type { Client } from '@/lib/clientContext'
-import { ChevronDown, Plus } from 'lucide-react'
+import { Building2, ChevronDown, Plus } from 'lucide-react'
 import LoadingButton from './LoadingButton'
 
 interface ClientSelectorProps {
@@ -60,7 +60,7 @@ export default function ClientSelector({ onClientSelect, isDarkMode = false, isC
         title={currentClient?.name || 'Select Client'}
       >
         {isCollapsed ? (
-          <span className="text-lg">👤</span>
+          <Building2 size={17} className={isDarkMode ? 'text-gray-300' : 'text-neutral-600'} />
         ) : (
           <>
             <span className={textClasses}>

@@ -28,6 +28,13 @@ interface Transaction {
   account_id?: number | null
   account_code?: string | null
   account_name?: string | null
+  suggested_account_id?: number | null
+  suggested_account_code?: string | null
+  suggested_account_name?: string | null
+  suggested_account_type?: string | null
+  mapping_confidence?: number | null
+  mapping_source?: string | null
+  mapping_reason?: string | null
   merchant?: string | null
   vat_amount?: number | null
   amount_excl_vat?: number | null
@@ -475,6 +482,7 @@ export default function TransactionEditPanel({
         ...transaction,
         category,
         account_id: accountId,
+        suggested_account_id: accountId ? null : transaction.suggested_account_id,
         merchant: merchant || null,
         description: editingDescription ? description : cleanDescription(transaction.description),
       }
@@ -484,6 +492,10 @@ export default function TransactionEditPanel({
         if (apiResponseData.vat_amount !== undefined) updatedTxn.vat_amount = apiResponseData.vat_amount
         if (apiResponseData.amount_excl_vat !== undefined) updatedTxn.amount_excl_vat = apiResponseData.amount_excl_vat
         if (apiResponseData.amount_incl_vat !== undefined) updatedTxn.amount_incl_vat = apiResponseData.amount_incl_vat
+        if (apiResponseData.suggested_account_id !== undefined) updatedTxn.suggested_account_id = apiResponseData.suggested_account_id
+        if (apiResponseData.mapping_confidence !== undefined) updatedTxn.mapping_confidence = apiResponseData.mapping_confidence
+        if (apiResponseData.mapping_source !== undefined) updatedTxn.mapping_source = apiResponseData.mapping_source
+        if (apiResponseData.mapping_reason !== undefined) updatedTxn.mapping_reason = apiResponseData.mapping_reason
       }
 
       onSave?.(updatedTxn)
@@ -712,6 +724,30 @@ export default function TransactionEditPanel({
                       <Layers className="w-4 h-4 text-neutral-400" />
                       <label className="text-sm font-medium text-neutral-700">Chart of Accounts account</label>
                     </div>
+                    {!accountId && transaction.suggested_account_id && (
+                      <div className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900 ring-1 ring-amber-200">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-semibold">
+                              Suggested: {transaction.suggested_account_code ? `${transaction.suggested_account_code} ` : ''}{transaction.suggested_account_name}
+                            </p>
+                            {transaction.mapping_reason && (
+                              <p className="mt-1 text-amber-800">{transaction.mapping_reason}</p>
+                            )}
+                            {typeof transaction.mapping_confidence === 'number' && (
+                              <p className="mt-1 text-amber-700">Confidence: {Math.round(transaction.mapping_confidence * 100)}%</p>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setAccountId(transaction.suggested_account_id ?? null)}
+                            className="shrink-0 rounded-md bg-amber-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-amber-700"
+                          >
+                            Use
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     <AccountSelector
                       clientId={clientId ?? null}
                       value={accountId}
@@ -971,7 +1007,7 @@ export default function TransactionEditPanel({
                     <div className="flex items-center justify-between">
                       <label className="text-[11px] font-semibold uppercase tracking-widest text-blue-600">Keyword</label>
                       {keyword.trim().length >= 5 ? (
-                        <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 ring-1 ring-emerald-200 rounded-full px-2 py-0.5">Specific ✓</span>
+                        <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 ring-1 ring-emerald-200 rounded-full px-2 py-0.5">Specific</span>
                       ) : keyword.trim().length >= 3 ? (
                         <span className="text-[10px] font-medium text-amber-700 bg-amber-50 ring-1 ring-amber-200 rounded-full px-2 py-0.5">May match broadly</span>
                       ) : (
@@ -1141,7 +1177,7 @@ export default function TransactionEditPanel({
                     <div className="flex items-center justify-between">
                       <label className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400">Keyword</label>
                       {keyword.trim().length >= 5 ? (
-                        <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 ring-1 ring-emerald-200 rounded-full px-2 py-0.5">Specific ✓</span>
+                        <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 ring-1 ring-emerald-200 rounded-full px-2 py-0.5">Specific</span>
                       ) : keyword.trim().length >= 3 ? (
                         <span className="text-[10px] font-medium text-amber-700 bg-amber-50 ring-1 ring-amber-200 rounded-full px-2 py-0.5">May match broadly</span>
                       ) : null}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { TrendingUp, TrendingDown, Wallet } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Clock3, TrendingUp, TrendingDown, Wallet } from 'lucide-react'
 import Link from 'next/link'
 import axios from '@/lib/axiosClient'
 import { toast } from 'sonner'
@@ -102,7 +102,7 @@ export default function MonthlySummary({ sessionId, currentClient }: MonthlySumm
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
         {/* Income */}
-        <div className="card card-hover p-6 bg-gradient-to-br from-white to-green-50/40 dark:from-neutral-900 dark:to-green-950/20">
+        <div className="card p-6 bg-white dark:bg-neutral-900">
           <div className="flex items-center justify-between">
             <Link href={currentClient?.id ? `/transactions?client_id=${currentClient.id}&txn_filter=income` : `/transactions?session_id=${sessionId}&txn_filter=income`} className="flex-1 min-w-0">
               <div className="cursor-pointer">
@@ -112,14 +112,14 @@ export default function MonthlySummary({ sessionId, currentClient }: MonthlySumm
                 </p>
               </div>
             </Link>
-            <div className="kpi-icon p-3 bg-green-100 dark:bg-green-900/30 rounded-xl ml-3 shrink-0">
+            <div className="p-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg ml-3 shrink-0 ring-1 ring-neutral-200 dark:ring-neutral-700">
               <TrendingUp className="w-5 h-5 text-green-600" />
             </div>
           </div>
         </div>
 
         {/* Expenses */}
-        <div className="card card-hover p-6 bg-gradient-to-br from-white to-red-50/40 dark:from-neutral-900 dark:to-red-950/20">
+        <div className="card p-6 bg-white dark:bg-neutral-900">
           <div className="flex items-center justify-between">
             <Link href={currentClient?.id ? `/transactions?client_id=${currentClient.id}&txn_filter=expenses` : `/transactions?session_id=${sessionId}&txn_filter=expenses`} className="flex-1 min-w-0">
               <div className="cursor-pointer">
@@ -129,18 +129,14 @@ export default function MonthlySummary({ sessionId, currentClient }: MonthlySumm
                 </p>
               </div>
             </Link>
-            <div className="kpi-icon p-3 bg-red-100 dark:bg-red-900/30 rounded-xl ml-3 shrink-0">
+            <div className="p-3 bg-neutral-50 dark:bg-neutral-800 rounded-lg ml-3 shrink-0 ring-1 ring-neutral-200 dark:ring-neutral-700">
               <TrendingDown className="w-5 h-5 text-red-600" />
             </div>
           </div>
         </div>
 
         {/* Net Balance */}
-        <div className={`card card-hover p-6 bg-gradient-to-br ${
-          overall.net_balance >= 0
-            ? 'from-white to-blue-50/40 dark:from-neutral-900 dark:to-blue-950/20'
-            : 'from-white to-orange-50/40 dark:from-neutral-900 dark:to-orange-950/20'
-        }`}>
+        <div className="card p-6 bg-white dark:bg-neutral-900">
           <div className="flex items-center justify-between">
             <Link href={currentClient?.id ? `/transactions?client_id=${currentClient.id}` : `/transactions?session_id=${sessionId}`} className="flex-1 min-w-0">
               <div className="cursor-pointer">
@@ -152,11 +148,7 @@ export default function MonthlySummary({ sessionId, currentClient }: MonthlySumm
                 </p>
               </div>
             </Link>
-            <div className={`kpi-icon p-3 rounded-xl ml-3 shrink-0 ${
-              overall.net_balance >= 0
-                ? 'bg-blue-100 dark:bg-blue-900/30'
-                : 'bg-orange-100 dark:bg-orange-900/30'
-            }`}>
+            <div className="p-3 rounded-lg ml-3 shrink-0 bg-neutral-50 dark:bg-neutral-800 ring-1 ring-neutral-200 dark:ring-neutral-700">
               <Wallet className={`w-5 h-5 ${
                 overall.net_balance >= 0 ? 'text-blue-600' : 'text-orange-600'
               }`} />
@@ -237,22 +229,22 @@ export default function MonthlySummary({ sessionId, currentClient }: MonthlySumm
                   
                   // Determine reconciliation status
                   let status: 'reconciled' | 'mismatch' | 'pending' = 'pending'
-                  let statusIcon = '⚠️'
+                  let StatusIcon = Clock3
                   let statusText = 'Pending'
-                  let statusColor = 'text-yellow-600'
+                  let statusClass = 'border-amber-200 bg-amber-50 text-amber-700'
                   
                   if (actualClosing != null && openingBalance != null) {
                     const difference = Math.abs(actualClosing - expectedClosing)
                     if (difference < 0.01) {
                       status = 'reconciled'
-                      statusIcon = '✓'
+                      StatusIcon = CheckCircle2
                       statusText = 'Reconciled'
-                      statusColor = 'text-green-600'
+                      statusClass = 'border-emerald-200 bg-emerald-50 text-emerald-700'
                     } else {
                       status = 'mismatch'
-                      statusIcon = '✗'
+                      StatusIcon = AlertTriangle
                       statusText = 'Mismatch'
-                      statusColor = 'text-red-600'
+                      statusClass = 'border-red-200 bg-red-50 text-red-700'
                     }
                   }
                   
@@ -341,9 +333,9 @@ export default function MonthlySummary({ sessionId, currentClient }: MonthlySumm
                         )}
                       </td>
 
-                      <td className={`text-center px-3 py-2 sm:px-4 sm:py-3 font-medium ${statusColor}`}>
-                        <div className="flex items-center justify-center gap-1">
-                          <span className="text-base">{statusIcon}</span>
+                      <td className="text-center px-3 py-2 sm:px-4 sm:py-3 font-medium">
+                        <div className={`inline-flex items-center justify-center gap-1.5 rounded border px-2 py-1 text-xs font-medium ${statusClass}`}>
+                          <StatusIcon className="h-3.5 w-3.5" />
                           <span className="text-xs">{statusText}</span>
                         </div>
                         {status === 'mismatch' && actualClosing != null && (

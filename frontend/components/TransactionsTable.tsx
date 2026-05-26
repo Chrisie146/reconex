@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo, type ReactNode, useRef } from 'react'
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileText, X, Tag, Trash2, Search, Settings, Check, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw, RotateCcw, Filter, TrendingUp, TrendingDown, HelpCircle, CheckSquare, Square, MinusSquare, Calculator, PanelRightOpen } from 'lucide-react'
+import { AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileText, Pencil, X, Trash2, Search, Check, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw, RotateCcw, CheckSquare, Square, MinusSquare, Calculator, PanelRightOpen } from 'lucide-react'
 import axios from '@/lib/axiosClient'
 import { isAxiosError } from 'axios'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
@@ -17,35 +17,6 @@ import { useClient } from '@/lib/clientContext'
 import { API_BASE_URL } from '@/lib/apiBase'
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const
 const DEFAULT_PAGE_SIZE = 50
-
-// Category color mapping for visual pills
-const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  'Income': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
-  'Salary': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
-  'Transfer': { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
-  'Transfers': { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
-  'Bank Charges': { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
-  'Bank Fees': { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
-  'Insurance': { bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200' },
-  'Groceries': { bg: 'bg-lime-50', text: 'text-lime-700', border: 'border-lime-200' },
-  'Fuel': { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' },
-  'Utilities': { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200' },
-  'Entertainment': { bg: 'bg-pink-50', text: 'text-pink-700', border: 'border-pink-200' },
-  'Medical': { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
-  'Rent': { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
-  'Subscriptions': { bg: 'bg-fuchsia-50', text: 'text-fuchsia-700', border: 'border-fuchsia-200' },
-  'Loan': { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
-  'Loan Repayment': { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
-}
-
-const DEFAULT_CATEGORY_STYLE = { bg: 'bg-neutral-100', text: 'text-neutral-700', border: 'border-neutral-200' }
-
-function getCategoryStyle(category: string) {
-  if (!category) return DEFAULT_CATEGORY_STYLE
-  return CATEGORY_COLORS[category] ||
-    Object.entries(CATEGORY_COLORS).find(([key]) => key.toLowerCase() === category.toLowerCase())?.[1] ||
-    DEFAULT_CATEGORY_STYLE
-}
 
 // Helper function to clean NaN-like values
 const cleanDescription = (desc: string | null | undefined): string => {
@@ -85,11 +56,18 @@ interface Transaction {
   account_code?: string | null
   account_name?: string | null
   account_type?: string | null
+  suggested_account_id?: number | null
+  suggested_account_code?: string | null
+  suggested_account_name?: string | null
+  suggested_account_type?: string | null
+  mapping_confidence?: number | null
+  mapping_source?: string | null
+  mapping_reason?: string | null
 }
 
 type QuickFilter = 'all' | 'income' | 'expenses' | 'uncategorized'
 
-const DEFAULT_COLUMN_ORDER = ['date', 'description', 'merchant', 'amount', 'vat_amount', 'amount_excl_vat', 'category', 'invoice', 'running_balance'] as const
+const DEFAULT_COLUMN_ORDER = ['date', 'description', 'merchant', 'amount', 'vat_amount', 'amount_excl_vat', 'account', 'category', 'invoice', 'running_balance'] as const
 type ColumnId = typeof DEFAULT_COLUMN_ORDER[number]
 
 interface SortableHeaderCellProps {
@@ -144,7 +122,7 @@ function useDebounce<T>(value: T, delay: number): T {
 export default function TransactionsTable({ sessionId, onTransactionSelect, categories, refreshTrigger, highlightTxnId, selectedStatement = '', onStatementChange }: TransactionsTableProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
-  const [sortBy, setSortBy] = useState<'date' | 'amount' | 'category' | 'description' | 'merchant'>('date')
+  const [sortBy, setSortBy] = useState<'date' | 'amount' | 'account' | 'category' | 'description' | 'merchant'>('date')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [undoAvailable, setUndoAvailable] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
@@ -258,6 +236,12 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
     return [...clean, ...missing]
   }
 
+  const normalizeVisibleColumns = (cols: string[]): Set<ColumnId> => {
+    const clean = cols.filter((col) => (DEFAULT_COLUMN_ORDER as readonly string[]).includes(col)) as ColumnId[]
+    if (!clean.includes('account')) clean.push('account')
+    return new Set(clean)
+  }
+
   const columnVisibilityStorageKey = `txn_table_visible_columns_${userKey}`
 
   useEffect(() => {
@@ -279,7 +263,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
       const raw = localStorage.getItem(columnVisibilityStorageKey)
       if (raw) {
         const parsed = JSON.parse(raw)
-        if (Array.isArray(parsed)) setVisibleColumns(new Set(parsed as ColumnId[]))
+        if (Array.isArray(parsed)) setVisibleColumns(normalizeVisibleColumns(parsed))
       }
     } catch { /* ignore */ }
   }, [columnVisibilityStorageKey])
@@ -349,14 +333,20 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
         }
 
         setTransactions(txns)
+        setLoading(false)
 
         const invoiceParams = currentClient?.id ? { client_id: currentClient.id } : (sessionId ? { session_id: sessionId } : {})
         if (Object.keys(invoiceParams).length > 0) {
-          const invResponse = await axios.get(`${API_BASE_URL}/invoices`, { params: invoiceParams })
-          const invs = invResponse.data.invoices || []
-          const byId: Record<number, any> = {}
-          invs.forEach((inv: any) => { byId[inv.id] = inv })
-          setInvoicesById(byId)
+          try {
+            const invResponse = await axios.get(`${API_BASE_URL}/invoices`, { params: invoiceParams })
+            const invs = invResponse.data.invoices || []
+            const byId: Record<number, any> = {}
+            invs.forEach((inv: any) => { byId[inv.id] = inv })
+            setInvoicesById(byId)
+          } catch (invoiceError) {
+            console.error('[TransactionsTable] Failed to fetch invoices:', invoiceError)
+            setInvoicesById({})
+          }
         } else {
           setInvoicesById({})
         }
@@ -482,7 +472,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
     } finally { setSavingId(null) }
   }
 
-  const handleHeaderClick = (field: 'date' | 'amount' | 'category' | 'description' | 'merchant') => {
+  const handleHeaderClick = (field: 'date' | 'amount' | 'account' | 'category' | 'description' | 'merchant') => {
     if (sortBy === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
     } else {
@@ -523,7 +513,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
   const getColumnLabel = (col: ColumnId): string => {
     const labels: Record<ColumnId, string> = {
       date: 'Date', description: 'Description', merchant: 'Merchant', amount: 'Amount',
-      vat_amount: 'VAT', amount_excl_vat: 'Excl. VAT', category: 'CoA / Category',
+      vat_amount: 'VAT', amount_excl_vat: 'Excl. VAT', account: 'Chart of Account', category: 'Category',
       invoice: 'Invoice', running_balance: 'Running Balance',
     }
     return labels[col] || col
@@ -575,7 +565,9 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
       filtered = filtered.filter(t =>
         (t.description || '').toLowerCase().includes(q) ||
         (t.merchant || '').toLowerCase().includes(q) ||
-        (t.category || '').toLowerCase().includes(q)
+        (t.category || '').toLowerCase().includes(q) ||
+        (t.account_code || '').toLowerCase().includes(q) ||
+        (t.account_name || '').toLowerCase().includes(q)
       )
     }
 
@@ -584,6 +576,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
       switch (sortBy) {
         case 'date': cmp = new Date(a.date).getTime() - new Date(b.date).getTime(); break
         case 'amount': cmp = Math.abs(a.amount) - Math.abs(b.amount); break
+        case 'account': cmp = (`${a.account_code || ''} ${a.account_name || ''}`).localeCompare(`${b.account_code || ''} ${b.account_name || ''}`); break
         case 'category': cmp = (a.category || '').localeCompare(b.category || ''); break
         case 'description': cmp = (a.description || '').localeCompare(b.description || ''); break
         case 'merchant': cmp = (a.merchant || '').localeCompare(b.merchant || ''); break
@@ -714,13 +707,13 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
   const visibleCols = columnOrder.filter((c) => visibleColumns.has(c) && (c !== 'running_balance' || showRunningBalance) && ((c !== 'vat_amount' && c !== 'amount_excl_vat') || vatEnabled))
 
   return (
-    <div className="overflow-hidden rounded-lg border border-neutral-300 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
+    <div className="overflow-hidden rounded-md border border-neutral-300 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
       {/* ─── Header ─── */}
       <div className="border-b border-neutral-300">
         {/* Title row */}
-        <div className="flex items-center justify-between gap-4 bg-white px-4 py-3">
+        <div className="flex items-center justify-between gap-3 bg-white px-3 py-2">
           <div className="flex-1 min-w-0">
-            <h2 className="text-base font-semibold tracking-tight text-neutral-950">Transactions workbook</h2>
+            <h2 className="text-sm font-semibold tracking-tight text-neutral-950">Transactions</h2>
             <p className="mt-0.5 text-xs text-neutral-500">
               {sortedAndFilteredTransactions.length === transactions.length
                 ? `${transactions.length} transactions`
@@ -731,53 +724,47 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
           </div>
 
           {/* Primary actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={() => {
                 setFilteredModalTransactions(selectedIds.size > 0 ? transactions.filter(t => selectedIds.has(t.id)) : sortedAndFilteredTransactions)
                 setShowBulkEditModal(true)
               }}
-              className="inline-flex items-center gap-1.5 rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-neutral-800 active:bg-neutral-950"
+              className="inline-flex items-center gap-1.5 rounded bg-neutral-900 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-neutral-800 active:bg-neutral-950"
               title="Bulk edit selected or filtered transactions"
             >
-              <Tag size={15} />
               Bulk edit
               <span className="rounded bg-white/20 px-1 text-xs">{selectedIds.size || sortedAndFilteredTransactions.length}</span>
             </button>
             <button
               onClick={() => setShowClearCategoriesModal(true)}
-              className="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-50 active:bg-neutral-100"
+              className="inline-flex items-center rounded border border-neutral-300 bg-white px-2.5 py-1.5 text-xs font-medium text-neutral-600 transition-colors hover:bg-neutral-50 active:bg-neutral-100"
               title="Clear all categories"
             >
-              <Trash2 size={15} />
               Clear
             </button>
           </div>
         </div>
 
         {/* ─── Quick Filter Chips + Instant Search ─── */}
-        <div className="flex flex-wrap items-center gap-2 border-t border-neutral-200 bg-neutral-100/70 px-4 py-2">
+        <div className="flex flex-wrap items-center gap-1.5 border-t border-neutral-200 bg-neutral-100/70 px-3 py-2">
           {/* Quick filter chips */}
           <div className="flex items-center gap-1.5">
             {([
-              { key: 'all' as QuickFilter, label: 'All', icon: null, count: stats.total },
-              { key: 'income' as QuickFilter, label: 'Income', icon: <TrendingUp size={13} />, count: transactions.filter(t => t.amount > 0).length },
-              { key: 'expenses' as QuickFilter, label: 'Expenses', icon: <TrendingDown size={13} />, count: transactions.filter(t => t.amount < 0).length },
-              { key: 'uncategorized' as QuickFilter, label: 'Uncategorized', icon: <HelpCircle size={13} />, count: stats.uncategorized },
+              { key: 'all' as QuickFilter, label: 'All', count: stats.total },
+              { key: 'income' as QuickFilter, label: 'Income', count: transactions.filter(t => t.amount > 0).length },
+              { key: 'expenses' as QuickFilter, label: 'Expenses', count: transactions.filter(t => t.amount < 0).length },
+              { key: 'uncategorized' as QuickFilter, label: 'Uncategorized', count: stats.uncategorized },
             ]).map(chip => (
               <button
                 key={chip.key}
                 onClick={() => { setQuickFilter(chip.key); setTxnFilter(null) }}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                className={`inline-flex items-center gap-1.5 rounded border px-2.5 py-1.5 text-xs font-medium transition-colors ${
                   quickFilter === chip.key
-                    ? chip.key === 'income' ? 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300 shadow-sm'
-                    : chip.key === 'expenses' ? 'bg-red-100 text-red-800 ring-1 ring-red-300 shadow-sm'
-                    : chip.key === 'uncategorized' ? 'bg-amber-100 text-amber-800 ring-1 ring-amber-300 shadow-sm'
-                    : 'bg-neutral-800 text-white shadow-sm'
+                    ? 'border-neutral-800 bg-neutral-800 text-white shadow-sm'
                     : 'bg-white text-neutral-600 border border-neutral-200 hover:bg-neutral-100 hover:border-neutral-300'
                 }`}
               >
-                {chip.icon}
                 {chip.label}
                 <span className={`ml-0.5 tabular-nums ${quickFilter === chip.key ? 'opacity-80' : 'text-neutral-400'}`}>
                   {chip.count}
@@ -786,17 +773,15 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
             ))}
           </div>
 
-          <div className="h-5 w-px bg-neutral-300" />
-
           {/* Instant search */}
           <div className="relative min-w-[260px] flex-1">
             <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
             <input
               type="text"
-              placeholder="Search description, merchant, category..."
+              placeholder="Search description, merchant, account, category..."
               value={instantQuery}
               onChange={(e) => setInstantQuery(e.target.value)}
-              className="w-full rounded-md border border-neutral-300 bg-white py-1.5 pl-8 pr-8 text-sm shadow-inner transition-shadow placeholder:text-neutral-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              className="h-8 w-full rounded border border-neutral-300 bg-white py-1.5 pl-8 pr-8 text-sm transition-colors placeholder:text-neutral-400 focus:border-neutral-600 focus:outline-none focus:ring-1 focus:ring-neutral-300"
             />
             {instantQuery && (
               <button
@@ -808,11 +793,8 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
             )}
           </div>
 
-          <div className="h-5 w-px bg-neutral-300" />
-
           {selectedIds.size > 0 && (
-            <div className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-medium text-blue-900">
-              <CheckSquare size={13} />
+            <div className="inline-flex items-center gap-2 rounded border border-neutral-300 bg-white px-2.5 py-1.5 text-xs font-medium text-neutral-700">
               {selectedIds.size} selected
               <span className="font-mono">
                 {selectedStats.net >= 0 ? '+' : '-'}R{Math.abs(selectedStats.net).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
@@ -825,7 +807,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
             <button
               onClick={handleRecalculateVAT}
               disabled={recalculatingVAT}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 rounded border border-neutral-300 bg-white px-2.5 py-1.5 text-xs font-medium text-neutral-700 transition-colors hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
               title="Recalculate VAT for all transactions across all statements"
             >
               {recalculatingVAT ? (
@@ -840,13 +822,12 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
           {/* Advanced filters toggle */}
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+            className={`inline-flex items-center gap-1.5 rounded border px-2.5 py-1.5 text-xs font-medium transition-colors ${
               hasActiveFilters && (dateFrom || dateTo || query)
-                ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200'
+                ? 'border-neutral-800 bg-neutral-800 text-white'
                 : 'bg-white text-neutral-600 border border-neutral-200 hover:bg-neutral-100'
             }`}
           >
-            <Filter size={13} />
             Advanced
             <ChevronDown size={13} className={`transition-transform ${showFilters ? 'rotate-180' : ''}`} />
           </button>
@@ -854,10 +835,10 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
           <div className="flex-1" />
 
           {/* View option buttons */}
-          <button onClick={handleRefreshData} className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-white text-neutral-600 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors" title="Refresh">
+          <button onClick={handleRefreshData} className="inline-flex h-8 w-8 items-center justify-center rounded border border-neutral-200 bg-white text-neutral-600 transition-colors hover:bg-neutral-50" title="Refresh">
             <RefreshCw size={13} />
           </button>
-          <button onClick={handleResetColumns} className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-white text-neutral-600 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors" title="Reset columns">
+          <button onClick={handleResetColumns} className="inline-flex h-8 w-8 items-center justify-center rounded border border-neutral-200 bg-white text-neutral-600 transition-colors hover:bg-neutral-50" title="Reset columns">
             <RotateCcw size={13} />
           </button>
 
@@ -865,10 +846,9 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
           <div className="relative" ref={columnPickerRef}>
             <button
               onClick={() => setShowColumnPicker(!showColumnPicker)}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-white text-neutral-600 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
+              className="inline-flex h-8 items-center rounded border border-neutral-200 bg-white px-2.5 text-xs font-medium text-neutral-600 transition-colors hover:bg-neutral-50"
               title="Show/hide columns"
             >
-              <Settings size={13} />
               Columns
             </button>
 
@@ -950,7 +930,10 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
             </div>
 
             {dateError && (
-              <div className="mt-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">⚠️ {dateError}</div>
+              <div className="mt-2 flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>{dateError}</span>
+              </div>
             )}
           </div>
         )}
@@ -992,7 +975,6 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
               onClick={handleBulkEditSelected}
               className="inline-flex items-center gap-1.5 rounded-md bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-neutral-800"
             >
-              <Tag size={13} />
               Bulk edit selected
             </button>
             <button
@@ -1042,7 +1024,10 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
               <p className="text-sm text-neutral-700">
                 This will remove categories from <strong>all {transactions.length} transactions</strong> in this session.
               </p>
-              <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">⚠️ This action cannot be undone.</p>
+              <p className="flex items-center gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                <span>This action cannot be undone.</span>
+              </p>
             </div>
             <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-neutral-100 bg-neutral-50">
               <button onClick={() => setShowClearCategoriesModal(false)} disabled={clearingCategories}
@@ -1082,7 +1067,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
       {/* ─── Table ─── */}
       <div ref={tableContainerRef} className="max-h-[68vh] overflow-auto bg-white">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <table className="w-full min-w-[1120px] border-separate border-spacing-0 text-xs">
+          <table className="w-full min-w-[1240px] border-separate border-spacing-0 text-xs">
             <SortableContext items={visibleCols} strategy={horizontalListSortingStrategy}>
               <thead className="sticky top-0 z-20">
                 <tr className="bg-neutral-100">
@@ -1110,8 +1095,10 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
                         return <SortableHeaderCell key={col} id={col} className={`text-right ${base}`} align="right">VAT <span className="text-neutral-400 font-normal">(15%)</span></SortableHeaderCell>
                       case 'amount_excl_vat':
                         return <SortableHeaderCell key={col} id={col} className={`text-right ${base}`} align="right">Excl. VAT</SortableHeaderCell>
+                      case 'account':
+                        return <SortableHeaderCell key={col} id={col} onClick={() => handleHeaderClick('account')} className={`min-w-[220px] text-left ${base} cursor-pointer hover:text-neutral-800`}>Chart of Account {getSortIcon('account')}</SortableHeaderCell>
                       case 'category':
-                        return <SortableHeaderCell key={col} id={col} onClick={() => handleHeaderClick('category')} className={`min-w-[220px] text-left ${base} cursor-pointer hover:text-neutral-800`}>CoA / Category {getSortIcon('category')}</SortableHeaderCell>
+                        return <SortableHeaderCell key={col} id={col} onClick={() => handleHeaderClick('category')} className={`min-w-[170px] text-left ${base} cursor-pointer hover:text-neutral-800`}>Category {getSortIcon('category')}</SortableHeaderCell>
                       case 'invoice':
                         return <SortableHeaderCell key={col} id={col} className={`text-left ${base}`}>Invoice</SortableHeaderCell>
                       case 'running_balance':
@@ -1160,7 +1147,10 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
                                       {displayDesc || <span className="text-neutral-400 italic text-xs">[No description]</span>}
                                     </div>
                                     {!selectedStatement && txn.statement_name && txn.statement_name !== 'Unknown Statement' && (
-                                      <span className="text-[10px] text-neutral-400 bg-neutral-100 px-1.5 py-0.5 rounded inline-block self-start">📄 {txn.statement_name}</span>
+                                      <span className="inline-flex items-center gap-1 text-[10px] text-neutral-500 bg-neutral-100 px-1.5 py-0.5 rounded self-start">
+                                        <FileText className="h-3 w-3" />
+                                        {txn.statement_name}
+                                      </span>
                                     )}
                                   </div>
                                 </td>
@@ -1172,7 +1162,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
                                   <div onClick={(e) => { e.stopPropagation(); setSelectedTransactionForEdit(txn); setShowEditPanel(true) }}
                                     className="group/merchant flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-neutral-100 cursor-pointer transition-colors">
                                     <span className="text-xs text-neutral-700 truncate">{txn.merchant || <span className="text-neutral-300 italic">Add merchant</span>}</span>
-                                    <span className="text-[10px] text-neutral-300 opacity-0 group-hover/merchant:opacity-100 transition-opacity">✎</span>
+                                    <Pencil className="h-3 w-3 text-neutral-300 opacity-0 group-hover/merchant:opacity-100 transition-opacity" />
                                   </div>
                                 </td>
                               )
@@ -1202,27 +1192,48 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
                                     : <span className="text-neutral-200">—</span>}
                                 </td>
                               )
+                            case 'account': {
+                              const accountLabel = txn.account_id
+                                ? `${txn.account_code ? `${txn.account_code} ` : ''}${txn.account_name || ''}`.trim()
+                                : ''
+                              return (
+                                <td key={`${txn.id}-${col}`} className="border-b border-r border-neutral-200 px-3 py-1.5">
+                                  <div onClick={(e) => { e.stopPropagation(); setSelectedTransactionForEdit(txn); setShowEditPanel(true) }} className="cursor-pointer group/account space-y-1">
+                                    {accountLabel ? (
+                                      <span className="inline-flex items-center gap-1 text-xs font-medium text-neutral-800 hover:text-neutral-950">
+                                        {txn.account_code && <span className="font-mono text-[11px] text-neutral-500">{txn.account_code}</span>}
+                                        {txn.account_name}
+                                        <Pencil size={11} className="opacity-0 transition-opacity group-hover/account:opacity-50" />
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 text-xs font-medium text-neutral-400 hover:text-neutral-600">
+                                        + Add account
+                                      </span>
+                                    )}
+                                    {!txn.account_id && txn.suggested_account_id ? (
+                                      <span className="block rounded-md bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-800 ring-1 ring-amber-200">
+                                        Suggest: {txn.suggested_account_code ? `${txn.suggested_account_code} ` : ''}{txn.suggested_account_name}
+                                        {typeof txn.mapping_confidence === 'number' ? ` (${Math.round(txn.mapping_confidence * 100)}%)` : ''}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                </td>
+                              )
+                            }
                             case 'category': {
-                              const catStyle = getCategoryStyle(txn.category)
                               return (
                                 <td key={`${txn.id}-${col}`} className="border-b border-r border-neutral-200 px-3 py-1.5">
                                   <div onClick={(e) => { e.stopPropagation(); setSelectedTransactionForEdit(txn); setShowEditPanel(true) }} className="cursor-pointer group/cat space-y-1">
-                                    {txn.account_id ? (
-                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 hover:shadow-sm transition-shadow">
-                                        {txn.account_code && <span className="font-mono opacity-70">{txn.account_code}</span>}
-                                        {txn.account_name}
-                                      </span>
-                                    ) : null}
                                     {txn.category && txn.category !== 'Uncategorized' ? (
-                                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${catStyle.bg} ${catStyle.text} ${catStyle.border} hover:shadow-sm transition-shadow`}>
+                                      <span className="inline-flex items-center gap-1 text-xs font-medium text-neutral-800 hover:text-neutral-950">
                                         {txn.category}
-                                        <span className="text-[10px] opacity-0 group-hover/cat:opacity-60 transition-opacity">✎</span>
+                                        <Pencil size={11} className="opacity-0 transition-opacity group-hover/cat:opacity-50" />
                                       </span>
-                                    ) : !txn.account_id ? (
-                                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium text-neutral-400 border border-dashed border-neutral-200 hover:border-neutral-400 hover:text-neutral-500 transition-colors">
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 text-xs font-medium text-neutral-400 hover:text-neutral-600">
                                         + Add category
                                       </span>
-                                    ) : null}
+                                    )}
                                   </div>
                                 </td>
                               )

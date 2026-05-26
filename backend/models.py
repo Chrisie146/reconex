@@ -135,6 +135,9 @@ class Transaction(Base):
     # New CoA link (Phase 1: nullable, populated alongside category as services are swept in Phase 2)
     account_id = Column(Integer, ForeignKey("accounts.id"), nullable=True, index=True)
     suggested_account_id = Column(Integer, ForeignKey("accounts.id"), nullable=True)
+    mapping_confidence = Column(Float, nullable=True)
+    mapping_source = Column(String, nullable=True)
+    mapping_reason = Column(String, nullable=True)
 
     # VAT calculation fields (when VAT is enabled)
     vat_amount = Column(Float, nullable=True)  # Calculated VAT amount
@@ -665,6 +668,9 @@ def init_db():
             "ALTER TABLE transactions ADD COLUMN account_id INTEGER",
             "ALTER TABLE transactions ADD COLUMN suggested_account_id INTEGER",
             "ALTER TABLE transactions ADD COLUMN suggestion_reason VARCHAR",
+            "ALTER TABLE transactions ADD COLUMN mapping_confidence FLOAT",
+            "ALTER TABLE transactions ADD COLUMN mapping_source VARCHAR",
+            "ALTER TABLE transactions ADD COLUMN mapping_reason VARCHAR",
             "ALTER TABLE user_categorization_rules ADD COLUMN account_id INTEGER",
             "ALTER TABLE archived_transactions ADD COLUMN account_id INTEGER",
             "ALTER TABLE archived_transactions ADD COLUMN account_code VARCHAR",

@@ -49,7 +49,7 @@ export default function Page() {
         />
 
         <div className="transition-all duration-300" style={{ marginLeft: 'var(--sidebar-w, 256px)' }}>
-          <div className="container mx-auto p-4">
+          <div className="w-full px-3 py-2">
             {selectedStatement && (
               <StatementInfoBanner selectedStatement={selectedStatement} sessionId={clientSessionId} />
             )}

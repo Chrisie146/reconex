@@ -111,6 +111,10 @@ class TransactionResponse(BaseModel):
     description: str
     amount: float
     account_id: Optional[int]
+    suggested_account_id: Optional[int] = None
+    mapping_confidence: Optional[float] = None
+    mapping_source: Optional[str] = None
+    mapping_reason: Optional[str] = None
     category: str
 
     class Config:

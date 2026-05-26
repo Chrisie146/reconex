@@ -45,12 +45,12 @@ async def get_transactions(
     """Get all transactions for a session or client."""
     if session_id:
         ensure_session_access(session_id, current_user, db)
-        query = db.query(Transaction).options(joinedload(Transaction.account)).filter(Transaction.session_id == session_id)
+        query = db.query(Transaction).options(joinedload(Transaction.account), joinedload(Transaction.suggested_account)).filter(Transaction.session_id == session_id)
     elif client_id:
         client = db.query(Client).filter(Client.id == client_id, Client.user_id == current_user.id).first()
         if not client:
             raise HTTPException(status_code=404, detail="Client not found")
-        query = db.query(Transaction).options(joinedload(Transaction.account)).filter(Transaction.client_id == client_id)
+        query = db.query(Transaction).options(joinedload(Transaction.account), joinedload(Transaction.suggested_account)).filter(Transaction.client_id == client_id)
     else:
         raise HTTPException(status_code=400, detail="Either session_id or client_id must be provided")
 
@@ -80,10 +80,22 @@ async def get_transactions(
             )
         )
 
-    transactions = query.order_by(Transaction.date.desc()).all()
+    query = query.order_by(Transaction.date.desc())
 
     if limit and limit > 0:
-        transactions = transactions[:limit]
+        query = query.limit(limit)
+
+    transactions = query.all()
+
+    transaction_ids = [t.id for t in transactions]
+    merchant_map = {}
+    if transaction_ids:
+        merchant_rows = (
+            db.query(TransactionMerchant)
+            .filter(TransactionMerchant.transaction_id.in_(transaction_ids))
+            .all()
+        )
+        merchant_map = {row.transaction_id: row.merchant for row in merchant_rows}
 
     session_names: dict = {}
     if client_id:
@@ -117,15 +129,15 @@ async def get_transactions(
                 "account_code": t.account.code if t.account else None,
                 "account_name": t.account.name if t.account else None,
                 "account_type": t.account.account_type if t.account else None,
+                "suggested_account_id": t.suggested_account_id,
+                "suggested_account_code": t.suggested_account.code if t.suggested_account else None,
+                "suggested_account_name": t.suggested_account.name if t.suggested_account else None,
+                "suggested_account_type": t.suggested_account.account_type if t.suggested_account else None,
+                "mapping_confidence": t.mapping_confidence,
+                "mapping_source": t.mapping_source,
+                "mapping_reason": t.mapping_reason,
                 "invoice_id": t.invoice_id,
-                "merchant": (
-                    db.query(TransactionMerchant)
-                    .filter(TransactionMerchant.transaction_id == t.id)
-                    .first()
-                    .merchant
-                    if db.query(TransactionMerchant).filter(TransactionMerchant.transaction_id == t.id).first()
-                    else None
-                ),
+                "merchant": merchant_map.get(t.id),
                 "vat_amount": t.vat_amount,
                 "amount_excl_vat": t.amount_excl_vat,
                 "amount_incl_vat": t.amount_incl_vat,
@@ -197,6 +209,10 @@ def update_transaction_category(
                 if not account:
                     raise HTTPException(status_code=404, detail="Account not found for this client")
                 transaction.account_id = account.id
+                transaction.suggested_account_id = None
+                transaction.mapping_confidence = 1.0
+                transaction.mapping_source = "user_confirmed"
+                transaction.mapping_reason = "User confirmed this account mapping."
                 # Keep category in sync with account name for backward compat display
                 if not category:
                     transaction.category = account.name
@@ -276,6 +292,10 @@ def update_transaction_category(
             "account_id": transaction.account_id,
             "account_code": transaction.account.code if transaction.account else None,
             "account_name": transaction.account.name if transaction.account else None,
+            "suggested_account_id": transaction.suggested_account_id,
+            "mapping_confidence": transaction.mapping_confidence,
+            "mapping_source": transaction.mapping_source,
+            "mapping_reason": transaction.mapping_reason,
             "vat_amount": transaction.vat_amount,
             "amount_excl_vat": transaction.amount_excl_vat,
             "amount_incl_vat": transaction.amount_incl_vat,
@@ -325,6 +345,10 @@ def update_transaction_account(
             if not account:
                 raise HTTPException(status_code=404, detail="Account not found for this client")
             transaction.account_id = account.id
+            transaction.suggested_account_id = None
+            transaction.mapping_confidence = 1.0
+            transaction.mapping_source = "user_confirmed"
+            transaction.mapping_reason = "User confirmed this account mapping."
             # Keep category in sync for backward-compat display
             transaction.category = account.name
 
@@ -350,6 +374,10 @@ def update_transaction_account(
             "id": transaction.id,
             "category": transaction.category,
             "account_id": transaction.account_id,
+            "suggested_account_id": transaction.suggested_account_id,
+            "mapping_confidence": transaction.mapping_confidence,
+            "mapping_source": transaction.mapping_source,
+            "mapping_reason": transaction.mapping_reason,
         }
     except HTTPException:
         raise

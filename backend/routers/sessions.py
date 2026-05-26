@@ -242,6 +242,11 @@ async def list_sessions(
             query = query.filter(Transaction.client_id.in_(client_ids))
 
         rows = query.group_by(Transaction.session_id).all()
+        session_ids = [r[0] for r in rows]
+        session_state_map = {}
+        if session_ids:
+            session_states = db.query(SessionState).filter(SessionState.session_id.in_(session_ids)).all()
+            session_state_map = {state.session_id: state for state in session_states}
 
         sessions = []
         for r in rows:
@@ -250,7 +255,7 @@ async def list_sessions(
             date_from = r[2].isoformat() if r[2] else None
             date_to = r[3].isoformat() if r[3] else None
 
-            ss = db.query(SessionState).filter(SessionState.session_id == sid).first()
+            ss = session_state_map.get(sid)
             locked = bool(ss.locked) if ss else False
 
             if ss and ss.friendly_name:

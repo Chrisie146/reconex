@@ -190,7 +190,7 @@ export default function Dashboard() {
           ) : showUploadView ? (
             <UploadSection onUploadSuccess={handleUploadSuccess} />
           ) : (
-            <div className="space-y-12">
+            <div className="space-y-8">
               {/* Statement Info Banner */}
               {selectedStatement && (
                 <AnimatedSection delay="0ms">
@@ -230,11 +230,11 @@ export default function Dashboard() {
 
               {/* Transactions Preview (5 rows) */}
               <AnimatedSection delay="0ms">
-              <div className="card card-hover bg-white border border-neutral-200">
+              <div className="card bg-white border border-neutral-200">
                 <div className="px-6 py-4 flex items-center justify-between">
                   <div>
                     <h3 className="text-lg font-semibold text-neutral-900">Recent transactions</h3>
-                    <p className="text-sm text-neutral-500">Quick preview — most recent 5 transactions</p>
+                    <p className="text-sm text-neutral-500">Most recent 5 transactions</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <a
@@ -293,7 +293,7 @@ export default function Dashboard() {
                   href={`/rules?session_id=${sessionId}`}
                   className="btn-primary"
                 >
-                  📋 Categories & Rules
+                  Categories & Rules
                 </a>
                 <button
                   onClick={handleReset}
@@ -333,7 +333,7 @@ export default function Dashboard() {
 
       <footer className="border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 mt-16">
         <div className="max-w-6xl mx-auto px-4 py-6 text-center text-sm text-neutral-600">
-          <p>Reconex v1.0 | © {new Date().getFullYear()} All Rights Reserved</p>
+          <p>Reconex | © {new Date().getFullYear()} All Rights Reserved</p>
         </div>
       </footer>
     </main>

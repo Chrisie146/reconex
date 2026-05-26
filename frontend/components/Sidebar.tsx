@@ -5,10 +5,10 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   ChevronLeft, ChevronRight, BarChart3, Upload, MapPin, List,
-  Archive, Eye, Tag, Zap, Sparkles, FileText, FileSpreadsheet,
+  Archive, Eye, Tag, FileText, FileSpreadsheet,
   FolderOpen, ChevronDown, Receipt, Users, Download,
   Settings2, PanelLeftClose, PanelLeft, Loader2, CalendarRange, HardDrive,
-  AlertTriangle, BookOpen
+  AlertTriangle, BookOpen, ListChecks, Workflow
 } from 'lucide-react'
 import axios from '@/lib/axiosClient'
 import { toast } from 'sonner'
@@ -146,8 +146,8 @@ export default function Sidebar({ sessionId, selectedStatement = '', onStatement
 
   const configItems: NavItem[] = effectiveSessionId ? [
     { href: `/rules?session_id=${effectiveSessionId}`,              icon: <Tag className="w-[18px] h-[18px]" />,      label: 'Categories',       matchPrefix: '/rules' },
-    { href: `/rules?session_id=${effectiveSessionId}&tab=rules`,    icon: <Zap className="w-[18px] h-[18px]" />,      label: 'Manual Rules',     matchPrefix: '/rules' },
-    { href: `/rules?session_id=${effectiveSessionId}&tab=learned`,  icon: <Sparkles className="w-[18px] h-[18px]" />, label: 'Learned Patterns', matchPrefix: '/rules' },
+    { href: `/rules?session_id=${effectiveSessionId}&tab=rules`,    icon: <ListChecks className="w-[18px] h-[18px]" />, label: 'Manual Rules',     matchPrefix: '/rules' },
+    { href: `/rules?session_id=${effectiveSessionId}&tab=learned`,  icon: <Workflow className="w-[18px] h-[18px]" />,   label: 'Learned Patterns', matchPrefix: '/rules' },
   ] : []
 
   /* ══════════════════════════════════════════════════════════════════
@@ -155,26 +155,26 @@ export default function Sidebar({ sessionId, selectedStatement = '', onStatement
      ══════════════════════════════════════════════════════════════════ */
   return (
     <div className={`fixed left-0 top-0 h-full z-50 flex flex-col
-      bg-slate-900 text-neutral-100 border-r border-slate-800
+      bg-neutral-950 text-neutral-100 border-r border-neutral-800
       transition-all duration-300 ease-in-out
       ${isCollapsed ? 'w-[60px]' : 'w-64'}`}>
 
       {/* ── Brand header ─────────────────────────────────────────── */}
-      <div className="flex items-center justify-between h-14 px-3 border-b border-slate-800 shrink-0">
+      <div className="flex items-center justify-between h-14 px-3 border-b border-neutral-800 shrink-0">
         {!isCollapsed && (
           <div className="flex items-center gap-2.5 min-w-0">
-            <span className="text-sm font-bold tracking-tight truncate lowercase">recon<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-600">ex</span></span>
+            <span className="text-sm font-semibold tracking-tight truncate lowercase text-white">reconex</span>
           </div>
         )}
         <button onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-slate-800 transition-colors shrink-0"
+          className="p-1.5 rounded-md text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors shrink-0"
           title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
           {isCollapsed ? <PanelLeft className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
         </button>
       </div>
 
       {/* ── Client & Statement selectors ─────────────────────────── */}
-      <div className="shrink-0 border-b border-slate-800">
+      <div className="shrink-0 border-b border-neutral-800">
         {/* Client */}
         {isMounted && !isCollapsed && (
           <div className="px-3 pt-3 pb-2">
@@ -216,7 +216,7 @@ export default function Sidebar({ sessionId, selectedStatement = '', onStatement
             {!isCollapsed && (
               <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 px-3 pt-4 pb-1">Navigate</p>
             )}
-            {isCollapsed && <div className="my-1.5 mx-2 border-t border-slate-800" />}
+            {isCollapsed && <div className="my-1.5 mx-2 border-t border-neutral-800" />}
             {clientNav.map(item => (
               <NavLink key={item.matchPrefix} href={item.href}
                 icon={item.icon} label={item.label}
@@ -236,7 +236,7 @@ export default function Sidebar({ sessionId, selectedStatement = '', onStatement
 
             {/* ── Exports ──────────────────────────────────────────── */}
             <SectionHeader label="Exports" open={exportsOpen} toggle={() => setExportsOpen(!exportsOpen)} collapsed={isCollapsed} />
-            {isCollapsed && <div className="my-1.5 mx-2 border-t border-slate-800" />}
+            {isCollapsed && <div className="my-1.5 mx-2 border-t border-neutral-800" />}
             {(exportsOpen || isCollapsed) && exportItems.map(item => (
               <ExportButton key={item.type}
                 icon={item.icon} label={item.label} title={item.title}
@@ -256,7 +256,7 @@ export default function Sidebar({ sessionId, selectedStatement = '', onStatement
 
             {/* ── Configuration ────────────────────────────────────── */}
             <SectionHeader label="Configuration" open={configOpen} toggle={() => setConfigOpen(!configOpen)} collapsed={isCollapsed} />
-            {isCollapsed && <div className="my-1.5 mx-2 border-t border-slate-800" />}
+            {isCollapsed && <div className="my-1.5 mx-2 border-t border-neutral-800" />}
             {(configOpen || isCollapsed) && configItems.map(item => (
               <NavLink key={item.label} href={item.href}
                 icon={item.icon} label={item.label}
@@ -267,7 +267,7 @@ export default function Sidebar({ sessionId, selectedStatement = '', onStatement
 
         {/* ── More ──────────────────────────────────────────────── */}
         <SectionHeader label="More" open={moreOpen} toggle={() => setMoreOpen(!moreOpen)} collapsed={isCollapsed} />
-        {isCollapsed && <div className="my-1.5 mx-2 border-t border-slate-800" />}
+        {isCollapsed && <div className="my-1.5 mx-2 border-t border-neutral-800" />}
         {(moreOpen || isCollapsed) && (
           <>
             <NavLink href="/clients" icon={<Users className="w-[18px] h-[18px]" />}
@@ -284,13 +284,13 @@ export default function Sidebar({ sessionId, selectedStatement = '', onStatement
 
       {/* ── Footer ──────────────────────────────────────────────── */}
       {!isCollapsed && (
-        <div className="shrink-0 border-t border-slate-800 px-4 py-3 space-y-1">
+        <div className="shrink-0 border-t border-neutral-800 px-4 py-3 space-y-1">
           <div className="flex items-center justify-center gap-3 text-[10px]">
             <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-neutral-600 hover:text-neutral-400 transition-colors">Privacy</a>
             <a href="/security" target="_blank" rel="noopener noreferrer" className="text-neutral-600 hover:text-neutral-400 transition-colors">Security</a>
             <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-neutral-600 hover:text-neutral-400 transition-colors">Terms</a>
           </div>
-          <p className="text-[10px] text-neutral-600 text-center">Reconex v2.0</p>
+          <p className="text-[10px] text-neutral-600 text-center">Reconex</p>
         </div>
       )}
 
@@ -314,13 +314,13 @@ function NavLink({
     <Link href={href} title={collapsed ? label : undefined}
       className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors relative
         ${active
-          ? 'bg-blue-600/20 text-blue-300'
-          : 'text-neutral-400 hover:text-neutral-100 hover:bg-slate-800'
+          ? 'bg-neutral-800 text-white'
+          : 'text-neutral-400 hover:text-neutral-100 hover:bg-neutral-900'
         }
         ${collapsed ? 'justify-center px-0' : ''}
       `}>
-      {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-blue-500" />}
-      <span className={`shrink-0 ${active ? 'text-blue-400' : 'text-neutral-500 group-hover:text-neutral-300'}`}>{icon}</span>
+      {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-white" />}
+      <span className={`shrink-0 ${active ? 'text-white' : 'text-neutral-500 group-hover:text-neutral-300'}`}>{icon}</span>
       {!collapsed && <span className="truncate">{label}</span>}
     </Link>
   )
@@ -333,7 +333,7 @@ function ExportButton({
   return (
     <button onClick={onClick} disabled={loading} title={collapsed ? label : title}
       className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium w-full text-left transition-colors
-        text-neutral-400 hover:text-neutral-100 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed
+        text-neutral-400 hover:text-neutral-100 hover:bg-neutral-900 disabled:opacity-40 disabled:cursor-not-allowed
         ${collapsed ? 'justify-center px-0' : ''}
       `}>
       <span className={`shrink-0 text-neutral-500 group-hover:text-neutral-300 ${loading ? 'animate-pulse' : ''}`}>
