@@ -384,7 +384,11 @@ def update_transaction_category(
 
         if category:
             try:
-                if keyword and len(keyword.strip()) >= 3:
+                # rule_keyword reads from request body first, then query param — the frontend
+                # always sends keyword in the body (never as a query param), so using
+                # rule_keyword here (instead of the bare query-param `keyword`) is the only
+                # way this block actually executes when called from the UI.
+                if rule_keyword and len(rule_keyword) >= 3:
                     # Save keyword as a persistent 'contains' rule for future uploads
                     learned_rules = learning_service.learn_from_categorization(
                         user_id=str(current_user.id),
@@ -392,16 +396,16 @@ def update_transaction_category(
                         description=transaction.description,
                         category=category,
                         merchant=None,
-                        keyword=keyword,
+                        keyword=rule_keyword,
                         db=db,
                         client_id=transaction.client_id,
                         account_id=transaction.account_id,  # Phase 2
                     )
                     if learned_rules:
-                        print(f"✓ Saved keyword rule: '{keyword.strip().upper()}' \u2192 {category}")
+                        print(f"✓ Saved keyword rule: '{rule_keyword.upper()}' \u2192 {category}")
 
                     # Apply keyword to all similar transactions in the current statement
-                    keyword_upper = keyword.strip().upper()
+                    keyword_upper = rule_keyword.upper()
                     matching_transactions = db.query(Transaction).filter(
                         Transaction.session_id == session_id,
                         Transaction.id != transaction_id,

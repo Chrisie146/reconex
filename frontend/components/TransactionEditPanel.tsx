@@ -128,6 +128,18 @@ export default function TransactionEditPanel({
       /^NEDBANK\s+/,
       /^ABSA\s+/,
       /^FNB\s+/,
+      // SA payment gateways that appear before the merchant name
+      /^NETCASH\s+(?:DEBIT\s+)?/,
+      /^OZOW\s+/,
+      /^PAYFAST\s+/,
+      /^PAYFLEX\s+/,
+      /^PEACH\s+(?:PAYMENTS\s+)?/,
+      /^YOCO\s+/,
+      /^SNAPSCAN\s+/,
+      /^ZAPPER\s+/,
+      /^PAYGATE\s+/,
+      /^PAYU\s+/,
+      /^REC\s+/,
     ]
     for (const p of prefixes) {
       const stripped = desc.replace(p, '')
@@ -149,6 +161,12 @@ export default function TransactionEditPanel({
       'DIRECT','AUTO','AUTOMATIC','RECURRING',
       'POS','SWIPE','TAP','CONTACTLESS',
       'STD','GEN','GENERAL','MISC','MISCELLANEOUS',
+      // SA payment gateways / processors — not the merchant name
+      'NETCASH','OZOW','PAYFLEX','PEACH','PAYFAST','YOCO','SNAPSCAN','ZAPPER',
+      'PAYGATE','ECENTRIC','PAYU','PAYSTACK','FLUTTERWAVE','MOMOPAY','MPESA',
+      // Common non-merchant tokens inside descriptions
+      'REC','TXN','RCPT','PMT','PYMT','INST','SUB','SUBSC','SUBSCR',
+      'GATEWAY','PROCESSING','PROCESSOR','PROVIDER',
     ])
 
     const words = desc.split(/\s+/).filter(w => w.length > 0)
