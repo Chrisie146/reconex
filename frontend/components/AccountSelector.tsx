@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Check, ChevronDown, Search, X } from 'lucide-react'
 import { Account, useAccounts } from '@/lib/hooks/useAccounts'
 
@@ -38,13 +39,39 @@ export default function AccountSelector({
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const wrapperRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({})
 
-  // Close on outside click
+  // Compute portal position from the trigger button's bounding rect
+  const computeDropdownStyle = () => {
+    if (!buttonRef.current) return
+    const rect = buttonRef.current.getBoundingClientRect()
+    const spaceBelow = window.innerHeight - rect.bottom
+    const dropdownMaxH = 320
+    const style: React.CSSProperties = {
+      position: 'fixed',
+      left: rect.left,
+      width: rect.width,
+      zIndex: 9999,
+    }
+    if (spaceBelow >= dropdownMaxH || spaceBelow >= rect.top) {
+      style.top = rect.bottom + 4
+    } else {
+      style.bottom = window.innerHeight - rect.top + 4
+    }
+    setDropdownStyle(style)
+  }
+
+  // Close on outside click — must check both the wrapper and the portal dropdown
   useEffect(() => {
     if (!open) return
     const onDoc = (e: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+      const target = e.target as Node
+      const insideWrapper = wrapperRef.current?.contains(target) ?? false
+      const insideDropdown = dropdownRef.current?.contains(target) ?? false
+      if (!insideWrapper && !insideDropdown) {
         setOpen(false)
         setQuery('')
       }
@@ -85,9 +112,13 @@ export default function AccountSelector({
   return (
     <div ref={wrapperRef} className={`relative ${className}`}>
       <button
+        ref={buttonRef}
         type="button"
         disabled={disabled || loading}
-        onClick={() => setOpen(o => !o)}
+        onClick={() => {
+          computeDropdownStyle()
+          setOpen(o => !o)
+        }}
         className={`w-full ${sizeClasses} flex items-center justify-between gap-2 border rounded-md
           bg-white dark:bg-slate-800 border-neutral-300 dark:border-slate-600
           text-left text-neutral-800 dark:text-neutral-100
@@ -109,9 +140,13 @@ export default function AccountSelector({
         <ChevronDown className={`w-4 h-4 shrink-0 text-neutral-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
-      {open && (
-        <div className="absolute z-50 mt-1 w-full bg-white dark:bg-slate-800 border border-neutral-200 dark:border-slate-700
-          rounded-md shadow-lg max-h-[320px] flex flex-col">
+      {open && typeof document !== 'undefined' && createPortal(
+        <div
+          ref={dropdownRef}
+          style={dropdownStyle}
+          className="bg-white dark:bg-slate-800 border border-neutral-200 dark:border-slate-700
+            rounded-md shadow-lg max-h-[320px] flex flex-col"
+        >
           <div className="flex items-center gap-2 p-2 border-b border-neutral-200 dark:border-slate-700">
             <Search className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
             <input
@@ -161,7 +196,8 @@ export default function AccountSelector({
               ))
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

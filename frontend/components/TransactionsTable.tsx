@@ -253,7 +253,9 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
 
   const buildTransactionParams = () => {
     const params: any = {
-      q: debouncedInstantQuery || undefined,
+      // Advanced-filter keyword (query) takes precedence over the instant-search bar;
+      // this was previously missing, causing the Advanced "Keyword Search" to be ignored.
+      q: (query.trim() || debouncedInstantQuery) || undefined,
       date_from: dateFrom || undefined,
       date_to: dateTo || undefined,
       page: currentPage,
@@ -402,7 +404,7 @@ export default function TransactionsTable({ sessionId, onTransactionSelect, cate
 
     fetchData()
   }, [sessionId, currentClient?.id, refreshTrigger, refreshKey, searchTrigger, selectedStatement, txnFilter,
-      currentPage, pageSize, sortBy, sortDirection, quickFilter, debouncedInstantQuery, dateFrom, dateTo])
+      currentPage, pageSize, sortBy, sortDirection, quickFilter, debouncedInstantQuery, dateFrom, dateTo, query])
 
   // Fetch categories whenever session, statement, or client changes
   useEffect(() => {
