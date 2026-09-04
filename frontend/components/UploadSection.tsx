@@ -243,6 +243,10 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
         isPdf={isPdfSelected}
         file={selectedFile}
         onClose={() => setPreviewOpen(false)}
+        onManualMapping={isPdfSelected ? () => {
+          setPreviewOpen(false)
+          setColumnMappingOpen(true)
+        } : undefined}
         onSaved={(sessionId, count, categories) => {
           setPreviewOpen(false)
           onUploadSuccess(sessionId, count, categories)

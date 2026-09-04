@@ -23,9 +23,10 @@ interface Props {
   isPdf?: boolean
   file?: File | null
   onSaved?: (sessionId: string, count: number, categories: string[]) => void
+  onManualMapping?: () => void
 }
 
-export default function UploadPreviewModal({ isOpen, onClose, parsed, isPdf = false, file = null, onSaved }: Props) {
+export default function UploadPreviewModal({ isOpen, onClose, parsed, isPdf = false, file = null, onSaved, onManualMapping }: Props) {
   const [rows, setRows] = useState<ParsedRow[]>(parsed || [])
   const [selected, setSelected] = useState<boolean[]>(parsed.map(() => true))
   const [saving, setSaving] = useState(false)
@@ -396,6 +397,15 @@ export default function UploadPreviewModal({ isOpen, onClose, parsed, isPdf = fa
             {selectedCount} transaction{selectedCount !== 1 ? 's' : ''} will be saved
           </p>
           <div className="flex items-center gap-3">
+            {isPdf && onManualMapping && (
+              <button
+                onClick={onManualMapping}
+                disabled={saving}
+                className="rounded-lg px-4 py-2 text-sm font-medium text-blue-700 ring-1 ring-blue-200 transition-colors hover:bg-blue-50 disabled:opacity-50"
+              >
+                Map all PDF columns
+              </button>
+            )}
             <button
               onClick={onClose}
               disabled={saving}
