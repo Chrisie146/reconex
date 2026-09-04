@@ -2362,7 +2362,31 @@ def pdf_to_csv_bytes(file_content: bytes, explain_amounts: Optional[List[float]]
                 'www.capitecbank.co.za' in text_lower or
                 text_lower.strip().startswith('capitec')
             )
-            if not is_capitec_statement:
+            if is_capitec_statement:
+                # Digitally-generated Capitec PDFs contain a text/table layer.
+                # Prefer it to OCR, which is slow and can fail on long PDFs.
+                digital_rows = []
+                for page_num, page in enumerate(pdf_obj.pages):
+                    try:
+                        for table in page.extract_tables() or []:
+                            parsed = _parse_capitec_table(table)
+                            if parsed:
+                                digital_rows.extend(parsed)
+                    except Exception as e:
+                        print(f"[PDF-CAPITEC] Failed to extract table from page {page_num}: {e}")
+                if digital_rows:
+                    year_match = re.search(r"\b(20[0-2][0-9])\b", first_page_text)
+                    statement_year = int(year_match.group(1)) if year_match else None
+                    pdf_obj.close()
+                    return _rows_to_csv(digital_rows), statement_year, "capitec"
+
+                # If tables are unavailable but the PDF has a text layer,
+                # try the existing text parser before resorting to OCR.
+                digital_rows = _parse_capitec_text(pdf_obj)
+                if digital_rows:
+                    pdf_obj.close()
+                    return _rows_to_csv(digital_rows), None, "capitec"
+            else:
                 # Not a Capitec statement - try FNB/ABSA/Standard Bank with pdfplumber first
                 use_ocr = False
     except Exception as e:
@@ -2371,7 +2395,7 @@ def pdf_to_csv_bytes(file_content: bytes, explain_amounts: Optional[List[float]]
 
     if use_ocr:
         if convert_from_bytes is None or pytesseract is None:
-            raise ParserError('This PDF appears to be a scanned image and cannot be processed automatically. Please download a digital PDF from your bank\'s online portal, or export your statement as a CSV file instead.')
+            raise ParserError('Could not extract text or tables from this PDF. If it is scanned, use the OCR region workflow; otherwise export the statement as CSV.')
 
         # First, OCR all pages to detect bank
         ocr_texts = []
@@ -2387,10 +2411,10 @@ def pdf_to_csv_bytes(file_content: bytes, explain_amounts: Optional[List[float]]
                 except Exception as e:
                     print(f"[OCR] Failed to OCR page {idx}: {e}")
         except Exception as e:
-            raise ParserError('Failed to process this scanned PDF. Please download a digital PDF from your bank\'s online portal, or export your statement as a CSV file instead.')
+            raise ParserError('Could not process the PDF text or tables. Use the OCR region workflow for scanned statements, or export the statement as CSV.')
         
         if not ocr_texts:
-            raise ParserError('No text could be extracted from this PDF. It may be a scanned image or corrupted — please download a fresh digital PDF from your bank, or export your statement as a CSV file instead.')
+            raise ParserError('No text or transaction table could be extracted from this PDF. Use the OCR region workflow for scanned statements, or export the statement as CSV.')
         
         # Detect bank from OCR text
         full_ocr_text = '\n'.join(ocr_texts).lower()

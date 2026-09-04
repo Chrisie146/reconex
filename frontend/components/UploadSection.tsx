@@ -96,6 +96,7 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
         errorMessage.toLowerCase().includes('unsupported bank') ||
         errorMessage.toLowerCase().includes('no transaction data') ||
         errorMessage.toLowerCase().includes('could not read this pdf') ||
+        errorMessage.toLowerCase().includes('failed to process this scanned pdf') ||
         errorMessage.toLowerCase().includes('scanned image') ||
         errorMessage.toLowerCase().includes('no text could be extracted')
       if ((isCSV || isPDF) && isDetectionFailure) {
