@@ -693,6 +693,52 @@ class CapitecAdapter(BankAdapter):
         return col_map
 
 
+class DiscoveryAdapter(BankAdapter):
+    """Adapter for Discovery's signed ``Date, Description, Amount`` output.
+
+    Unlike FNB's export convention, Discovery's PDF amount already carries the
+    sign: positive values are inflows and negative values are outflows.
+    """
+
+    def normalize(self, df: pd.DataFrame) -> pd.DataFrame:
+        columns = {str(column).strip().lower(): column for column in df.columns}
+        col_map = {
+            "date": next((column for name, column in columns.items() if "date" in name), None),
+            "description": next(
+                (column for name, column in columns.items() if "description" in name or "detail" in name),
+                None,
+            ),
+            "amount": next((column for name, column in columns.items() if "amount" in name), None),
+        }
+        normalized_rows = []
+
+        for _, row in df.iterrows():
+            date_col = col_map.get("date")
+            description_col = col_map.get("description")
+            amount_col = col_map.get("amount")
+            if not date_col or not description_col or not amount_col:
+                continue
+
+            date_value = row.get(date_col)
+            description = str(row.get(description_col) or "").strip()
+            if pd.isna(date_value) or not str(date_value).strip() or not description:
+                continue
+
+            date_normalized = self.parse_date(
+                str(date_value).strip(),
+                ["%Y-%m-%d", "%d %b %Y", "%d/%m/%Y", "%Y/%m/%d", "%d-%m-%Y"],
+            )
+            amount = self.parse_amount(str(row.get(amount_col) or ""))
+            if date_normalized:
+                normalized_rows.append({
+                    "Date": date_normalized,
+                    "Description": description,
+                    "Amount": amount,
+                })
+
+        return pd.DataFrame(normalized_rows, columns=["Date", "Description", "Amount"])
+
+
 class GenericAdapter(BankAdapter):
     """
     Fallback adapter for unknown/generic bank formats
@@ -1583,6 +1629,7 @@ def get_adapter(bank_type_str: str, column_mapping: dict = None):
         BankType.ABSA.value: ABSAAdapter(),
         BankType.CAPITEC.value: CapitecAdapter(),
         BankType.FNB.value: FNBAdapter(),
+        "discovery": DiscoveryAdapter(),
         "fnb": FNBAdapter(),
         "nedbank": NedbankAdapter(),
         "investec": InvestecAdapter(),

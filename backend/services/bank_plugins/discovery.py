@@ -20,6 +20,7 @@ class DiscoveryPlugin(BankPlugin):
         pdf_keywords=[
             "discovery bank limited",
             "discovery gold transaction account",
+            "discovery gold card",
             "discovery bank",
         ],
         csv_header_patterns={
@@ -35,6 +36,7 @@ class DiscoveryPlugin(BankPlugin):
         return (
             "discovery bank limited" in text_lower
             or "discovery gold transaction account" in text_lower
+            or "discovery gold card" in text_lower
             or "discovery bank" in text_lower and "transaction timeline" in text_lower
         )
 
@@ -55,11 +57,8 @@ class DiscoveryPlugin(BankPlugin):
         return min(score, 1.0)
 
     def get_adapter(self):
-        # PDF extraction already produces the canonical Date/Description/Amount
-        # columns. GenericAdapter also handles Discovery CSV exports that use
-        # those canonical columns.
-        from services.bank_adapters import GenericAdapter
-        return GenericAdapter()
+        from services.bank_adapters import DiscoveryAdapter
+        return DiscoveryAdapter()
 
     def parse_pdf(self, text: str, pdf_obj=None, statement_year: Optional[int] = None):
         """Extract dated transaction rows from a Discovery transaction timeline."""
