@@ -92,8 +92,13 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
       const isDetectionFailure = errorMessage.toLowerCase().includes('column') ||
         errorMessage.toLowerCase().includes('no valid transactions') ||
         errorMessage.toLowerCase().includes('could not identify') ||
-        errorMessage.toLowerCase().includes('invalid csv')
-      if (isCSV && isDetectionFailure) {
+        errorMessage.toLowerCase().includes('invalid csv') ||
+        errorMessage.toLowerCase().includes('unsupported bank') ||
+        errorMessage.toLowerCase().includes('no transaction data') ||
+        errorMessage.toLowerCase().includes('could not read this pdf') ||
+        errorMessage.toLowerCase().includes('scanned image') ||
+        errorMessage.toLowerCase().includes('no text could be extracted')
+      if ((isCSV || isPDF) && isDetectionFailure) {
         setError('')
         setColumnMappingOpen(true)
       } else {
@@ -261,11 +266,22 @@ export default function UploadSection({ onUploadSuccess }: UploadSectionProps) {
 
       {/* Status: File Selected */}
       {fileName && (
-        <div className="flex items-start gap-3 rounded-xl bg-blue-50 ring-1 ring-blue-200 px-4 py-3">
+        <div className="flex items-center justify-between gap-3 rounded-xl bg-blue-50 ring-1 ring-blue-200 px-4 py-3">
+          <div className="flex items-start gap-3">
           <FileUp className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
           <p className="text-sm text-blue-800">
             Selected: <span className="font-medium">{fileName}</span>
           </p>
+          </div>
+          {!loading && !previewOpen && !columnMappingOpen && selectedFile && (
+            <button
+              type="button"
+              onClick={() => setColumnMappingOpen(true)}
+              className="shrink-0 text-xs font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"
+            >
+              Map columns manually
+            </button>
+          )}
         </div>
       )}
 

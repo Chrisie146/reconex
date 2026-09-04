@@ -216,8 +216,8 @@ export default function ColumnMappingModal({ isOpen, file, onClose, onSaved }: C
         <div className="px-6 py-4 space-y-6">
           {/* Info banner */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
-            We couldn&apos;t automatically detect the bank format. Please tell us which columns
-            contain the <strong>date</strong>, <strong>description</strong>, and <strong>amount</strong>.
+            Please tell us which extracted columns contain the <strong>date</strong>, <strong>description</strong>,
+            and <strong>amount</strong>. This works for CSV files and digital PDFs with extractable tables.
           </div>
 
           {error && (

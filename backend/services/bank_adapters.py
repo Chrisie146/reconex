@@ -6,7 +6,7 @@ Each adapter converts bank-specific CSV format to canonical format:
 """
 
 import re
-from typing import List, Dict, Tuple, Optional
+from typing import Any, List, Dict, Tuple, Optional
 from abc import ABC, abstractmethod
 from datetime import datetime
 from decimal import Decimal
@@ -1553,6 +1553,26 @@ class ColumnMappingAdapter(BankAdapter):
         """
         self._mapping = column_mapping
 
+    @staticmethod
+    def _parse_mapped_amount(value: Any) -> Optional[float]:
+        """Parse signed spreadsheet/bank values without guessing invalid values as zero."""
+        if value is None or pd.isna(value) or not str(value).strip():
+            return None
+        text = str(value).strip().replace("R", "").replace("$", "").replace("€", "").replace("£", "")
+        negative = text.startswith("(") and text.endswith(")")
+        if negative:
+            text = text[1:-1]
+        text = re.sub(r"\s+", "", text)
+        if "," in text and "." in text:
+            text = text.replace(",", "")
+        elif "," in text:
+            text = text.replace(",", "." if len(text.rsplit(",", 1)[1]) != 3 else "")
+        try:
+            parsed = float(text)
+            return -parsed if negative else parsed
+        except (TypeError, ValueError):
+            return None
+
     def normalize(self, df: pd.DataFrame) -> pd.DataFrame:
         normalized_rows = []
         date_col = self._mapping.get("date")
@@ -1560,13 +1580,17 @@ class ColumnMappingAdapter(BankAdapter):
         amount_col = self._mapping.get("amount")
         debit_col = self._mapping.get("debit")
         credit_col = self._mapping.get("credit")
+        balance_col = self._mapping.get("balance")
         date_fmt = self._mapping.get("date_format")
 
         # Build date format list
         if date_fmt:
             date_formats = [date_fmt]
         else:
-            date_formats = ["%Y-%m-%d", "%d/%m/%Y", "%Y/%m/%d", "%d-%m-%Y", "%Y%m%d", "%d %b %Y"]
+            date_formats = [
+                "%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%Y/%m/%d",
+                "%d-%m-%Y", "%Y%m%d", "%d %b %Y", "%d %B %Y",
+            ]
 
         for _, row in df.iterrows():
             date_val = row.get(date_col)
@@ -1580,28 +1604,50 @@ class ColumnMappingAdapter(BankAdapter):
             amount = 0.0
             if amount_col:
                 av = row.get(amount_col)
-                if av is not None and pd.notna(av):
-                    amount = self.parse_amount(str(av))
+                if av is None or pd.isna(av) or not str(av).strip():
+                    continue
+                amount = self._parse_mapped_amount(av)
+                if amount is None:
+                    continue
             elif debit_col or credit_col:
                 debit = 0.0
                 credit = 0.0
+                has_amount = False
                 if debit_col:
                     dv = row.get(debit_col)
-                    if dv is not None and pd.notna(dv):
-                        debit = abs(self.parse_amount(str(dv)))
+                    if dv is not None and pd.notna(dv) and str(dv).strip():
+                        parsed_debit = self._parse_mapped_amount(dv)
+                        if parsed_debit is not None:
+                            debit = abs(parsed_debit)
+                            has_amount = True
                 if credit_col:
                     cv = row.get(credit_col)
-                    if cv is not None and pd.notna(cv):
-                        credit = abs(self.parse_amount(str(cv)))
-                amount = credit - debit if (debit or credit) else 0.0
+                    if cv is not None and pd.notna(cv) and str(cv).strip():
+                        parsed_credit = self._parse_mapped_amount(cv)
+                        if parsed_credit is not None:
+                            credit = abs(parsed_credit)
+                            has_amount = True
+                if not has_amount:
+                    continue
+                amount = credit - debit
 
             if date_normalized:
-                normalized_rows.append({"Date": date_normalized, "Description": description, "Amount": amount})
+                normalized_row = {"Date": date_normalized, "Description": description, "Amount": amount}
+                if balance_col:
+                    balance_val = row.get(balance_col)
+                    if balance_val is not None and pd.notna(balance_val) and str(balance_val).strip():
+                        balance = self._parse_mapped_amount(balance_val)
+                        if balance is not None:
+                            normalized_row["Balance"] = balance
+                normalized_rows.append(normalized_row)
 
         result = pd.DataFrame(normalized_rows)
         if result.empty:
             return pd.DataFrame(columns=["Date", "Description", "Amount"])
-        return result[["Date", "Description", "Amount"]]
+        columns = ["Date", "Description", "Amount"]
+        if balance_col and "Balance" in result.columns:
+            columns.append("Balance")
+        return result[columns]
 
 
 def get_adapter(bank_type_str: str, column_mapping: dict = None):
