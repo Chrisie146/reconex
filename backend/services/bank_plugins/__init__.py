@@ -13,6 +13,7 @@ from services.bank_plugins.capitec import CapitecPlugin
 from services.bank_plugins.fnb import FNBPlugin
 from services.bank_plugins.nedbank import NedbankPlugin
 from services.bank_plugins.investec import InvestecPlugin
+from services.bank_plugins.discovery import DiscoveryPlugin
 from services.bank_plugins.generic import GenericPlugin
 
 
@@ -25,6 +26,7 @@ def _register_all() -> None:
         FNBPlugin,
         NedbankPlugin,
         InvestecPlugin,
+        DiscoveryPlugin,
         GenericPlugin,
     ]:
         plugin = plugin_cls()

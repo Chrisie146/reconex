@@ -16,6 +16,7 @@ class BankType(Enum):
     FNB = "fnb"
     NEDBANK = "nedbank"
     INVESTEC = "investec"
+    DISCOVERY = "discovery"
     UNKNOWN = "unknown"
 
 
@@ -252,6 +253,7 @@ class BankDetector:
             BankType.FNB: "FNB (First National Bank)",
             BankType.NEDBANK: "Nedbank",
             BankType.INVESTEC: "Investec Bank",
+            BankType.DISCOVERY: "Discovery Bank",
             BankType.UNKNOWN: "Unknown/Generic",
         }
         return mapping.get(bank_type, "Unknown")

@@ -2653,8 +2653,8 @@ def pdf_to_csv_bytes(file_content: bytes, explain_amounts: Optional[List[float]]
                 if fee_amt is not None and fee_amt != 0:
                     rows.append([date_str, f"{desc} (Fee)", f"{fee_amt:.2f}"])
 
-        elif detected_bank in ('nedbank', 'investec'):
-            # Use plugin registry PDF parser for Nedbank/Investec
+        elif detected_bank in ('nedbank', 'investec', 'discovery'):
+            # Use plugin registry PDF parser for plugin-based banks
             try:
                 from services.bank_plugins.registry import BankRegistry
                 import services.bank_plugins  # noqa: F401
@@ -2831,7 +2831,7 @@ def pdf_to_csv_bytes(file_content: bytes, explain_amounts: Optional[List[float]]
                         pass
             
             if not rows:
-                raise ParserError('No transaction data was found in this PDF. The bank format may not be supported yet — supported banks are Standard Bank, ABSA, FNB, Capitec, Nedbank, and Investec. Try exporting your statement as a CSV file from your bank\'s online portal.')
+                raise ParserError('No transaction data was found in this PDF. The bank format may not be supported yet — supported banks are Standard Bank, ABSA, FNB, Capitec, Nedbank, Investec, and Discovery Bank. Try exporting your statement as a CSV file from your bank\'s online portal.')
             
             if pdf_obj:
                 pdf_obj.close()
