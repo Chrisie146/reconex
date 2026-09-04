@@ -34,6 +34,19 @@ from services import posthog_tracker
 router = APIRouter(tags=["Uploads"])
 
 
+def _db_balance_verified(value):
+    """Convert validator output to the INTEGER representation used by the DB."""
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return int(value)
+    try:
+        normalized = int(value)
+    except (TypeError, ValueError):
+        return None
+    return normalized if normalized in (0, 1) else None
+
+
 @router.post("/detect-bank")
 async def detect_bank_format(file: UploadFile = File(...), current_user: User = Depends(get_current_user)):
     """Detect the bank format from an uploaded statement file."""
@@ -201,7 +214,7 @@ def _apply_rules_and_save(
             mapping_source=mapping.source,
             mapping_reason=mapping.reason,
             bank_source=bank_source,
-            balance_verified=txn_data.get("balance_verified"),
+            balance_verified=_db_balance_verified(txn_data.get("balance_verified")),
             balance_difference=txn_data.get("balance_difference"),
             validation_message=txn_data.get("validation_message"),
         )
@@ -540,7 +553,7 @@ def save_parsed_transactions(
                 mapping_confidence=mapping.confidence,
                 mapping_source=mapping.source,
                 mapping_reason=mapping.reason,
-                balance_verified=item.get("balance_verified"),
+                balance_verified=_db_balance_verified(item.get("balance_verified")),
                 balance_difference=item.get("balance_difference"),
                 validation_message=item.get("validation_message"),
             )
