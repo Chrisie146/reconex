@@ -38,6 +38,31 @@ class Config:
     # API Server
     API_HOST = os.getenv("API_HOST", "0.0.0.0")
     API_PORT = int(os.getenv("API_PORT", "8000"))
+
+    # LLM-first PDF statement extraction (disabled by default)
+    LLM_STATEMENT_ENABLED = os.getenv("LLM_STATEMENT_ENABLED", "false").lower() in ("true", "1", "yes")
+    ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+    # Cheapest current model with structured-output support. Use the dated ID so
+    # extraction behaviour cannot change silently behind a moving alias.
+    ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL") or "claude-haiku-4-5-20251001"
+    LLM_STATEMENT_MAX_OUTPUT_TOKENS = int(os.getenv("LLM_STATEMENT_MAX_OUTPUT_TOKENS", "16000"))
+    LLM_STATEMENT_TIMEOUT_SECONDS = float(os.getenv("LLM_STATEMENT_TIMEOUT_SECONDS", "120"))
+    LLM_STATEMENT_TRANSPORT_RETRIES = int(os.getenv("LLM_STATEMENT_TRANSPORT_RETRIES", "2"))
+    LLM_STATEMENT_MAX_PAGES = int(os.getenv("LLM_STATEMENT_MAX_PAGES", "100"))
+    LLM_STATEMENT_MAX_CHARACTERS = int(os.getenv("LLM_STATEMENT_MAX_CHARACTERS", "2000000"))
+    LLM_STATEMENT_CHUNK_CHARACTERS = int(os.getenv("LLM_STATEMENT_CHUNK_CHARACTERS", "80000"))
+    LLM_STATEMENT_CHUNK_PAGES = int(os.getenv("LLM_STATEMENT_CHUNK_PAGES", "12"))
+    LLM_STATEMENT_STRICT_REDACTION = os.getenv("LLM_STATEMENT_STRICT_REDACTION", "true").lower() in ("true", "1", "yes")
+    # Verified recipes are data-only JSON files in the source tree. Once
+    # committed/deployed they are shared by every user and require no model call.
+    LLM_STATEMENT_RECIPE_REGISTRY = os.getenv(
+        "LLM_STATEMENT_RECIPE_REGISTRY",
+        os.path.join(os.path.dirname(__file__), "services", "llm_statement", "layout_recipes"),
+    )
+    LLM_STATEMENT_LEARN_RECIPES = os.getenv("LLM_STATEMENT_LEARN_RECIPES", "true").lower() in ("true", "1", "yes")
+    LLM_STATEMENT_ALLOW_PROVIDER_FALLBACK = os.getenv(
+        "LLM_STATEMENT_ALLOW_PROVIDER_FALLBACK", "true"
+    ).lower() in ("true", "1", "yes")
     
     # Frontend URL (used for password reset links)
     FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
@@ -144,6 +169,16 @@ class Config:
         # Validate DATABASE_URL
         if "EXAMPLE" in cls.DATABASE_URL.upper():
             errors.append("DATABASE_URL contains 'EXAMPLE' - update with actual database path")
+
+        if cls.LLM_STATEMENT_ENABLED:
+            if cls.LLM_STATEMENT_ALLOW_PROVIDER_FALLBACK and not cls.ANTHROPIC_API_KEY:
+                errors.append("ANTHROPIC_API_KEY must be set when LLM_STATEMENT_ENABLED is true")
+            if cls.LLM_STATEMENT_ALLOW_PROVIDER_FALLBACK and not cls.ANTHROPIC_MODEL:
+                errors.append("ANTHROPIC_MODEL must be set when LLM_STATEMENT_ENABLED is true")
+            if cls.LLM_STATEMENT_MAX_OUTPUT_TOKENS <= 0:
+                errors.append("LLM_STATEMENT_MAX_OUTPUT_TOKENS must be positive")
+            if cls.LLM_STATEMENT_CHUNK_PAGES < 2:
+                errors.append("LLM_STATEMENT_CHUNK_PAGES must be at least 2")
         
         # Check for SQLite in production
         if cls.ENVIRONMENT == "production" and cls.DATABASE_URL.startswith("sqlite"):

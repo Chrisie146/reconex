@@ -12,7 +12,8 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Upl
 from sqlalchemy.orm import Session
 
 from auth import get_current_user
-from models import Account, Client, Rule, SessionState, Transaction, User, get_db
+from config import Config
+from models import Account, Client, LLMStatementFailure, Rule, SessionState, Transaction, User, get_db
 from routers.dependencies import (
     learning_service,
     logger,
@@ -280,6 +281,64 @@ def _create_friendly_session(filename: str, session_id: str, db: Session):
     db.commit()
 
 
+def _llm_transactions_for_existing_pipeline(extraction: dict) -> list:
+    """Adapt a validated extraction at the legacy persistence boundary."""
+    from services.llm_statement.adapter import transactions_for_import
+    return transactions_for_import(extraction)
+
+
+async def _parse_pdf_with_llm(content: bytes):
+    """Create the optional provider lazily so legacy startup has no SDK dependency."""
+    from services.llm_statement.pipeline import LLMStatementPipeline
+    from services.llm_statement.provider import ProviderConfig
+
+    pipeline = LLMStatementPipeline(
+        ProviderConfig(
+            api_key=Config.ANTHROPIC_API_KEY,
+            model=Config.ANTHROPIC_MODEL,
+            max_output_tokens=Config.LLM_STATEMENT_MAX_OUTPUT_TOKENS,
+            timeout_seconds=Config.LLM_STATEMENT_TIMEOUT_SECONDS,
+            transport_retries=Config.LLM_STATEMENT_TRANSPORT_RETRIES,
+        ),
+        max_pages=Config.LLM_STATEMENT_MAX_PAGES,
+        max_characters=Config.LLM_STATEMENT_MAX_CHARACTERS,
+        chunk_characters=Config.LLM_STATEMENT_CHUNK_CHARACTERS,
+        chunk_pages=Config.LLM_STATEMENT_CHUNK_PAGES,
+        strict_redaction=Config.LLM_STATEMENT_STRICT_REDACTION,
+        layout_hmac_key=Config.SECRET_KEY.encode("utf-8"),
+        recipe_registry_path=Config.LLM_STATEMENT_RECIPE_REGISTRY,
+        learn_recipes=Config.LLM_STATEMENT_LEARN_RECIPES,
+        allow_provider_fallback=Config.LLM_STATEMENT_ALLOW_PROVIDER_FALLBACK,
+    )
+    return await pipeline.process(content)
+
+
+def _persist_llm_failure(result, db: Session, user_id: int, client_id: Optional[int]) -> None:
+    """Persist only sanitised parse metadata; never provider payloads or client data."""
+    validation_codes = []
+    if result.validation:
+        validation_codes = [issue.code for issue in result.validation.failures]
+    record = LLMStatementFailure(
+        document_id=result.document_id,
+        user_id=user_id,
+        client_id=client_id,
+        layout_id=result.layout_id,
+        status=result.status,
+        validation_codes=json.dumps(validation_codes),
+        model_id=Config.ANTHROPIC_MODEL or None,
+        prompt_version="extract-statement-v6",
+        schema_version="statement-extraction-v2",
+        input_tokens=result.input_tokens,
+        output_tokens=result.output_tokens,
+    )
+    try:
+        db.add(record)
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        logger.error(f"[LLM_STATEMENT] Failed to persist sanitised failure metadata: {type(exc).__name__}")
+
+
 @router.post("/upload")
 async def upload_statement(
     request: Request,
@@ -378,37 +437,19 @@ async def upload_pdf_statement(
     client_id: Optional[int] = None,
 ):
     """Upload a PDF bank statement and extract transactions."""
-    logger.info(f"[PDF_UPLOAD] Starting upload for user {current_user.id}, file: {file.filename}, client_id: {client_id}, preview: {preview}")
+    logger.info(f"[PDF_UPLOAD] Starting upload for user {current_user.id}, client_id: {client_id}, preview: {preview}")
 
     rate_info = upload_limiter.check_rate_limit(request, current_user.id)
 
     try:
         await validate_pdf_upload(file)
     except Exception as e:
-        logger.error(f"[PDF_UPLOAD] File validation failed for {file.filename}: {str(e)}")
+        logger.error(f"[PDF_UPLOAD] File validation failed: {type(e).__name__}")
         raise
 
     try:
         content = await file.read()
         logger.info(f"[PDF_UPLOAD] File read successfully, size: {len(content)} bytes")
-
-        try:
-            csv_bytes, statement_year, detected_bank = pdf_to_csv_bytes(content)
-            logger.info(f"[PDF_UPLOAD] PDF parsed successfully, detected year: {statement_year}, bank: {detected_bank}")
-        except PDFParserError as pe:
-            raise HTTPException(status_code=400, detail=str(pe))
-
-        is_valid, error_msg = validate_csv(csv_bytes)
-        if not is_valid:
-            raise HTTPException(status_code=400, detail=f"Extracted CSV invalid: {error_msg}")
-
-        normalized_transactions, parse_warnings, skipped_rows, bank_source = normalize_csv(
-            csv_bytes, statement_year, detected_bank if "detected_bank" in locals() else None
-        )
-        if not normalized_transactions:
-            raise HTTPException(status_code=400, detail="No transactions could be read from this statement. The file may use an unsupported format — try exporting as CSV from your bank's online portal instead.")
-
-        logger.info(f"[PDF_UPLOAD] Detected bank source: {bank_source}")
 
         if client_id is not None:
             logger.info(f"[PDF_UPLOAD] Validating client {client_id} belongs to user {current_user.id}")
@@ -416,6 +457,60 @@ async def upload_pdf_statement(
             if not client:
                 logger.error(f"[PDF_UPLOAD] Client {client_id} not found for user {current_user.id}")
                 raise HTTPException(status_code=404, detail=f"Client {client_id} not found or doesn't belong to your account")
+
+        llm_document_id = None
+        llm_validation_status = None
+        extraction_path = "legacy"
+        recipe_created = False
+        if Config.LLM_STATEMENT_ENABLED:
+            llm_result = await _parse_pdf_with_llm(content)
+            llm_document_id = llm_result.document_id
+            extraction_path = llm_result.extraction_path
+            recipe_created = llm_result.recipe_created
+            if llm_result.validation is not None:
+                llm_validation_status = llm_result.validation.status
+            if llm_result.status != "parsed" or not llm_result.extraction or not llm_result.validation:
+                _persist_llm_failure(llm_result, db, current_user.id, client_id)
+                validation_codes = []
+                if llm_result.validation:
+                    validation_codes = [issue.code for issue in llm_result.validation.failures]
+                status_code = {
+                    "provider_unavailable": 503,
+                    "invalid_document": 400,
+                    "requires_ocr": 422,
+                    "redaction_failed": 422,
+                    "not_a_statement": 422,
+                    "unparseable": 422,
+                    "parser_not_available": 422,
+                }.get(llm_result.status, 422)
+                raise HTTPException(status_code=status_code, detail={
+                    "status": llm_result.status,
+                    "document_id": llm_result.document_id,
+                    "validation_codes": validation_codes,
+                    "message": llm_result.message or "Statement could not be verified",
+                })
+            normalized_transactions = _llm_transactions_for_existing_pipeline(llm_result.extraction)
+            parse_warnings = [issue.code for issue in llm_result.validation.warnings]
+            skipped_rows = []
+            bank_source = llm_result.bank_source or "llm"
+        else:
+            try:
+                csv_bytes, statement_year, detected_bank = pdf_to_csv_bytes(content)
+                logger.info(f"[PDF_UPLOAD] PDF parsed successfully, detected year: {statement_year}, bank: {detected_bank}")
+            except PDFParserError as pe:
+                raise HTTPException(status_code=400, detail=str(pe))
+
+            is_valid, error_msg = validate_csv(csv_bytes)
+            if not is_valid:
+                raise HTTPException(status_code=400, detail=f"Extracted CSV invalid: {error_msg}")
+
+            normalized_transactions, parse_warnings, skipped_rows, bank_source = normalize_csv(
+                csv_bytes, statement_year, detected_bank if "detected_bank" in locals() else None
+            )
+        if not normalized_transactions:
+            raise HTTPException(status_code=400, detail="No transactions could be read from this statement. The file may use an unsupported format — try exporting as CSV from your bank's online portal instead.")
+
+        logger.info(f"[PDF_UPLOAD] Detected bank source: {bank_source}")
 
         enabled_rules = _load_enabled_rules(db, client_id)
 
@@ -431,6 +526,10 @@ async def upload_pdf_statement(
                 "transactions": serialized,
                 "warnings": parse_warnings or None,
                 "skipped_rows": skipped_rows or None,
+                "extraction_path": extraction_path,
+                "recipe_created": recipe_created,
+                "document_id": llm_document_id,
+                "validation_status": llm_validation_status,
             })
 
         session_id = str(uuid.uuid4())
@@ -459,6 +558,10 @@ async def upload_pdf_statement(
             "bank_source": bank_source,
             "warnings": parse_warnings or None,
             "skipped_rows": skipped_rows or None,
+            "extraction_path": extraction_path,
+            "recipe_created": recipe_created,
+            "document_id": llm_document_id,
+            "validation_status": llm_validation_status,
         })
     except HTTPException:
         raise

@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "StatementExtractionV2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "document_type", "bank_name", "account_type", "account_number_last4",
+    "statement_period_start", "statement_period_end", "opening_balance",
+    "closing_balance", "currency", "processed_pages", "transaction_pages",
+    "transactions", "extraction_notes"
+  ],
+  "properties": {
+    "document_type": {"type": "string", "enum": ["bank_statement", "not_a_statement", "ambiguous"]},
+    "bank_name": {"type": ["string", "null"]},
+    "account_type": {"type": ["string", "null"]},
+    "account_number_last4": {"type": ["string", "null"], "pattern": "^\\d{4}$"},
+    "statement_period_start": {"type": ["string", "null"], "format": "date"},
+    "statement_period_end": {"type": ["string", "null"], "format": "date"},
+    "opening_balance": {"type": ["string", "null"], "pattern": "^-?(0|[1-9]\\d*)\\.\\d{2}$"},
+    "closing_balance": {"type": ["string", "null"], "pattern": "^-?(0|[1-9]\\d*)\\.\\d{2}$"},
+    "currency": {"type": ["string", "null"], "pattern": "^[A-Z]{3}$"},
+    "processed_pages": {"type": "array", "items": {"type": "integer"}},
+    "transaction_pages": {"type": "array", "items": {"type": "integer"}},
+    "transactions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["date", "value_date", "description", "amount", "direction", "additional_fee", "balance_after", "source_page", "source_row_ordinal", "source_bbox"],
+        "properties": {
+          "date": {"type": ["string", "null"], "format": "date"},
+          "value_date": {"type": ["string", "null"], "format": "date"},
+          "description": {"type": ["string", "null"]},
+          "amount": {"type": ["string", "null"], "pattern": "^(0|[1-9]\\d*)\\.\\d{2}$"},
+          "additional_fee": {"type": "string", "pattern": "^(-?(0|[1-9]\\d*)\\.\\d{2}|unknown)$", "description": "Signed additional fee effect on balance: negative charge, positive refund, 0.00 when none or already included in amount; unknown if unreadable or inclusion is ambiguous."},
+          "direction": {
+            "anyOf": [
+              {"type": "string", "enum": ["debit", "credit"]},
+              {"type": "null"}
+            ]
+          },
+          "balance_after": {"type": ["string", "null"], "pattern": "^-?(0|[1-9]\\d*)\\.\\d{2}$"},
+          "source_page": {"type": "integer"},
+          "source_row_ordinal": {"type": "integer"},
+          "source_bbox": {
+            "anyOf": [
+              {"type": "null"},
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["x0", "top", "x1", "bottom"],
+                "properties": {
+                  "x0": {"type": "number"}, "top": {"type": "number"},
+                  "x1": {"type": "number"}, "bottom": {"type": "number"}
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "extraction_notes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source_page", "source_row_ordinal", "code", "message"],
+        "properties": {
+          "source_page": {"type": "integer"},
+          "source_row_ordinal": {"type": ["integer", "null"]},
+          "code": {"type": "string"},
+          "message": {"type": "string"}
+        }
+      }
+    }
+  }
+}

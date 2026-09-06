@@ -1,0 +1,45 @@
+{
+  "date_format": "%d/%m/%Y",
+  "shape": {
+    "columns": [
+      [
+        "date",
+        35.1,
+        "date"
+      ],
+      [
+        "description",
+        84.6,
+        "description"
+      ],
+      [
+        "category",
+        286.4,
+        "category"
+      ],
+      [
+        "credit",
+        370.8,
+        "money in"
+      ],
+      [
+        "debit",
+        427.8,
+        "money out"
+      ],
+      [
+        "fee",
+        491.3,
+        "fee"
+      ],
+      [
+        "balance",
+        529.5,
+        "balance"
+      ]
+    ],
+    "height": 841.9,
+    "width": 595.3
+  },
+  "version": 1
+}

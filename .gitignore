@@ -73,4 +73,7 @@ Thumbs.db
 
 # Python venv
 backend/.venv/
+backend/.venv-local/
+**/__pycache__/
+*.py[cod]
 *.exe

@@ -211,6 +211,29 @@ class TransactionMerchant(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class LLMStatementFailure(Base):
+    """Sanitised, tenant-scoped metadata for reviewing failed LLM parses.
+
+    This table deliberately excludes filenames, statement text, transactions,
+    account digits, balances, descriptions, and model inputs/outputs.
+    """
+    __tablename__ = "llm_statement_failures"
+
+    id = Column(Integer, primary_key=True, index=True)
+    document_id = Column(String, nullable=False, unique=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    client_id = Column(Integer, ForeignKey("clients.id", ondelete="CASCADE"), nullable=True, index=True)
+    layout_id = Column(String, nullable=True, index=True)
+    status = Column(String, nullable=False, index=True)
+    validation_codes = Column(String, nullable=False, default="[]")
+    model_id = Column(String, nullable=True)
+    prompt_version = Column(String, nullable=False)
+    schema_version = Column(String, nullable=False)
+    input_tokens = Column(Integer, nullable=False, default=0)
+    output_tokens = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+
 class SessionState(Base):
     """
     Tracks session-level metadata such as whether a session has been locked/finalized
